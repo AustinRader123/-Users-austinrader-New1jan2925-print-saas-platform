@@ -1,0 +1,837 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  passwordHash  String
+  name          String?
+  avatar        String?
+  role          UserRole        @default(CUSTOMER)
+  status        UserStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  designs       Design[]
+  orders        Order[]
+  stores        Store[]         @relation("StoreOwners")
+  teams         Team[]          @relation("TeamMembers")
+  notifications Notification[]
+  apiKeys       ApiKey[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  ADMIN
+  STORE_OWNER
+  PRODUCTION_MANAGER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   @unique
+  name      String
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================================================
+// STORES & TEAMS (Multi-tenant)
+// ============================================================================
+
+model Store {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  description   String?
+  logo          String?
+  theme         Json?
+  domain        String?       @unique
+  status        StoreStatus   @default(ACTIVE)
+  type          StoreType     @default(RETAIL)
+  owners        User[]        @relation("StoreOwners")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  products      Product[]
+  orders        Order[]
+  teams         Team[]
+  paymentConfig PaymentConfig?
+  storeSettings StoreSettings?
+  customPages   CustomPage[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+enum StoreStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum StoreType {
+  RETAIL
+  FUNDRAISER
+  COMPANY
+  NONPROFIT
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  members   User[]   @relation("TeamMembers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, name])
+  @@index([storeId])
+}
+
+model StoreSettings {
+  id                String   @id @default(cuid())
+  storeId           String   @unique
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  taxRate           Float    @default(0)
+  shippingFlatRate  Float    @default(0)
+  enableCOD         Boolean  @default(false)
+  enablePayPal      Boolean  @default(false)
+  stripeAccountId   String?
+  autoApproveOrders Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+model CustomPage {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String
+  content   String   @db.Text
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+// ============================================================================
+// PRODUCTS & VARIANTS (Base + Vendor)
+// ============================================================================
+
+model Product {
+  id             String          @id @default(cuid())
+  storeId        String
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?         @db.Text
+  slug           String
+  category       String?
+  tags           String[]
+  basePrice      Float           @default(0)
+  status         ProductStatus   @default(DRAFT)
+  type           ProductType     @default(BLANK)
+  vendorId       String?
+  vendor         Vendor?         @relation(fields: [vendorId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  variants       ProductVariant[]
+  images         ProductImage[]
+  decorationAreas DecorationArea[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  pricingRules   PricingRule[]
+  mockupTemplate MockupTemplate?
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ProductType {
+  BLANK
+  DESIGN
+  CUSTOM
+}
+
+model ProductVariant {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name            String   // e.g., "Red - Small"
+  sku             String   @unique
+  size            String?
+  color           String?
+  brand           String?
+  weight          Float?
+  supplierCost    Float    @default(0)
+  inventoryCount  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  mockups         Mockup[]
+  vendorVariants  VendorProductVariant[]
+
+  @@unique([productId, sku])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ============================================================================
+// DECORATION & DESIGN ZONES
+// ============================================================================
+
+model DecorationArea {
+  id              String    @id @default(cuid())
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name            String    // e.g., "Front Left Chest"
+  printMethod     PrintMethod
+  maxWidth        Float
+  maxHeight       Float
+  offsetX         Float
+  offsetY         Float
+  rotationAngle   Float     @default(0)
+  costPerSquareIn Float     @default(0)
+  maxColorCount   Int?
+  stitchCostPer1k Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  designs         Design[]
+
+  @@index([productId])
+}
+
+enum PrintMethod {
+  SCREEN_PRINT
+  EMBROIDERY
+  DTG
+  HEAT_TRANSFER
+  SUBLIMATION
+  DIRECT_EMBROIDERY
+}
+
+// ============================================================================
+// VENDORS & SUPPLIER CATALOG
+// ============================================================================
+
+model Vendor {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  email           String
+  apiKey          String?   @unique
+  status          VendorStatus @default(ACTIVE)
+  connectorType   String    @default("csv")
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  products        Product[]
+  vendorProducts  VendorProduct[]
+  syncJobs        VendorSyncJob[]
+
+  @@index([name])
+  @@index([status])
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  PAUSED
+  SYNCING
+}
+
+model VendorProduct {
+  id              String    @id @default(cuid())
+  vendorId        String
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  externalId      String    // Vendor's internal ID
+  name            String
+  description     String?   @db.Text
+  basePrice       Float
+  brand           String?
+  category        String?
+  imageUrl        String?
+  lastSyncedAt    DateTime  @default(now())
+  syncData        Json?     // Raw vendor data
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  variants        VendorProductVariant[]
+
+  @@unique([vendorId, externalId])
+  @@index([vendorId])
+}
+
+model VendorProductVariant {
+  id              String   @id @default(cuid())
+  vendorProductId String
+  vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id], onDelete: Cascade)
+  productVariantId String?
+  productVariant  ProductVariant? @relation(fields: [productVariantId], references: [id])
+  externalId      String
+  size            String?
+  color           String?
+  sku             String?
+  price           Float
+  inventory       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([vendorProductId, externalId])
+  @@index([vendorProductId])
+  @@index([productVariantId])
+}
+
+model VendorSyncJob {
+  id        String   @id @default(cuid())
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  type      String   // "products", "inventory", "pricing"
+  status    JobStatus @default(PENDING)
+  error     String?
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([vendorId])
+  @@index([status])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// DESIGNS
+// ============================================================================
+
+model Design {
+  id                  String     @id @default(cuid())
+  userId              String
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId           String?
+  decorationAreaId    String?
+  decorationArea      DecorationArea? @relation(fields: [decorationAreaId], references: [id])
+  name                String
+  description         String?
+  content             Json       // Canvas state: layers, text, images, etc.
+  exportedImageUrl    String?    // PNG export URL
+  mockupPreviewUrl    String? // New field added
+  pricingSnapshot     Json?    // New field added
+  exportAssets        Json?    // New field added
+  vectorUrl           String?    // SVG export URL
+  metadata            Json?
+  status              DesignStatus @default(DRAFT)
+  isPublic            Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  // Relations
+  assets              DesignAsset[]
+  mockups             Mockup[]
+  cartItems           CartItem[]
+  orderItems          OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum DesignStatus {
+  DRAFT
+  EXPORTED
+  IN_PRODUCTION
+  ARCHIVED
+}
+
+model DesignAsset {
+  id        String   @id @default(cuid())
+  designId  String
+  design    Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  type      AssetType
+  url       String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([designId])
+}
+
+enum AssetType {
+  UPLOADED_IMAGE
+  CLIPART
+  TEXT
+  VECTOR
+}
+
+// ============================================================================
+// MOCKUPS
+// ============================================================================
+
+model MockupTemplate {
+  id            String   @id @default(cuid())
+  productId     String   @unique
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  baseImageUrl  String
+  maskUrl       String?
+  perspectivePoints Json? // Corner points for perspective warp
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model Mockup {
+  id                String   @id @default(cuid())
+  designId          String
+  design            Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  productVariantId  String
+  productVariant    ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  imageUrl          String
+  thumbnailUrl      String?
+  status            MockupStatus @default(PENDING)
+  error             String?
+  generatedAt       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([designId])
+  @@index([productVariantId])
+  @@index([status])
+}
+
+enum MockupStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+// ============================================================================
+// PRICING
+// ============================================================================
+
+model PricingRule {
+  id                String   @id @default(cuid())
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name              String
+  printMethod       PrintMethod?
+  minQuantity       Int      @default(1)
+  maxQuantity       Int?
+  basePrice         Float
+  colorSurcharge    Float    @default(0)
+  perPlacementCost  Float    @default(0)
+  quantityBreaklist Json    // [{qty, price}, ...]
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model PricingSnapshot {
+  id                String   @id @default(cuid())
+  cartItemId        String   @unique
+  cartItem          CartItem @relation(fields: [cartItemId], references: [id], onDelete: Cascade)
+  basePrice         Float
+  colorSurcharge    Float    @default(0)
+  quantityDiscount  Float    @default(0)
+  totalPrice        Float
+  breakdown         Json     // Detailed pricing breakdown
+  frozenAt          DateTime @default(now())
+
+  @@index([cartItemId])
+}
+
+// ============================================================================
+// CART & CHECKOUT
+// ============================================================================
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  sessionId String?
+  status    CartStatus @default(ACTIVE)
+  total     Float      @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  items     CartItem[]
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+enum CartStatus {
+  ACTIVE
+  ABANDONED
+  CONVERTED
+}
+
+model CartItem {
+  id                    String           @id @default(cuid())
+  cartId                String
+  cart                  Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId             String
+  product               Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId      String
+  productVariant        ProductVariant   @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  designId              String?
+  design                Design?          @relation(fields: [designId], references: [id])
+  quantity              Int              @default(1)
+  mockupUrl             String?
+  pricingSnapshot       PricingSnapshot?
+  customNotes           String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
+  @@index([productVariantId])
+  @@index([designId])
+}
+
+// ============================================================================
+// ORDERS & FULFILLMENT
+// ============================================================================
+
+model Order {
+  id                  String        @id @default(cuid())
+  storeId             String
+  store               Store         @relation(fields: [storeId], references: [id])
+  userId              String
+  user                User          @relation(fields: [userId], references: [id])
+  orderNumber         String        @unique
+  status              OrderStatus   @default(PENDING)
+  paymentStatus       PaymentStatus @default(UNPAID)
+  fulfillmentStatus   String        @default("pending")
+  subtotal            Float         @default(0)
+  taxAmount           Float         @default(0)
+  shippingCost        Float         @default(0)
+  totalAmount         Float
+  notes               String?       @db.Text
+  
+  // Customer Info
+  customerEmail       String
+  customerName        String
+  shippingAddress     Json
+  billingAddress      Json?
+  
+  // Metadata
+  metadata            Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  items               OrderItem[]
+  payments            Payment[]
+  productionJobs      ProductionJob[]
+  shipments           Shipment[]
+  invoices            Invoice[]
+
+  @@unique([storeId, orderNumber])
+  @@index([storeId])
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  IN_PRODUCTION
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product  @relation(fields: [productId], references: [id])
+  productVariantId    String
+  productVariant      ProductVariant @relation(fields: [productVariantId], references: [id])
+  designId            String?
+  design              Design?  @relation(fields: [designId], references: [id])
+  mockupUrl           String?
+  // Immutable snapshots for each line item
+  pricingSnapshot     Json?
+  mockupPreviewUrl    String?
+  exportAssets        Json?
+  quantity            Int
+  unitPrice           Float
+  totalPrice          Float
+  createdAt           DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([designId])
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String        @default("USD")
+  paymentMethod   PaymentMethod
+  transactionId   String?       @unique
+  status          PaymentStatus @default(PENDING)
+  error           String?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([transactionId])
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PAYPAL
+  STRIPE
+  COD
+}
+
+model PaymentConfig {
+  id              String   @id @default(cuid())
+  storeId         String   @unique
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  stripePublicKey String?
+  stripeSecretKey String?
+  paypalClientId  String?
+  paypalSecret    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([storeId])
+}
+
+// ============================================================================
+// PRODUCTION & FULFILLMENT
+// ============================================================================
+
+model ProductionJob {
+  id              String          @id @default(cuid())
+  orderId         String
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  jobNumber       String          @unique
+  status          ProductionStatus @default(QUEUED)
+  priority        Priority        @default(NORMAL)
+  assignedToId    String?
+  artworkUrl      String?
+  mockupUrl       String?
+  printMethod     PrintMethod?
+  notes           String?         @db.Text
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  steps           ProductionStep[]
+  shipments       Shipment[]
+
+  @@unique([orderId])
+  @@index([orderId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum ProductionStatus {
+  QUEUED
+  ARTWORK_REVIEW
+  IN_PRODUCTION
+  QUALITY_CHECK
+  READY_TO_PACK
+  PACKED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model ProductionStep {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             ProductionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  step            String   // "artwork_review", "setup", "production", "qc", "packing"
+  status          StepStatus @default(PENDING)
+  completedBy     String?
+  notes           String?  @db.Text
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([jobId])
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  SKIPPED
+}
+
+model Shipment {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productionJobId String
+  productionJob   ProductionJob @relation(fields: [productionJobId], references: [id])
+  trackingNumber  String?  @unique
+  carrier         String?
+  weight          Float?
+  cost            Float?
+  status          String   @default("pending")
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productionJobId])
+  @@index([trackingNumber])
+}
+
+// ============================================================================
+// INVOICES & DOCUMENTS
+// ============================================================================
+
+model Invoice {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceNumber   String   @unique
+  pdfUrl          String
+  issueDate       DateTime @default(now())
+  dueDate         DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@index([invoiceNumber])
+}
+
+// ============================================================================
+// NOTIFICATIONS & LOGS
+// ============================================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "order_confirmed", "design_ready", etc.
+  title     String
+  message   String   @db.Text
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  event     String
+  payload   Json
+  status    Int?
+  response  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([event])
+}
