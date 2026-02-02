@@ -7,5 +7,8 @@ export default defineConfig({
   use: {
     baseURL,
   },
-  reporter: [['list']],
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+  ],
 });

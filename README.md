@@ -37,6 +37,25 @@ npm run db:seed
 
 Access the application at `http://localhost:5173`
 
+## 🧪 E2E Testing (Playwright)
+
+Run the smoke suite locally (uses Vite preview on 5173):
+
+```bash
+bash scripts/ci-e2e.sh smoke
+```
+
+Run the full regression locally, skipping pack tests (until pack routes are finalized):
+
+```bash
+SKIP_PACK_E2E=true bash scripts/ci-e2e.sh regression
+```
+
+Notes:
+- Base URL for Playwright is configured via `PLAYWRIGHT_BASE_URL` > `E2E_BASE_URL` > defaults to `http://127.0.0.1:5173`.
+- Frontend preview uses `VITE_API_URL=http://localhost:3000/api` during CI/local runs.
+- Pack-related tests are tagged `@pack` and can be excluded via `--grep-invert @pack`.
+
 ## 📋 What's Built
 
 ### Backend (Express + TypeScript)
