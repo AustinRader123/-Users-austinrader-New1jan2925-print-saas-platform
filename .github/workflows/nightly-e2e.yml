@@ -39,6 +39,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Early diagnostics (always)
+        if: always()
+        run: |
+          mkdir -p artifacts/early
+          echo "date: $(date -u)" > artifacts/early/meta.txt
+          echo "ref: $GITHUB_REF" >> artifacts/early/meta.txt
+          echo "sha: $GITHUB_SHA" >> artifacts/early/meta.txt
+          echo "runner: $RUNNER_OS" >> artifacts/early/meta.txt
+          (ls -la . && ls -la frontend && ls -la backend) > artifacts/early/ls.txt 2>&1 || true
+
+      - name: Upload early diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-diagnostics
+          path: artifacts/early
+          retention-days: 21
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
