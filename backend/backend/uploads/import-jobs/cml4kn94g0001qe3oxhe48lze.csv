@@ -1,0 +1,4 @@
+productExternalId,productName,variantExternalId,variantSku,variantColor,variantSize,variantPrice,variantInventory,imageUrl
+SKU-001,Classic Tee,SKU-001-BLK-L,VEND-TSHIRT-BLACK-L,Black,L,12.99,100,https://via.placeholder.com/300x300
+SKU-001,Classic Tee,SKU-001-WHT-M,VEND-TSHIRT-WHITE-M,White,M,12.99,50,https://via.placeholder.com/300x300
+,,,,,,,,

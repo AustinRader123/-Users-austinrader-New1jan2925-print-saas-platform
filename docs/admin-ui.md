@@ -22,6 +22,12 @@
   - vendorId: cml4eylpx000ozt0e6befp2j4
   - productId: cml4f2nnm00035srzk19av3o4
   - variant (example): cml4f2vhz000a11xu2c4hla35 (sku: VEND-TSHIRT-BLACK-L)
+
+## Vendor Import — Async Jobs (Option B)
+- Upload: returns `202 { jobId }`. UI shows progress while `RUNNING` via polling.
+- Completed job shows counters: `processedRows`, `totalRows`, `createdCount`, `updatedCount`, `failedRows`.
+- Errors table appears when `failedRows > 0` with `rowNumber` and `message`; CSV download available.
+- Retry failed rows: UI button triggers `POST /api/import-jobs/:jobId/retry` and follows the new job.
 # Admin UI
 
 This Admin UI enables vendor catalog management and pricing control, replacing curl workflows.

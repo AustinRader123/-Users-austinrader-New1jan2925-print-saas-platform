@@ -286,7 +286,8 @@ export class VendorImportService {
       return i >= 0 ? row[i] : undefined;
     };
 
-    await prisma.importJob.update({ where: { id: jobId }, data: { status: 'RUNNING', startedAt: new Date(), totalRows: dataRows.length } });
+    const totalToProcess = whitelistRows && whitelistRows.length > 0 ? whitelistRows.length : dataRows.length;
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: 'RUNNING', startedAt: new Date(), totalRows: totalToProcess } });
 
     let created = 0;
     let updated = 0;
@@ -309,6 +310,7 @@ export class VendorImportService {
           if (!pExternalId || !pName) {
             failed++;
             await prisma.importJobError.create({ data: { jobId, rowNumber, message: 'Missing productExternalId or productName', rawRow: row } });
+            await prisma.importJob.update({ where: { id: jobId }, data: { failedRows: failed } });
             continue;
           }
           const pDesc = get(row, (mapping as any).productDescription);

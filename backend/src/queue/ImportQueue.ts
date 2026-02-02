@@ -41,11 +41,16 @@ class InProcessImportQueue {
     const uploadsDir = path.resolve(process.cwd(), 'backend', 'uploads', 'import-jobs');
     const filePath = path.join(uploadsDir, `${jobId}.csv`);
     const mappingPath = path.join(uploadsDir, `${jobId}.mapping.json`);
+    const whitelistPath = path.join(uploadsDir, `${jobId}.whitelist.json`);
     let mapping: any = {};
     if (fs.existsSync(mappingPath)) {
       try { mapping = JSON.parse(fs.readFileSync(mappingPath, 'utf-8')); } catch {}
     }
-    await VendorImportService.runImportJob(jobId, job.vendorId, job.storeId, filePath, mapping);
+    let whitelist: number[] | undefined = undefined;
+    if (fs.existsSync(whitelistPath)) {
+      try { whitelist = JSON.parse(fs.readFileSync(whitelistPath, 'utf-8')); } catch {}
+    }
+    await VendorImportService.runImportJob(jobId, job.vendorId, job.storeId, filePath, mapping, whitelist);
   }
 }
 

@@ -1,5 +1,11 @@
 # Vendor Import Evidence
 
+## Async Import Jobs Flow
+- POST `/api/vendors/:vendorId/import-csv` → `202 { jobId }`
+- Poll `GET /api/import-jobs/:jobId` for `{ status, percent, processedRows, totalRows, failedRows }`
+- View errors via `GET /api/import-jobs/:jobId/errors` (paginated) and download CSV via `GET /api/import-jobs/:jobId/errors.csv`
+- Retry failed rows via `POST /api/import-jobs/:jobId/retry` → `{ newJobId }` (reprocesses only failed rowNumbers)
+
 ## Async Import Jobs (NEW)
 - Upload returns 202 with `{jobId}`.
 - Progress available via `GET /api/import-jobs/:jobId`.
@@ -79,6 +85,17 @@ JOB_ID=cml4gwhgt0003d4eus049jvmc
 until curl -sS "$BASE/api/import-jobs/$JOB_ID" | jq -e '.status | test("SUCCESS|FAILED")'; do sleep 1; done
 curl -sS "$BASE/api/import-jobs/$JOB_ID" | jq '.'
 ```
+
+## Statuses
+- `QUEUED`: awaiting processing
+- `RUNNING`: background processing
+- `SUCCESS`: completed; may include `failedRows > 0`
+- `FAILED`: fatal error; check `error` field
+
+## Retry Behavior
+- New job uses same stored CSV (copied) and a whitelist of failed rowNumbers.
+- `totalRows` equals the count of failed rows; progress reflects reprocessing.
+- Original job remains unchanged for audit.
 
 ## Counts
 ```json

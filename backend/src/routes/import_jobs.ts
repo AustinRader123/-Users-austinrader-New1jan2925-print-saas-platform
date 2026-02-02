@@ -73,8 +73,13 @@ router.post('/import-jobs/:jobId/retry', authMiddleware, roleMiddleware(['ADMIN'
     const rowWhitelist = failedErrors.map(e => e.rowNumber);
     if (rowWhitelist.length === 0) return res.status(400).json({ error: 'No failed rows to retry' });
     const newJob = await prisma.importJob.create({ data: { vendorId: prev.vendorId, storeId: prev.storeId, status: 'QUEUED', sourceFilename: prev.sourceFilename } });
-    // Persist whitelist to a JSON next to CSV for worker to pick up
+    // Persist whitelist to a JSON next to CSV for worker to pick up, and copy original CSV to new job path
     const uploadsDir = pathResolveUploads();
+    const prevCsv = path.join(uploadsDir, `${jobId}.csv`);
+    const newCsv = path.join(uploadsDir, `${newJob.id}.csv`);
+    if (fs.existsSync(prevCsv)) {
+      fs.copyFileSync(prevCsv, newCsv);
+    }
     const wlPath = pathResolveWhitelist(newJob.id);
     fs.writeFileSync(wlPath, JSON.stringify(rowWhitelist));
     ImportQueue.enqueue(newJob.id);
