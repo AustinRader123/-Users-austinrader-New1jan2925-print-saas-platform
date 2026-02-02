@@ -71,7 +71,7 @@ retry 40 1 curl -sSf "http://localhost:5173" >/dev/null || { tail -n 200 "$FRONT
 
 # 5) Prepare storage state
 log "Generating storage state"
-( cd "$FRONTEND_DIR" && BASE_URL="$BASE_URL" BACKEND_BASE_URL="$API_URL" node tests/storage-setup.ts )
+( cd "$FRONTEND_DIR" && BASE_URL="$BASE_URL" BACKEND_BASE_URL="$API_URL" node tests/storage-setup.js )
 
 # 6) Run Playwright suite
 log "Running Playwright suite: $SUITE"
