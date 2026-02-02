@@ -235,13 +235,39 @@ class ApiClient {
   }
 
   // Admin - Vendor Import
-  async adminImportVendorCsv(vendorId: string, payload: { storeId: string; csv: string; mapping: any }) {
-    const { data } = await this.client.post(`/vendors/${vendorId}/import-csv`, payload);
+  async adminImportVendorCsv(
+    vendorId: string,
+    params: { storeId: string; file: File; mapping?: any }
+  ) {
+    const form = new FormData();
+    form.append('storeId', params.storeId);
+    form.append('file', params.file);
+    if (params.mapping) form.append('mapping', JSON.stringify(params.mapping));
+    const { data } = await this.client.post(`/vendors/${vendorId}/import-csv`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return data;
   }
 
   async adminListVendorCatalog(vendorId: string) {
     const { data } = await this.client.get(`/vendors/${vendorId}/products`);
+    return data;
+  }
+
+  async adminListVendors() {
+    const { data } = await this.client.get('/vendors');
+    return data;
+  }
+
+  async adminCreateVendor(payload: { name: string; email: string; connectorType?: string }) {
+    const { data } = await this.client.post('/vendors', payload);
+    return data;
+  }
+
+  // Removed deprecated multipart route; canonicalized to /import-csv above
+
+  async adminListVendorImportJobs(vendorId: string, limit = 20) {
+    const { data } = await this.client.get(`/vendors/${vendorId}/import-jobs`, { params: { limit } });
     return data;
   }
 
@@ -268,7 +294,28 @@ class ApiClient {
   }
 
   async adminUpdatePricingRule(id: string, patch: any) {
-    const { data } = await this.client.patch(`/admin/pricing-rules/${id}`, patch);
+    const { data } = await this.client.put(`/admin/pricing-rules/${id}`, patch);
+    return data;
+  }
+
+  async adminDeletePricingRule(id: string) {
+    const { data } = await this.client.delete(`/admin/pricing-rules/${id}`);
+    return data;
+  }
+
+  async adminPricingPreview(payload: {
+    storeId: string;
+    productVariantId?: string;
+    vendorVariantId?: string;
+    sku?: string;
+    quantity: number;
+    decoration?: {
+      method: 'SCREEN_PRINT' | 'EMBROIDERY';
+      locations?: number;
+      colors?: number;
+    };
+  }) {
+    const { data } = await this.client.post('/pricing/preview', payload);
     return data;
   }
 }

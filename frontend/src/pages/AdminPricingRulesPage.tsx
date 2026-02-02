@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api';
+import RuleEditor, { RuleDraft } from '../components/RuleEditor';
 
 export default function AdminPricingRulesPage() {
   const [storeId, setStoreId] = useState('default');
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [rules, setRules] = useState<any[]>([]);
-  const [newRule, setNewRule] = useState<any>({ name: 'Standard', basePrice: 9.99, colorSurcharge: 0.5, perPlacementCost: 2.0, quantityBreaklist: [{ qty: 1, price: 9.99 }, { qty: 10, price: 8.99 }, { qty: 25, price: 7.99 }] });
+  const [newRule, setNewRule] = useState<RuleDraft | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<RuleDraft | null>(null);
 
   const [simVariantId, setSimVariantId] = useState('');
   const [simQty, setSimQty] = useState(1);
@@ -36,9 +39,46 @@ export default function AdminPricingRulesPage() {
   }, [selectedProductId]);
 
   const createRule = async () => {
-    const payload = { ...newRule, productId: selectedProductId };
-    const created = await apiClient.adminCreatePricingRule(payload);
+    if (!newRule) return;
+    const payload = {
+      storeId: newRule.storeId,
+      name: newRule.name,
+      method: newRule.method,
+      breaks: newRule.breaks,
+      // Provide productId for precise targeting though canonical schema is sent
+      productId: selectedProductId,
+    };
+    const created = await apiClient.adminCreatePricingRule(payload as any);
     setRules([created, ...rules]);
+    setNewRule(null);
+  };
+
+  const startEdit = (r: any) => {
+    setEditingId(r.id);
+    setEditingDraft({
+      storeId: storeId,
+      name: r.name,
+      method: r.printMethod || 'SCREEN_PRINT',
+      breaks: (r.quantityBreaklist?.breaks || []).map((b: any) => ({ minQty: b.minQty ?? b.qty ?? 1, unitPrice: b.unitPrice ?? 0 })),
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editingDraft) return;
+    const patch: any = {
+      name: editingDraft.name,
+      method: editingDraft.method,
+      breaks: editingDraft.breaks,
+    };
+    const updated = await apiClient.adminUpdatePricingRule(editingId, patch);
+    setRules(rules.map((r) => (r.id === editingId ? updated : r)));
+    setEditingId(null);
+    setEditingDraft(null);
+  };
+
+  const removeRule = async (id: string) => {
+    await apiClient.adminDeletePricingRule(id);
+    setRules(rules.filter((r) => r.id !== id));
   };
 
   const runSim = async () => {
@@ -68,17 +108,8 @@ export default function AdminPricingRulesPage() {
 
       <div className="border rounded p-4 mb-6">
         <div className="font-medium mb-2">Create Rule</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input className="input-base" placeholder="Name" value={newRule.name} onChange={(e) => setNewRule({ ...newRule, name: e.target.value })} />
-          <input className="input-base" type="number" step="0.01" placeholder="Base Price" value={newRule.basePrice} onChange={(e) => setNewRule({ ...newRule, basePrice: parseFloat(e.target.value) })} />
-          <input className="input-base" type="number" step="0.01" placeholder="Color Surcharge" value={newRule.colorSurcharge} onChange={(e) => setNewRule({ ...newRule, colorSurcharge: parseFloat(e.target.value) })} />
-          <input className="input-base" type="number" step="0.01" placeholder="Per Placement Cost" value={newRule.perPlacementCost} onChange={(e) => setNewRule({ ...newRule, perPlacementCost: parseFloat(e.target.value) })} />
-        </div>
-        <div className="mt-3">
-          <label className="text-sm">Quantity Breaks (JSON)</label>
-          <textarea className="input-base w-full h-24" value={JSON.stringify(newRule.quantityBreaklist, null, 2)} onChange={(e) => { try { setNewRule({ ...newRule, quantityBreaklist: JSON.parse(e.target.value) }); } catch {} }} />
-        </div>
-        <button className="btn btn-primary mt-3" onClick={createRule}>Create Rule</button>
+        <RuleEditor initial={undefined} onChange={(r) => setNewRule(r)} />
+        <button className="btn btn-primary mt-3" onClick={createRule} disabled={!newRule}>Create Rule</button>
       </div>
 
       <div className="border rounded p-4 mb-6">
@@ -86,8 +117,14 @@ export default function AdminPricingRulesPage() {
         <div className="space-y-2">
           {rules.map((r) => (
             <div key={r.id} className="border rounded p-3 text-sm">
-              <div className="font-medium">{r.name}</div>
-              <div>Base: ${r.basePrice} • Color: ${r.colorSurcharge} • Placement: ${r.perPlacementCost}</div>
+              <div className="flex items-center justify-between">
+                <div className="font-medium">{r.name}</div>
+                <div className="flex items-center gap-2">
+                  <button className="btn btn-secondary" onClick={() => startEdit(r)}>Edit</button>
+                  <button className="btn btn-secondary" onClick={() => removeRule(r.id)}>Delete</button>
+                </div>
+              </div>
+              <div>MinQty: {r.minQuantity} • MaxQty: {r.maxQuantity ?? '-'} • Active: {String(r.active)}</div>
               <div>Breaks: {JSON.stringify(r.quantityBreaklist)}</div>
             </div>
           ))}
@@ -111,6 +148,19 @@ export default function AdminPricingRulesPage() {
           </div>
         )}
       </div>
+
+      {editingId && editingDraft && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="card p-4 w-[640px]">
+            <div className="font-medium mb-2">Edit Rule</div>
+            <RuleEditor initial={editingDraft} onChange={(d) => setEditingDraft(d)} />
+            <div className="mt-3 flex items-center gap-2 justify-end">
+              <button className="btn btn-secondary" onClick={() => { setEditingId(null); setEditingDraft(null); }}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveEdit}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

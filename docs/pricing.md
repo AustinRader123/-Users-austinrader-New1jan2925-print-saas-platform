@@ -1,3 +1,69 @@
+# Pricing Rules Canonical Schema and CURL Repros
+
+Canonical payload schema for create and update:
+
+{
+  "storeId": "string",
+  "name": "string",
+  "method": "SCREEN_PRINT" | "EMBROIDERY",
+  "breaks": [
+    { "minQty": 1, "unitPrice": 20.69 },
+    { "minQty": 12, "unitPrice": 19.39 },
+    { "minQty": 48, "unitPrice": 18.09 }
+  ]
+}
+
+Server sorts `breaks` by `minQty` and validates: length >= 1, `minQty >= 1`, `unitPrice > 0`.
+
+## Create Rule (POST)
+
+```bash
+export BASE=http://127.0.0.1:3000
+export ADMIN_TOKEN="PASTE_ADMIN_TOKEN"
+export STORE_ID="PASTE_STORE_ID"
+export PRODUCT_ID="OPTIONAL_PRODUCT_ID" # optional; if omitted server uses first ACTIVE product in store
+
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "storeId":"'$STORE_ID'",
+    "name":"Test Rule",
+    "method":"SCREEN_PRINT",
+    "breaks":[{"minQty":1,"unitPrice":20.69},{"minQty":12,"unitPrice":19.39}],
+    "productId":"'$PRODUCT_ID'"
+  }' \
+  "$BASE/api/admin/pricing-rules" | jq
+```
+
+Expected: 201 with rule object including `quantityBreaklist.breaks`.
+
+## Update Rule (PUT)
+
+```bash
+export RULE_ID="PASTE_RULE_ID"
+
+# Update name only (breaks preserved)
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT -d '{"name":"Test Rule Updated"}' \
+  "$BASE/api/admin/pricing-rules/$RULE_ID" | jq
+
+# Update breaks (persist new breaks)
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT -d '{"breaks":[{"minQty":1,"unitPrice":20.69},{"minQty":12,"unitPrice":18.99}]}' \
+  "$BASE/api/admin/pricing-rules/$RULE_ID" | jq
+```
+
+## List Rules (GET)
+
+```bash
+curl -sS -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$BASE/api/admin/pricing-rules?storeId=$STORE_ID" | jq
+```
+
+Expected: rules include `printMethod` and `quantityBreaklist.breaks`.
+
 # Pricing Rules & Preview (MVP)
 
 ## Admin API

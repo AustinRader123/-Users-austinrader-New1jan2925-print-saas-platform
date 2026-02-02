@@ -58,7 +58,9 @@ export class PricingEngine {
 
     // Apply quantity breaks
     const applicableRule = (variant.product.pricingRules as any[]).find((rule: any) => {
-      return input.quantity >= rule.minQuantity && (!rule.maxQuantity || input.quantity <= rule.maxQuantity);
+      const qtyOk = input.quantity >= rule.minQuantity && (!rule.maxQuantity || input.quantity <= rule.maxQuantity);
+      const methodOk = !rule.printMethod || !input.decoration?.method || rule.printMethod === input.decoration.method;
+      return qtyOk && methodOk;
     });
 
     if (applicableRule) {
@@ -68,23 +70,52 @@ export class PricingEngine {
       const breaks: any[] = Array.isArray(cfg.breaks) ? cfg.breaks : [];
       const matchingBreak = breaks.sort((a, b) => (b.minQty || b.qty) - (a.minQty || a.qty))
         .find((b) => input.quantity >= (b.minQty ?? b.qty ?? 1));
-      markup = blankCost * (baseMarkupPercent / 100);
-      if (matchingBreak) {
-        if (matchingBreak.unitMarkupDeltaPercent != null) {
-          markup = blankCost * ((baseMarkupPercent + matchingBreak.unitMarkupDeltaPercent) / 100);
+      // If canonical unitPrice present, use it directly; otherwise use legacy markup-based rules
+      if (matchingBreak && matchingBreak.unitPrice != null) {
+        const canonicalUnitPrice = Number(matchingBreak.unitPrice);
+        decorationCost = 0;
+        setupFee = 0;
+        // Return early-like by setting breakdown fields accordingly
+        const unitPrice = Math.round(canonicalUnitPrice * 100) / 100;
+        const lineTotal = Math.round((unitPrice * input.quantity + setupFee) * 100) / 100;
+        return {
+          basePrice: blankCost,
+          colorSurcharge: 0,
+          quantityDiscount: 0,
+          decorationCost,
+          total: lineTotal,
+          breakdown: {
+            currency: 'USD',
+            unitPrice,
+            lineTotal,
+            blankCost: blankCost,
+            decorationCost,
+            setupFee,
+            markup: 0,
+            discount: 0,
+            ruleId: applicableRule?.id || null,
+            quantity: input.quantity,
+          },
+        };
+      } else {
+        markup = blankCost * (baseMarkupPercent / 100);
+        if (matchingBreak) {
+          if (matchingBreak.unitMarkupDeltaPercent != null) {
+            markup = blankCost * ((baseMarkupPercent + matchingBreak.unitMarkupDeltaPercent) / 100);
+          }
+          if (matchingBreak.fixedUnitDiscount != null) {
+            discount = matchingBreak.fixedUnitDiscount;
+          }
         }
-        if (matchingBreak.fixedUnitDiscount != null) {
-          discount = matchingBreak.fixedUnitDiscount;
-        }
+        const decoCfg = (cfg.decorationCosts || {})[input.decoration?.method || 'SCREEN_PRINT'] || {};
+        const perLocationFee = Number(decoCfg.perLocationFee || 0);
+        const perColorFee = Number(decoCfg.perColorFee || 0);
+        const setup = Number(decoCfg.setupFee || 0);
+        const locations = Number(input.decoration?.locations || 0);
+        const colors = Number(input.decoration?.colors || 0);
+        decorationCost = perLocationFee * locations + perColorFee * colors;
+        setupFee = setup;
       }
-      const decoCfg = (cfg.decorationCosts || {})[input.decoration?.method || 'SCREEN_PRINT'] || {};
-      const perLocationFee = Number(decoCfg.perLocationFee || 0);
-      const perColorFee = Number(decoCfg.perColorFee || 0);
-      const setup = Number(decoCfg.setupFee || 0);
-      const locations = Number(input.decoration?.locations || 0);
-      const colors = Number(input.decoration?.colors || 0);
-      decorationCost = perLocationFee * locations + perColorFee * colors;
-      setupFee = setup;
     }
 
     // Rounding to nearest cent

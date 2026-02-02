@@ -33,11 +33,17 @@ export default function Navbar() {
                 </Link>
                 {user.role === 'ADMIN' && (
                   <>
+                    <Link to="/admin/vendors" className="text-slate-700 dark:text-slate-300 hover:text-blue-500">
+                      Vendors
+                    </Link>
                     <Link to="/admin/vendors/import" className="text-slate-700 dark:text-slate-300 hover:text-blue-500">
                       Vendor Import
                     </Link>
-                    <Link to="/admin/pricing" className="text-slate-700 dark:text-slate-300 hover:text-blue-500">
+                    <Link to="/admin/pricing-rules" className="text-slate-700 dark:text-slate-300 hover:text-blue-500">
                       Pricing Rules
+                    </Link>
+                    <Link to="/admin/pricing-simulator" className="text-slate-700 dark:text-slate-300 hover:text-blue-500">
+                      Pricing Simulator
                     </Link>
                   </>
                 )}

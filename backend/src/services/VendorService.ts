@@ -102,13 +102,29 @@ export class VendorService {
   }
 
   async createVendor(name: string, email: string, connectorType: string = 'csv') {
-    return prisma.vendor.create({
-      data: {
-        name,
-        email,
-        connectorType,
-      },
-    });
+    try {
+      return await prisma.vendor.create({
+        data: {
+          name,
+          email,
+          connectorType,
+        },
+      });
+    } catch (err: any) {
+      // Handle unique constraint on name by returning existing vendor
+      if (err?.code === 'P2002') {
+        try {
+          const existing = await prisma.vendor.findUnique({ where: { name } });
+          if (existing) {
+            logger.warn(`Vendor '${name}' already exists; returning existing record.`);
+            return existing;
+          }
+        } catch (findErr) {
+          logger.error('Error looking up existing vendor after unique constraint:', findErr);
+        }
+      }
+      throw err;
+    }
   }
 
   async getVendor(vendorId: string) {

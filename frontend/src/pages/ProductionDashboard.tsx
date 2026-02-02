@@ -36,7 +36,7 @@ export default function ProductionDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {statuses.map((status) => (
           <div key={status} className="border rounded p-3 bg-gray-50">
-            <div className="font-medium mb-2">{status.replaceAll('_', ' ')}</div>
+            <div className="font-medium mb-2">{status.replace(/_/g, ' ')}</div>
             <div className="space-y-2">
               {jobsByStatus[status]?.map((job: any) => (
                 <div key={job.id} className="bg-white border rounded p-2">

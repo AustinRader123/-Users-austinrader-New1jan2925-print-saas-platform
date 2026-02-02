@@ -76,12 +76,19 @@ export class VendorImportService {
 
     let productCount = 0;
     let variantCount = 0;
+    let created = 0;
+    let updated = 0;
+    const errors: Array<{ row: number; error: string }> = [];
 
     try {
-      for (const row of dataRows) {
+      for (let idxRow = 0; idxRow < dataRows.length; idxRow++) {
+        const row = dataRows[idxRow];
         const pExternalId = get(row, mapping.productExternalId) || get(row, 'productExternalId');
         const pName = get(row, mapping.productName) || get(row, 'productName');
-        if (!pExternalId || !pName) continue;
+        if (!pExternalId || !pName) {
+          errors.push({ row: idxRow + 2, error: 'Missing productExternalId or productName' });
+          continue;
+        }
         const pDesc = get(row, mapping.productDescription);
         const brand = get(row, mapping.brand);
         const category = get(row, mapping.category);
@@ -97,52 +104,72 @@ export class VendorImportService {
         const vInv = vInvStr ? parseInt(vInvStr) : 0;
 
         // Upsert VendorProduct
-        const vp = await prisma.vendorProduct.upsert({
-          where: { vendorId_externalId: { vendorId, externalId: pExternalId! } },
-          create: {
-            vendorId,
-            externalId: pExternalId!,
-            name: pName!,
-            description: pDesc,
-            basePrice: vPrice || 0,
-            brand,
-            category,
-            imageUrl,
-            syncData: {},
-          },
-          update: {
-            name: pName!,
-            description: pDesc,
-            basePrice: vPrice || 0,
-            brand,
-            category,
-            imageUrl,
-            lastSyncedAt: new Date(),
-          },
-        });
+        const existingVp = await prisma.vendorProduct.findUnique({ where: { vendorId_externalId: { vendorId, externalId: pExternalId! } } });
+        let vp;
+        if (!existingVp) {
+          vp = await prisma.vendorProduct.create({
+            data: {
+              vendorId,
+              externalId: pExternalId!,
+              name: pName!,
+              description: pDesc,
+              basePrice: vPrice || 0,
+              brand,
+              category,
+              imageUrl,
+              syncData: {},
+            },
+          });
+          created++;
+        } else {
+          vp = await prisma.vendorProduct.update({
+            where: { id: existingVp.id },
+            data: {
+              name: pName!,
+              description: pDesc,
+              basePrice: vPrice || 0,
+              brand,
+              category,
+              imageUrl,
+              lastSyncedAt: new Date(),
+            },
+          });
+          updated++;
+        }
         productCount++;
 
         // Upsert VendorProductVariant
-        const vpv = await prisma.vendorProductVariant.upsert({
+        const existingVpv = await prisma.vendorProductVariant.findUnique({
           where: { vendorProductId_externalId: { vendorProductId: vp.id, externalId: vExternalId! } },
-          create: {
-            vendorProductId: vp.id,
-            externalId: vExternalId!,
-            sku: vSku,
-            size: vSize,
-            color: vColor,
-            price: vPrice,
-            inventory: vInv,
-          },
-          update: {
-            sku: vSku,
-            size: vSize,
-            color: vColor,
-            price: vPrice,
-            inventory: vInv,
-            updatedAt: new Date(),
-          },
         });
+        let vpv;
+        if (!existingVpv) {
+          vpv = await prisma.vendorProductVariant.create({
+            data: {
+              vendorProductId: vp.id,
+              externalId: vExternalId!,
+              sku: vSku,
+              size: vSize,
+              color: vColor,
+              price: vPrice,
+              inventory: vInv,
+            },
+          });
+          created++;
+        } else {
+          vpv = await prisma.vendorProductVariant.update({
+            where: { id: existingVpv.id },
+            data: {
+              sku: vSku,
+              size: vSize,
+              color: vColor,
+              price: vPrice,
+              inventory: vInv,
+              updatedAt: new Date(),
+            },
+          });
+          updated++;
+        }
         variantCount++;
 
         // Normalize into store Product/ProductVariant and link
@@ -208,12 +235,12 @@ export class VendorImportService {
         data: { status: 'COMPLETED', endedAt: new Date() },
       });
 
-      logger.info(`CSV import completed: products=${productCount}, variants=${variantCount}`);
-      return { jobId: job.id, products: productCount, variants: variantCount };
+      logger.info(`CSV import completed: products=${productCount}, variants=${variantCount}, created=${created}, updated=${updated}, errors=${errors.length}`);
+      return { jobId: job.id, products: productCount, variants: variantCount, created, updated, errorsCount: errors.length, errors };
     } catch (err: any) {
       await prisma.vendorSyncJob.update({
         where: { id: job.id },
-        data: { status: 'FAILED', error: err?.message || String(err), endedAt: new Date() },
+        data: { status: 'FAILED', error: err?.stack || err?.message || String(err), endedAt: new Date() },
       });
       throw err;
     }

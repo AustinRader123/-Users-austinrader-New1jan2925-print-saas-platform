@@ -3,8 +3,12 @@ import { AuthRequest, authMiddleware, roleMiddleware } from '../middleware/auth.
 import VendorService from '../services/VendorService.js';
 import VendorImportService from '../services/VendorImportService.js';
 import logger from '../logger.js';
+import multer from 'multer';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
+const prisma = new PrismaClient();
 
 // Create vendor (admin only)
 router.post('/', authMiddleware, roleMiddleware(['ADMIN']), async (req: AuthRequest, res: Response) => {
@@ -71,18 +75,57 @@ router.get('/:vendorId/products', authMiddleware, async (req: AuthRequest, res: 
   }
 });
 
-// CSV Import: Admin uploads CSV content and mapping to normalize catalog
-router.post('/:vendorId/import-csv', authMiddleware, roleMiddleware(['ADMIN']), async (req: AuthRequest, res: Response) => {
-  try {
-    const { storeId, csv, mapping } = req.body || {};
-    if (!storeId || !csv || !mapping) {
-      return res.status(400).json({ error: 'storeId, csv, and mapping required' });
+// Canonical CSV Import (supports multipart file or JSON body)
+router.post(
+  '/:vendorId/import-csv',
+  authMiddleware,
+  roleMiddleware(['ADMIN']),
+  upload.single('file'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const vendorId = req.params.vendorId;
+      const storeId = (req.body?.storeId as string) || '';
+      let csv: string | undefined;
+      let mapping: any = {};
+      if (req.file) {
+        csv = req.file.buffer.toString('utf-8');
+        const mappingStr = (req.body?.mapping as string) || '';
+        if (mappingStr) {
+          try { mapping = JSON.parse(mappingStr); } catch (e) { return res.status(400).json({ error: 'mapping must be valid JSON' }); }
+        }
+      } else {
+        csv = (req.body?.csv as string) || '';
+        mapping = req.body?.mapping || {};
+      }
+      if (!storeId || !csv) {
+        return res.status(400).json({ error: 'storeId and CSV file/content required' });
+      }
+      const out = await VendorImportService.importCsv(vendorId, storeId, csv, mapping);
+      res.status(200).json(out);
+    } catch (error: any) {
+      logger.error('Vendor CSV import error:', error?.stack || error);
+      const details = process.env.NODE_ENV === 'development' ? { details: error?.message, stack: error?.stack } : {};
+      res.status(500).json({ error: 'Failed to import CSV', ...details });
     }
-    const out = await VendorImportService.importCsv(req.params.vendorId, storeId, csv, mapping);
-    res.status(200).json(out);
+  }
+);
+
+// Deprecated: multipart route moved to canonical /import-csv above
+
+// List import jobs for a vendor (latest first)
+router.get('/:vendorId/import-jobs', authMiddleware, roleMiddleware(['ADMIN']), async (req: AuthRequest, res: Response) => {
+  try {
+    const vendorId = req.params.vendorId;
+    const limit = parseInt(String((req.query?.limit as any) ?? '20')) || 20;
+    const jobs = await prisma.vendorSyncJob.findMany({
+      where: { vendorId },
+      orderBy: { startedAt: 'desc' },
+      take: limit,
+    });
+    res.json(jobs);
   } catch (error) {
-    logger.error('Vendor CSV import error:', error);
-    res.status(500).json({ error: 'Failed to import CSV' });
+    logger.error('List import jobs error:', error);
+    res.status(500).json({ error: 'Failed to list import jobs' });
   }
 });
 

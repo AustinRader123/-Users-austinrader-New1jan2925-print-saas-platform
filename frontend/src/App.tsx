@@ -14,6 +14,9 @@ import RegisterPage from './pages/RegisterPage';
 import ProductionDashboard from './pages/ProductionDashboard';
 import AdminVendorImportPage from './pages/AdminVendorImportPage';
 import AdminPricingRulesPage from './pages/AdminPricingRulesPage';
+import AdminVendorsPage from './pages/AdminVendorsPage';
+import AdminVendorDetailPage from './pages/AdminVendorDetailPage';
+import AdminPricingSimulatorPage from './pages/AdminPricingSimulatorPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -128,10 +131,42 @@ function App() {
               }
             />
             <Route
+              path="/admin/vendors"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminVendorsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/vendors/:vendorId"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminVendorDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/pricing"
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminPricingRulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pricing-rules"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminPricingRulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pricing-simulator"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminPricingSimulatorPage />
                 </ProtectedRoute>
               }
             />
