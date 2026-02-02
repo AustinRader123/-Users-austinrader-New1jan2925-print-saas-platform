@@ -4,6 +4,9 @@ import VendorService from '../services/VendorService.js';
 import VendorImportService from '../services/VendorImportService.js';
 import logger from '../logger.js';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { ImportQueue } from '../queue/ImportQueue.js';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
@@ -85,27 +88,34 @@ router.post(
     try {
       const vendorId = req.params.vendorId;
       const storeId = (req.body?.storeId as string) || '';
-      let csv: string | undefined;
+      const mappingStr = (req.body?.mapping as string) || '';
       let mapping: any = {};
-      if (req.file) {
-        csv = req.file.buffer.toString('utf-8');
-        const mappingStr = (req.body?.mapping as string) || '';
-        if (mappingStr) {
-          try { mapping = JSON.parse(mappingStr); } catch (e) { return res.status(400).json({ error: 'mapping must be valid JSON' }); }
-        }
-      } else {
-        csv = (req.body?.csv as string) || '';
-        mapping = req.body?.mapping || {};
+      if (mappingStr) {
+        try { mapping = JSON.parse(mappingStr); } catch (e) { return res.status(400).json({ error: 'mapping must be valid JSON' }); }
       }
-      if (!storeId || !csv) {
+      const csvBuffer = req.file ? req.file.buffer : undefined;
+      const csvBody = (req.body?.csv as string) || '';
+      const csvContent = csvBuffer ? csvBuffer.toString('utf-8') : csvBody;
+      if (!storeId || !csvContent) {
         return res.status(400).json({ error: 'storeId and CSV file/content required' });
       }
-      const out = await VendorImportService.importCsv(vendorId, storeId, csv, mapping);
-      res.status(200).json(out);
+      // Create ImportJob (QUEUED)
+      const job = await prisma.importJob.create({ data: { vendorId, storeId, status: 'QUEUED', sourceFilename: req.file?.originalname || 'inline.csv' } });
+      // Persist uploaded CSV and mapping to disk
+      const uploadsDir = path.resolve(process.cwd(), 'backend', 'uploads', 'import-jobs');
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+      const filePath = path.join(uploadsDir, `${job.id}.csv`);
+      const mappingPath = path.join(uploadsDir, `${job.id}.mapping.json`);
+      fs.writeFileSync(filePath, csvContent);
+      fs.writeFileSync(mappingPath, JSON.stringify(mapping));
+      // Enqueue job
+      ImportQueue.enqueue(job.id);
+      // Return 202 Accepted with jobId
+      res.status(202).json({ jobId: job.id });
     } catch (error: any) {
-      logger.error('Vendor CSV import error:', error?.stack || error);
+      logger.error('Vendor CSV import enqueue error:', error?.stack || error);
       const details = process.env.NODE_ENV === 'development' ? { details: error?.message, stack: error?.stack } : {};
-      res.status(500).json({ error: 'Failed to import CSV', ...details });
+      res.status(500).json({ error: 'Failed to enqueue CSV import', ...details });
     }
   }
 );
@@ -117,9 +127,9 @@ router.get('/:vendorId/import-jobs', authMiddleware, roleMiddleware(['ADMIN']), 
   try {
     const vendorId = req.params.vendorId;
     const limit = parseInt(String((req.query?.limit as any) ?? '20')) || 20;
-    const jobs = await prisma.vendorSyncJob.findMany({
+    const jobs = await prisma.importJob.findMany({
       where: { vendorId },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: limit,
     });
     res.json(jobs);

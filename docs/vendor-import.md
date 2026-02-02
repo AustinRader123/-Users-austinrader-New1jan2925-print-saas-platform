@@ -1,5 +1,11 @@
 # Vendor Import Evidence
 
+## Async Import Jobs (NEW)
+- Upload returns 202 with `{jobId}`.
+- Progress available via `GET /api/import-jobs/:jobId`.
+- Errors visible via `GET /api/import-jobs/:jobId/errors` and downloadable CSV.
+- Retry failed rows via `POST /api/import-jobs/:jobId/retry` → `{ newJobId }`.
+
 ## Create/Select Vendor
 **Vendor:**
 ```json
@@ -62,10 +68,16 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   "$BASE/api/vendors/$VENDOR_ID/import-csv"
 ```
 
-Expected response (examples from PASS runs):
+Expected response (async):
 ```json
-{ "jobId": "cml4gwhgt0003d4eus049jvmc", "products": 2, "variants": 2 }
-{ "jobId": "cml4h07q70013d4eu00a9a5wu", "products": 2, "variants": 2 }
+{ "jobId": "cml4gwhgt0003d4eus049jvmc" }
+```
+
+Poll until complete:
+```bash
+JOB_ID=cml4gwhgt0003d4eus049jvmc
+until curl -sS "$BASE/api/import-jobs/$JOB_ID" | jq -e '.status | test("SUCCESS|FAILED")'; do sleep 1; done
+curl -sS "$BASE/api/import-jobs/$JOB_ID" | jq '.'
 ```
 
 ## Counts

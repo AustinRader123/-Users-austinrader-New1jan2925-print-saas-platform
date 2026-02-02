@@ -19,6 +19,14 @@ if (process.env.SAFE_BOOT === 'true') {
   const fullApp = (await import('./app.js')).default;
   appInstance = fullApp;
   console.log('BOOT 3: app created');
+  // Start background import queue and requeue pending jobs
+  try {
+    const { requeuePendingJobs } = await import('./queue/ImportQueue.js');
+    await requeuePendingJobs();
+    console.log('BOOT 3.1: import queue initialized');
+  } catch (e) {
+    console.log('BOOT 3.1: import queue init failed', (e as any)?.message || e);
+  }
 }
 
 const server = appInstance.listen(PORT, () => {

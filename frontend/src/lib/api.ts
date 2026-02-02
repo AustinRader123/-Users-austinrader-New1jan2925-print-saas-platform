@@ -271,6 +271,21 @@ class ApiClient {
     return data;
   }
 
+  async adminGetImportJob(jobId: string) {
+    const { data } = await this.client.get(`/import-jobs/${jobId}`);
+    return data;
+  }
+
+  async adminListImportJobErrors(jobId: string, cursor?: string, limit = 20) {
+    const { data } = await this.client.get(`/import-jobs/${jobId}/errors`, { params: { cursor, limit } });
+    return data;
+  }
+
+  async adminRetryImportJob(jobId: string) {
+    const { data } = await this.client.post(`/import-jobs/${jobId}/retry`);
+    return data;
+  }
+
   // Admin - Pricing Rules
   async adminListPricingRules(productId?: string) {
     const { data } = await this.client.get('/admin/pricing-rules', { params: productId ? { productId } : {} });

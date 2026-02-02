@@ -88,6 +88,7 @@ model Store {
   paymentConfig PaymentConfig?
   storeSettings StoreSettings?
   customPages   CustomPage[]
+  importJobs    ImportJob[]
 
   @@index([slug])
   @@index([status])
@@ -291,6 +292,7 @@ model Vendor {
   products        Product[]
   vendorProducts  VendorProduct[]
   syncJobs        VendorSyncJob[]
+  importJobs      ImportJob[]
 
   @@index([name])
   @@index([status])
@@ -834,4 +836,58 @@ model WebhookLog {
   createdAt DateTime @default(now())
 
   @@index([event])
+}
+
+// ============================================================================
+// IMPORT JOBS (Vendor CSV Async Processing)
+// ============================================================================
+
+model ImportJob {
+  id             String   @id @default(cuid())
+  vendorId       String
+  vendor         Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  status         ImportJobStatus @default(QUEUED)
+  sourceFilename String
+  totalRows      Int      @default(0)
+  processedRows  Int      @default(0)
+  createdCount   Int      @default(0)
+  updatedCount   Int      @default(0)
+  failedRows     Int      @default(0)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  errors         ImportJobError[]
+
+  @@index([vendorId])
+  @@index([storeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ImportJobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model ImportJobError {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rowNumber Int
+  message   String   @db.Text
+  rawRow    Json?
+  field     String?
+  code      String?
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([rowNumber])
 }

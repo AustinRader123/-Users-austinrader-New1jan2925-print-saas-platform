@@ -12,6 +12,8 @@ export default function AdminVendorDetailPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [jobs, setJobs] = useState<any[]>([]);
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
+  const [jobErrors, setJobErrors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +36,41 @@ export default function AdminVendorDetailPage() {
     } catch (e) {}
   };
 
+  const loadJobDetail = async (jobId: string) => {
+    try {
+      const j = await apiClient.adminGetImportJob(jobId);
+      setSelectedJob(j);
+    } catch {}
+  };
+
+  const loadJobErrors = async (jobId: string) => {
+    try {
+      const errs = await apiClient.adminListImportJobErrors(jobId, undefined, 20);
+      setJobErrors(errs);
+    } catch {}
+  };
+
   useEffect(() => { loadCatalog(); loadJobs(); }, [vendorId]);
+
+  useEffect(() => {
+    const running = jobs.find((j) => j.status === 'RUNNING');
+    const jobId = running?.id || jobs[0]?.id;
+    if (jobId) {
+      loadJobDetail(jobId);
+      loadJobErrors(jobId);
+    }
+  }, [jobs]);
+
+  useEffect(() => {
+    if (!selectedJob) return;
+    if (selectedJob.status === 'RUNNING') {
+      const t = setInterval(async () => {
+        const j = await apiClient.adminGetImportJob(selectedJob.id);
+        setSelectedJob(j);
+      }, 1500);
+      return () => clearInterval(t);
+    }
+  }, [selectedJob?.id, selectedJob?.status]);
 
   const filtered = useMemo(() => {
     if (!query) return products;
@@ -104,14 +140,48 @@ export default function AdminVendorDetailPage() {
             <div className="space-y-2 text-sm">
               {jobs.map((j) => (
                 <div key={j.id} className="border rounded p-2">
-                  <div className="font-medium">{j.status}</div>
-                  <div>Started: {j.startedAt ? new Date(j.startedAt).toLocaleString() : '-'}</div>
-                  <div>Ended: {j.endedAt ? new Date(j.endedAt).toLocaleString() : '-'}</div>
+                  <div className="font-medium">{j.status} • {j.id}</div>
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedJob(null); setJobErrors([]); loadJobDetail(j.id); loadJobErrors(j.id); }}>View</button>
+                  </div>
+                  <div>Created: {new Date(j.createdAt).toLocaleString()}</div>
+                  {j.startedAt && <div>Started: {new Date(j.startedAt).toLocaleString()}</div>}
+                  {j.finishedAt && <div>Finished: {new Date(j.finishedAt).toLocaleString()}</div>}
                   {j.error && <div className="text-red-600">Error: {j.error}</div>}
                 </div>
               ))}
               {jobs.length === 0 && <div className="text-slate-500">No jobs</div>}
             </div>
+            {selectedJob && (
+              <div className="mt-4 border rounded p-3">
+                <div className="font-medium mb-2">Job Detail</div>
+                <div>Status: {selectedJob.status} ({selectedJob.percent || 0}%)</div>
+                <div>Progress: {selectedJob.processedRows}/{selectedJob.totalRows}</div>
+                <div>Created: {selectedJob.createdCount} • Updated: {selectedJob.updatedCount} • Failed: {selectedJob.failedRows}</div>
+                <div className="mt-2">
+                  <a className="btn btn-secondary btn-sm" href={`/api/import-jobs/${selectedJob.id}/errors.csv`} target="_blank">Download errors CSV</a>
+                  {selectedJob.failedRows > 0 && (
+                    <button className="btn btn-primary btn-sm ml-2" onClick={async () => {
+                      const { newJobId } = await apiClient.adminRetryImportJob(selectedJob.id);
+                      await loadJobs();
+                      await loadJobDetail(newJobId);
+                      await loadJobErrors(newJobId);
+                    }}>Retry failed rows</button>
+                  )}
+                </div>
+                <div className="mt-3">
+                  <div className="font-medium">Errors (first 20)</div>
+                  <div className="text-xs max-h-64 overflow-auto">
+                    {jobErrors.map((e) => (
+                      <div key={e.id} className="border-b py-1">
+                        <div>Row {e.rowNumber}: {e.message}</div>
+                      </div>
+                    ))}
+                    {jobErrors.length === 0 && <div className="text-slate-500">No errors</div>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

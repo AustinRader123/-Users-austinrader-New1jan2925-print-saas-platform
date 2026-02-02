@@ -20,6 +20,7 @@ import productionRoutes from './routes/production.js';
 import vendorRoutes from './routes/vendors.js';
 import adminRoutes from './routes/admin.js';
 import adminPricingRulesRoutes from './routes/admin_pricing_rules.js';
+import importJobsRoutes from './routes/import_jobs.js';
 import paymentsRoutes from './routes/payments.js';
 import debugRoutes from './routes/debug.js';
 
@@ -71,6 +72,7 @@ app.use('/api/production', authMiddleware, productionRoutes);
 app.use('/api/vendors', authMiddleware, vendorRoutes);
 app.use('/api/admin', authMiddleware, adminRoutes);
 app.use('/api/admin/pricing-rules', authMiddleware, adminPricingRulesRoutes);
+app.use('/api', importJobsRoutes);
 app.use('/api/debug', debugRoutes);
 
 // Error handling
