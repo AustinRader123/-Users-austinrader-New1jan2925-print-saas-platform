@@ -117,7 +117,7 @@ function App() {
             <Route
               path="/admin/production"
               element={
-                <ProtectedRoute requiredRole="PRODUCTION_MANAGER">
+                <ProtectedRoute requiredRole="ADMIN">
                   <ProductionDashboard />
                 </ProtectedRoute>
               }
