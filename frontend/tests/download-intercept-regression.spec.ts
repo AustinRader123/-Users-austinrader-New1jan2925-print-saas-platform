@@ -19,7 +19,7 @@ async function ensureAnyDownloadLink(page: any) {
   return page.getByTestId('pack-download').first();
 }
 
-test('@regression download intercept adds auth only for pack route', async ({ page }) => {
+test('@regression @pack download intercept adds auth only for pack route', async ({ page }) => {
   const api = await request.newContext();
   const resp = await api.post(`${BASE_API}/auth/login`, {
     data: { email: process.env.ADMIN_EMAIL || 'admin@local.test', password: process.env.ADMIN_PASSWORD || 'Admin123!' },
@@ -52,7 +52,7 @@ test('@regression download intercept adds auth only for pack route', async ({ pa
   expect(vendorsResp.ok()).toBeTruthy();
 });
 
-test('@regression download without intercept fails', async ({ page }) => {
+test('@regression @pack download without intercept fails', async ({ page }) => {
   const api = await request.newContext();
   const resp = await api.post(`${BASE_API}/auth/login`, {
     data: { email: process.env.ADMIN_EMAIL || 'admin@local.test', password: process.env.ADMIN_PASSWORD || 'Admin123!' },

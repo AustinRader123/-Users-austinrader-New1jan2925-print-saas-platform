@@ -75,10 +75,15 @@ log "Generating storage state"
 
 # 6) Run Playwright suite
 log "Running Playwright suite: $SUITE"
+export PLAYWRIGHT_BASE_URL="$BASE_URL"
+PW_EXTRA_ARGS=""
+if [[ "${SKIP_PACK_E2E:-}" == "true" ]]; then
+  PW_EXTRA_ARGS="--grep-invert @pack"
+fi
 if [[ "$SUITE" == "regression" ]]; then
-  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @regression )
+  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @regression $PW_EXTRA_ARGS )
 else
-  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @smoke )
+  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @smoke $PW_EXTRA_ARGS )
 fi
 
 # 7) Cleanup

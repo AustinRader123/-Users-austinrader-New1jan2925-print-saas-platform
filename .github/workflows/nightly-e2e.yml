@@ -1,0 +1,78 @@
+name: Nightly E2E
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_pack_e2e:
+        description: 'Skip @pack tests'
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: nightly-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: deco_network
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network
+      JWT_SECRET: ci-secret
+      ADMIN_EMAIL: admin@local.test
+      ADMIN_PASSWORD: Admin123!
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+      SKIP_PACK_E2E: ${{ inputs.skip_pack_e2e || 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install backend deps
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run E2E (regression)
+        run: bash scripts/ci-e2e.sh regression
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/**
+          retention-days: 21
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            artifacts/backend.log
+            artifacts/frontend.log
+            artifacts/e2e-ci.log
+            artifacts/nightly-regression.log
+            artifacts/ARTIFACTS_INDEX.md
+          retention-days: 21
