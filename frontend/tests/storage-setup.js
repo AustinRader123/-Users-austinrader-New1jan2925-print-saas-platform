@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Simple storage state generator for Playwright
+// Simple storage state generator for Playwright (ESM)
 // Logs in via backend API and writes token to localStorage for the frontend origin
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 async function main() {
   const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
@@ -42,7 +42,8 @@ async function main() {
     ]
   };
 
-  const authDir = path.join(__dirname, '.auth');
+  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const authDir = path.join(thisDir, '.auth');
   const outFile = path.join(authDir, 'admin.json');
   fs.mkdirSync(authDir, { recursive: true });
   fs.writeFileSync(outFile, JSON.stringify(storageState, null, 2));

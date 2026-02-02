@@ -56,6 +56,21 @@ Notes:
 - Frontend preview uses `VITE_API_URL=http://localhost:3000/api` during CI/local runs.
 - Pack-related tests are tagged `@pack` and can be excluded via `--grep-invert @pack`.
 
+### How to trigger Nightly E2E manually
+- In GitHub: Actions → Nightly E2E → Run workflow
+- Choose branch: `chore/nightly-regression-pass` (or `main`)
+- Optional inputs (if present): set flags to skip pack tests
+- Artifacts:
+  - Playwright HTML report: `frontend/playwright-report`
+
+Local smoke reminder:
+
+```bash
+SKIP_PACK_E2E=true bash scripts/ci-e2e.sh
+```
+
+Base URL precedence: `PLAYWRIGHT_BASE_URL` > `E2E_BASE_URL` > `http://127.0.0.1:5173`.
+
 ## 📋 What's Built
 
 ### Backend (Express + TypeScript)

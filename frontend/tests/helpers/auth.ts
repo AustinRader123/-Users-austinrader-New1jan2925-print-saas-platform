@@ -3,7 +3,8 @@ import path from 'node:path';
 import { Page } from '@playwright/test';
 
 export async function loginViaUi(page: Page) {
-  const authPath = path.join(__dirname, '..', '.auth', 'admin.json');
+  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const authPath = path.join(thisDir, '..', '.auth', 'admin.json');
   const raw = fs.readFileSync(authPath, 'utf-8');
   const state = JSON.parse(raw);
   const origin = state.origins?.[0];
