@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "PORT=3000 tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "PORT=3000 node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "db:migrate": "prisma migrate deploy",

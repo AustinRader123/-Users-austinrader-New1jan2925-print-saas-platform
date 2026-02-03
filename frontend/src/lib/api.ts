@@ -3,7 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Prefer dev proxy via relative '/api' to avoid CORS and hard-coded ports.
 // Allows overriding via VITE_API_URL when needed.
-const API_URL = (import.meta.env.VITE_API_URL as string) || '/api';
+// API base: ensure we call backend under /api
+const RAW_API = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
+const API_URL = RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
+// Root base for health checks (strip trailing '/api' if present)
+const API_ROOT = ((): string => {
+  const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
+  return raw.endsWith('/api') ? raw.replace(/\/api$/, '') : raw;
+})();
 
 class ApiClient {
   private client: AxiosInstance;
@@ -331,6 +338,13 @@ class ApiClient {
     };
   }) {
     const { data } = await this.client.post('/pricing/preview', payload);
+    return data;
+  }
+
+  // Health check against backend root (not prefixed by /api)
+  async health(): Promise<{ status: string }> {
+    const url = `${API_ROOT}/health`;
+    const { data } = await axios.get(url, { timeout: 5000 });
     return data;
   }
 }
