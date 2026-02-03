@@ -32,7 +32,7 @@ if (process.env.SAFE_BOOT === 'true') {
 const server = appInstance.listen(PORT, '0.0.0.0', () => {
   console.log('BOOT 4: routes registered');
   console.log('BOOT 5: listening');
-  logger.info(`🚀 DecoNetwork server running on port ${PORT}`);
+  logger.info(`🚀 SkuFlow server running on port ${PORT}`);
   logger.info(`Environment: ${config.NODE_ENV}`);
   logger.info(`API URL: ${config.API_URL}`);
 

@@ -3,7 +3,7 @@
 # Simple test script for Vertical Slice #1
 # Tests the complete design-to-cart workflow
 
-echo "🧪 Testing DecoNetwork Vertical Slice #1 - Design to Cart"
+echo "🧪 Testing SkuFlow Vertical Slice #1 - Design to Cart"
 echo "========================================================="
 
 # Colors for output

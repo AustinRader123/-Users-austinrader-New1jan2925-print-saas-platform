@@ -24,7 +24,7 @@ export const config = {
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || '',
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
-  S3_BUCKET: process.env.S3_BUCKET || 'deco-network',
+  S3_BUCKET: process.env.S3_BUCKET || 'skuflow',
   S3_MOCKUP_FOLDER: 'mockups',
   S3_DESIGN_FOLDER: 'designs',
 
@@ -33,7 +33,7 @@ export const config = {
 
   // SendGrid Email
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
-  SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'noreply@deconetwork.com',
+  SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'noreply@skuflow.ai',
 
   // File Upload
   MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB

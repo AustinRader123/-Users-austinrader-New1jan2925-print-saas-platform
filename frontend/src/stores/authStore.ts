@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '../lib/api';
+import { extractErrorMessage } from '../lib/errors';
 
 export interface User {
   id: string;
@@ -32,7 +33,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
       apiClient.setToken(result.token);
       set({ token: result.token, user: { id: result.userId, email, name, role: result.role } });
     } catch (error: any) {
-      set({ error: error.response?.data?.error || 'Registration failed' });
+      const message = extractErrorMessage(error) || 'Registration failed';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });
@@ -46,7 +48,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
       apiClient.setToken(result.token);
       set({ token: result.token, user: { id: result.userId, email, role: result.role } });
     } catch (error: any) {
-      set({ error: error.response?.data?.error || 'Login failed' });
+      const message = extractErrorMessage(error) || 'Login failed';
+      set({ error: message });
       throw error;
     } finally {
       set({ loading: false });

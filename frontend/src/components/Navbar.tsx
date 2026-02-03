@@ -13,9 +13,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">D</span>
+              <span className="text-white font-bold">S</span>
             </div>
-            <span className="font-bold text-lg hidden sm:inline">DecoNetwork</span>
+            <span className="font-bold text-lg hidden sm:inline">SkuFlow</span>
           </Link>
 
           {/* Center Navigation */}
