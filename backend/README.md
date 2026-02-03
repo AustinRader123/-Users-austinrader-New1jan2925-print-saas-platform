@@ -1,4 +1,4 @@
-# DecoNetwork Backend
+# SkuFlow Backend
 
 Custom Product Commerce Platform - Backend Server
 

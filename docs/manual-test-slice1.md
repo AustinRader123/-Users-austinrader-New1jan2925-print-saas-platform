@@ -1,4 +1,4 @@
-# DecoNetwork Vertical Slice #1 - Manual Test Script
+# SkuFlow Vertical Slice #1 - Manual Test Script
 
 **Vertical Slice Goal**: Customer customizes product → adds design → generates mockup → adds to cart
 
@@ -57,7 +57,7 @@ npx tsx src/db/seed.ts
 
 # 6. Start backend (Terminal 1)
 npm run dev
-# Expect: "🚀 DecoNetwork server running on port 3000"
+# Expect: "🚀 SkuFlow server running on port 3000"
 
 # 7. Start frontend (Terminal 2)
 cd ../frontend
@@ -101,7 +101,7 @@ curl -s http://localhost:5174 | head -20
 **Action**: Open browser to `http://localhost:5174`
 
 **Expected UI**:
-- Navigation bar visible with "DecoNetwork" logo
+- Navigation bar visible with "SkuFlow" logo
 - "Sign In" button in top right (user not logged in)
 - Main content area displays
 

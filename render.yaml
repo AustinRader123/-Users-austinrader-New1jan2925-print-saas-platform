@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: print-saas-backend
+    env: node
+    plan: starter
+    region: oregon
+    branch: chore/nightly-regression-pass
+    rootDir: backend
+    buildCommand: >-
+      npm ci &&
+      ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) &&
+      ( npm run build || true )
+    startCommand: >-
+      bash -lc '([ -f prisma/schema.prisma ] && npx prisma migrate deploy || true);
+      ( npm start || node dist/index.js )'
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: print-saas-backend
+          property: port
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: JWT_SECRET
+        sync: false

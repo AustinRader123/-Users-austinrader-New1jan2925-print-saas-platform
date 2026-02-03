@@ -1,11 +1,12 @@
 {
-  "name": "deco-network-frontend",
+  "name": "skuflow-frontend",
   "version": "1.0.0",
-  "description": "DecoNetwork - Custom Product Commerce Platform",
+  "description": "SkuFlow - Custom Product Commerce Platform",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:safe": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",

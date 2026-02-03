@@ -1,4 +1,4 @@
-# DecoNetwork Vertical Slice #1 - Release Candidate Checklist
+# SkuFlow Vertical Slice #1 - Release Candidate Checklist
 
 **Date**: February 1, 2026  
 **Slice**: Product Customization → Mockup Generation → Add to Cart  
@@ -38,7 +38,7 @@
 
 - [ ] **Backend Server Start**
   - Command: `cd backend && npm run dev`
-  - Expected: "🚀 DecoNetwork server running on port 3000"
+  - Expected: "🚀 SkuFlow server running on port 3000"
   - Expected logs: Environment loaded, services initialized
   - Result: **PASS** / **FAIL**
   - Notes: _______________

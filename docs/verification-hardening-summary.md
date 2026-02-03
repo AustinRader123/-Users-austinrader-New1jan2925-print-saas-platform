@@ -1,4 +1,4 @@
-# DecoNetwork Vertical Slice #1 - Verification & Hardening Summary
+# SkuFlow Vertical Slice #1 - Verification & Hardening Summary
 
 **Date**: February 1, 2026  
 **Status**: VERIFICATION COMPLETE - Ready for Testing

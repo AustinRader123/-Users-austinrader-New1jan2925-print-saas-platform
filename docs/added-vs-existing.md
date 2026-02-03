@@ -1,4 +1,4 @@
-# DecoNetwork - Added vs Existing Components
+# SkuFlow - Added vs Existing Components
 
 ## Slice 2 Additions (Cart → Checkout → Order → Production)
 

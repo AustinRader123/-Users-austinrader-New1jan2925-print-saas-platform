@@ -12,7 +12,7 @@ on:
         default: true
 
 concurrency:
-  group: nightly-e2e
+  group: nightly-e2e-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -29,6 +29,7 @@ jobs:
         options: >-
           --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
     env:
+      ACTIONS_STEP_DEBUG: "true"
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network
       JWT_SECRET: ci-secret
       ADMIN_EMAIL: admin@local.test
@@ -38,6 +39,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Early diagnostics (always)
+        if: always()
+        run: |
+          mkdir -p artifacts/early
+          echo "date: $(date -u)" > artifacts/early/meta.txt
+          echo "ref: $GITHUB_REF" >> artifacts/early/meta.txt
+          echo "sha: $GITHUB_SHA" >> artifacts/early/meta.txt
+          echo "runner: $RUNNER_OS" >> artifacts/early/meta.txt
+          (ls -la . && ls -la frontend && ls -la backend) > artifacts/early/ls.txt 2>&1 || true
+
+      - name: Upload early diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-diagnostics
+          path: artifacts/early
+          retention-days: 21
+
+      - name: Debug env/state (pre-deps)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          echo "== whoami =="; whoami || true
+          echo "== uname =="; uname -a || true
+          echo "== pwd =="; pwd
+          echo "== ls =="; ls -la
+          echo "== env (sorted, redacted) =="
+          env | sort | sed -E 's/(TOKEN|PASSWORD|SECRET|KEY)=.*/\1=**REDACTED**/g'
+          echo "== node/npm =="
+          node -v || true
+          npm -v || true
+          echo "== workspace tree (top) =="
+          find . -maxdepth 2 -type f | head -200
 
       - name: Setup Node
         uses: actions/setup-node@v4

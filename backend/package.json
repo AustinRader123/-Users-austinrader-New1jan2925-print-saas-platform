@@ -1,13 +1,13 @@
 {
-  "name": "deco-network-backend",
+  "name": "skuflow-backend",
   "version": "1.0.0",
-  "description": "DecoNetwork - Custom Product Commerce & Production Platform",
+  "description": "SkuFlow - Custom Product Commerce & Production Platform",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "PORT=3000 tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "PORT=3000 node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "db:migrate": "prisma migrate deploy",

@@ -56,6 +56,21 @@ Notes:
 - Frontend preview uses `VITE_API_URL=http://localhost:3000/api` during CI/local runs.
 - Pack-related tests are tagged `@pack` and can be excluded via `--grep-invert @pack`.
 
+### How to trigger Nightly E2E manually
+- In GitHub: Actions → Nightly E2E → Run workflow
+- Choose branch: `chore/nightly-regression-pass` (or `main`)
+- Optional inputs (if present): set flags to skip pack tests
+- Artifacts:
+  - Playwright HTML report: `frontend/playwright-report`
+
+Local smoke reminder:
+
+```bash
+SKIP_PACK_E2E=true bash scripts/ci-e2e.sh
+```
+
+Base URL precedence: `PLAYWRIGHT_BASE_URL` > `E2E_BASE_URL` > `http://127.0.0.1:5173`.
+
 ## 📋 What's Built
 
 ### Backend (Express + TypeScript)
@@ -352,6 +367,42 @@ Architecture supports:
 - **[Feature Status](docs/feature-gap-matrix.md)** - Implementation roadmap
 - **[Deployment](docs/deployment.md)** - Production setup guide
 - **[Comparison](docs/added-vs-existing.md)** - What was built
+
+## **Deploy: Render + Vercel**
+- Render Web Service: import this repo; [render.yaml](render.yaml) auto-configures.
+- Backend requirements enforced:
+  - Route: `/health` returns `{ status: "ok" }`
+  - Server binds `process.env.PORT` on `0.0.0.0`
+  - CORS: production allows origins from `CORS_ORIGIN` (comma-separated); dev is permissive and supports credentials; localhost dev origins allowed.
+  - Prisma: `prisma generate` (build) and `migrate deploy` (start) when schema exists.
+- Render settings:
+  - Root Directory: `backend`
+  - Build: `npm ci && ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) && ( npm run build || true )`
+  - Start: `node dist/index.js` (Render sets `PORT`)
+  - Health Check Path: `/health`
+  - Env: set `NODE_ENV=production`, `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`
+- Vercel settings:
+  - Root Directory: `frontend`
+  - Build: `npm install && npm run build`
+  - Output: `dist`
+  - Env: `VITE_API_URL=https://<RENDER_URL>`
+  - SPA rewrites via [vercel.json](vercel.json)
+- Verify:
+  - `curl -sSf https://<RENDER_URL>/health | jq`
+  - Open `https://<VERCEL_URL>`; in console run `fetch('https://<RENDER_URL>/health').then(r=>r.json()).then(console.log)`
+  - Frontend configured via `VITE_API_URL` and app uses `/api` under the base.
+  ## **Local Verification**
+
+  - Backend:
+    - `cd backend && npm i && npm run dev`
+    - `curl http://localhost:3000/health` → `{ "status": "ok" }`
+
+  - Frontend:
+    - `cd frontend && npm i`
+    - `VITE_API_URL=http://localhost:3000 npm run dev`
+    - Browser should load and API calls succeed against `http://localhost:3000/api/*`.
+  - If CORS error: ensure `CORS_ORIGIN` includes the exact Vercel domain.
+- Helper: `bash scripts/deploy_render_vercel.sh` prints exact settings and env blocks.
 
 ## 🛠️ Tech Stack
 

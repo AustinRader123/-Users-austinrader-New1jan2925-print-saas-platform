@@ -1,10 +1,10 @@
-# DecoNetwork System Inventory
+# SkuFlow System Inventory
 
 **Generated:** February 1, 2026
 
 ## Overview
 
-DecoNetwork is a complete custom product commerce and production platform built from scratch with enterprise-grade architecture.
+SkuFlow is a complete custom product commerce and production platform built from scratch with enterprise-grade architecture.
 
 ## Backend Architecture
 

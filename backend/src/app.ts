@@ -1,5 +1,5 @@
 import express, { Express } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import 'express-async-errors';
 import { config } from './config.js';
@@ -26,6 +26,30 @@ import debugRoutes from './routes/debug.js';
 
 const app: Express = express();
 
+// CORS configuration: prod restricts by CORS_ORIGIN, dev permissive
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const devOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+];
+const isProd = (process.env.NODE_ENV || 'development') === 'production';
+const corsOptions: CorsOptions = isProd
+  ? {
+      origin: (origin, callback) => {
+        // Allow non-browser requests and exact matches
+        if (!origin || allowedOrigins.includes(origin) || devOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+    }
+  : { origin: true, credentials: true };
+
 // Ultra-safe ping registered BEFORE any middleware
 // Must respond instantly and never touch DB or other async layers
 app.get('/__ping', (req, res) => {
@@ -35,13 +59,13 @@ app.get('/__ping', (req, res) => {
 // Middleware - RequestID must be first
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+// Health check (Render health path)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Readiness probe - checks DB quickly with strict timeout
