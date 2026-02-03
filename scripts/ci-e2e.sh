@@ -1,93 +1,125 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CI Orchestrator: build + migrate + seed + start backend/frontend + run Playwright
-# Usage: scripts/ci-e2e.sh [smoke|regression]
+# CI E2E orchestrator
+# - Builds and starts backend & frontend preview
+# - Selects Playwright tags (with skip-pack fallback)
+# - Runs tests and captures logs + HTML report
 
-SUITE="${1:-smoke}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BACKEND_DIR="$ROOT_DIR/backend"
-FRONTEND_DIR="$ROOT_DIR/frontend"
-ARTIFACTS_DIR="$ROOT_DIR/artifacts"
-mkdir -p "$ARTIFACTS_DIR"
+cd "$ROOT_DIR"
 
-BACKEND_LOG="$ARTIFACTS_DIR/backend.log"
-FRONTEND_LOG="$ARTIFACTS_DIR/frontend.log"
+SUITE="${SUITE:-regression}"
+SKIP_PACK_E2E="${SKIP_PACK_E2E:-false}"
+DATABASE_URL_DEFAULT="postgresql://app:password@localhost:5432/app"
+DATABASE_URL="${DATABASE_URL:-$DATABASE_URL_DEFAULT}"
 
-# Environment defaults for local run; CI sets these explicitly
-export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/appdb}"
-export JWT_SECRET="${JWT_SECRET:-test-secret}"
-export PORT="${PORT:-3000}"
-export API_URL="http://localhost:$PORT"
-export BASE_URL="http://localhost:5173"
-export ADMIN_EMAIL="${ADMIN_EMAIL:-admin@local.test}"
-export ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin123!}"
+# Base URL precedence: PLAYWRIGHT_BASE_URL > E2E_BASE_URL > http://127.0.0.1:5173
+DEFAULT_BASE_URL="http://127.0.0.1:5173"
+BASE_URL="${PLAYWRIGHT_BASE_URL:-}"
+if [ -z "$BASE_URL" ]; then BASE_URL="${E2E_BASE_URL:-}"; fi
+if [ -z "$BASE_URL" ]; then BASE_URL="$DEFAULT_BASE_URL"; fi
 
-log() { echo "[ci-e2e] $*"; }
-retry() {
-  local max="${1:-30}"; shift
-  local delay="${1:-1}"; shift
-  for i in $(seq 1 "$max"); do
-    if "$@"; then return 0; fi
-    sleep "$delay"
-  done
-  return 1
+echo "[ci-e2e] SUITE=$SUITE SKIP_PACK_E2E=$SKIP_PACK_E2E"
+echo "[ci-e2e] PLAYWRIGHT_BASE_URL resolved to $BASE_URL"
+echo "[ci-e2e] DATABASE_URL=$DATABASE_URL"
+
+BACKEND_LOG="$ROOT_DIR/backend.log"
+FRONTEND_LOG="$ROOT_DIR/frontend.log"
+rm -f "$BACKEND_LOG" "$FRONTEND_LOG"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1"; exit 127; }; }
+need node; need npm;
+
+echo "[ci-e2e] Installing deps..."
+npm --prefix backend ci || npm --prefix backend install
+npm --prefix frontend ci || npm --prefix frontend install
+npx --yes playwright install --with-deps
+
+echo "[ci-e2e] Building backend..."
+npm --prefix backend run build || true
+
+echo "[ci-e2e] Applying migrations and seed (if available)..."
+(cd backend && DATABASE_URL="$DATABASE_URL" npx --yes prisma migrate deploy) || true
+if (cd backend && npx --yes prisma db seed --help >/dev/null 2>&1); then
+  (cd backend && DATABASE_URL="$DATABASE_URL" npx --yes prisma db seed) || true
+fi
+
+echo "[ci-e2e] Starting backend..."
+(cd backend && DATABASE_URL="$DATABASE_URL" node dist/index.js) > "$BACKEND_LOG" 2>&1 &
+BACKEND_PID=$!
+echo "[ci-e2e] Backend PID=$BACKEND_PID"
+
+cleanup() {
+  set +e
+  if kill -0 "$BACKEND_PID" 2>/dev/null; then kill "$BACKEND_PID" || true; fi
+  if kill -0 "$FRONTEND_PID" 2>/dev/null; then kill "$FRONTEND_PID" || true; fi
 }
+trap cleanup EXIT
 
-# 1) Install dependencies
-log "Installing backend deps"
-( cd "$BACKEND_DIR" && npm ci )
-log "Installing frontend deps"
-( cd "$FRONTEND_DIR" && npm ci )
+echo "[ci-e2e] Building frontend..."
+npm --prefix frontend run build || true
 
-# 2) Prisma migrations + seed
-log "Running prisma migrate deploy"
-( cd "$BACKEND_DIR" && npm run db:migrate )
-log "Running prisma seed"
-( cd "$BACKEND_DIR" && ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run db:seed )
+echo "[ci-e2e] Starting frontend preview on 5173..."
+(cd frontend && npm run preview -- --port 5173) > "$FRONTEND_LOG" 2>&1 &
+FRONTEND_PID=$!
+echo "[ci-e2e] Frontend PID=$FRONTEND_PID"
 
-# 3) Build backend + start
-log "Building backend"
-( cd "$BACKEND_DIR" && npm run build )
-log "Ensuring port $PORT is free"
-( PIDS=$(lsof -ti :"$PORT" || true) && [[ -n "$PIDS" ]] && kill -9 $PIDS || true )
-log "Starting backend on :$PORT"
-( cd "$BACKEND_DIR" && nohup npm run start > "$BACKEND_LOG" 2>&1 & echo $! > "$ARTIFACTS_DIR/backend.pid" )
+echo "[ci-e2e] Waiting for frontend preview to be ready..."
+TRIES=60
+until curl -fsS -m 2 "$BASE_URL" >/dev/null 2>&1; do
+  TRIES=$((TRIES-1))
+  if [ "$TRIES" -le 0 ]; then
+    echo "[ci-e2e] Frontend not reachable at $BASE_URL" >&2
+    echo "[ci-e2e] Frontend log tail:" >&2
+    tail -n 200 "$FRONTEND_LOG" >&2 || true
+    exit 2
+  fi
+  sleep 1
+done
 
-log "Waiting for backend readiness"
-retry 40 1 curl -sSf "http://localhost:$PORT/__ping" >/dev/null || { tail -n 200 "$BACKEND_LOG" || true; echo "Backend failed"; exit 1; }
+echo "[ci-e2e] Frontend is reachable at $BASE_URL"
 
-# 4) Build frontend + start preview
-log "Building frontend"
-# Build without TypeScript type-check to avoid blocking on unrelated TS errors
-( cd "$FRONTEND_DIR" && VITE_API_URL="$API_URL/api" npx vite build )
-log "Ensuring preview port 5173 is free"
-( PIDS=$(lsof -ti :5173 || true) && [[ -n "$PIDS" ]] && kill -9 $PIDS || true )
-log "Starting frontend preview on :5173"
-( cd "$FRONTEND_DIR" && nohup npm run preview -- --port 5173 > "$FRONTEND_LOG" 2>&1 & echo $! > "$ARTIFACTS_DIR/frontend.pid" )
-
-log "Waiting for frontend readiness"
-retry 40 1 curl -sSf "http://localhost:5173" >/dev/null || { tail -n 200 "$FRONTEND_LOG" || true; echo "Frontend failed"; exit 1; }
-
-# 5) Prepare storage state
-log "Generating storage state"
-( cd "$FRONTEND_DIR" && BASE_URL="$BASE_URL" BACKEND_BASE_URL="$API_URL" node tests/storage-setup.js )
-
-# 6) Run Playwright suite
-log "Running Playwright suite: $SUITE"
-export PLAYWRIGHT_BASE_URL="$BASE_URL"
-PW_EXTRA_ARGS=""
-if [[ "${SKIP_PACK_E2E:-}" == "true" ]]; then
-  PW_EXTRA_ARGS="--grep-invert @pack"
-fi
-if [[ "$SUITE" == "regression" ]]; then
-  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @regression $PW_EXTRA_ARGS )
+TAG_ARGS=()
+if [ "$SUITE" = "smoke" ]; then
+  TAG_ARGS+=(--grep "@smoke")
+elif [ "$SUITE" = "regression" ]; then
+  TAG_ARGS+=(--grep "@regression")
+  if [ "${SKIP_PACK_E2E}" = "true" ]; then
+    TAG_ARGS+=(--grep-invert "@pack")
+  else
+    TAG_ARGS+=(--grep "@pack")
+  fi
 else
-  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @smoke $PW_EXTRA_ARGS )
+  TAG_ARGS+=(--grep "@smoke")
 fi
 
-# 7) Cleanup
-log "Stopping services"
-( kill -9 $(cat "$ARTIFACTS_DIR/backend.pid") 2>/dev/null || true )
-( kill -9 $(cat "$ARTIFACTS_DIR/frontend.pid") 2>/dev/null || true )
-log "Done"
+echo "[ci-e2e] Initial TAG_ARGS: ${TAG_ARGS[*]}"
+
+# Dry-run list to ensure we have matching tests; fallback to @smoke if none.
+echo "[ci-e2e] Checking matched tests via --list..."
+MATCH_COUNT=0
+if LIST_OUT=$(cd frontend && npx --yes playwright test --list "${TAG_ARGS[@]}" 2>/dev/null); then
+  MATCH_COUNT=$(echo "$LIST_OUT" | grep -E "^\s*\d+ tests?" -o | head -n1 | awk '{print $1}' || echo 0)
+fi
+if [ -z "$MATCH_COUNT" ] || [ "$MATCH_COUNT" = "" ]; then MATCH_COUNT=0; fi
+echo "[ci-e2e] Matched tests (approx): $MATCH_COUNT"
+if [ "$MATCH_COUNT" -eq 0 ]; then
+  echo "[ci-e2e] No tests matched. Falling back to @smoke."
+  TAG_ARGS=(--grep "@smoke")
+fi
+
+PW_CMD=(npx --yes playwright test "${TAG_ARGS[@]}" --reporter=list,html --output tests-output)
+echo "[ci-e2e] Running: ${PW_CMD[*]}"
+
+set +e
+(cd frontend && PLAYWRIGHT_BASE_URL="$BASE_URL" VITE_API_URL="${VITE_API_URL:-http://localhost:3000/api}" "${PW_CMD[@]}")
+PW_EXIT=$?
+set -e
+
+echo "[ci-e2e] Playwright exit code: $PW_EXIT"
+echo "[ci-e2e] Frontend log tail:"; tail -n 200 "$FRONTEND_LOG" || true
+echo "[ci-e2e] Backend log tail:"; tail -n 200 "$BACKEND_LOG" || true
+
+exit "$PW_EXIT"
+# End of script

@@ -1,6 +1,69 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Dispatch workflow with inputs, watch until completion, download artifacts, open report.
+# Usage:
+#  REPO="owner/repo" BRANCH="chore/nightly-regression-pass" SUITE="regression" SKIP_PACK_E2E="false" bash scripts/dispatch_and_watch.sh
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1"; exit 127; }; }
+need gh; need jq;
+
+REPO="${REPO:-}"
+WORKFLOW="${WORKFLOW:-nightly-e2e.yml}"
+BRANCH="${BRANCH:-chore/nightly-regression-pass}"
+SUITE="${SUITE:-regression}"
+SKIP_PACK_E2E="${SKIP_PACK_E2E:-false}"
+OUT_ROOT="${OUT_ROOT:-artifacts_download}"
+POLL="${POLL:-15}"
+WAIT_MIN="${WAIT_MIN:-60}"
+
+if [ -z "$REPO" ]; then echo "REPO is required" >&2; exit 2; fi
+
+echo "Dispatching $WORKFLOW on $BRANCH: suite=$SUITE skip_pack_e2e=$SKIP_PACK_E2E"
+gh workflow run "$WORKFLOW" --repo "$REPO" --ref "$BRANCH" -f suite="$SUITE" -f skip_pack_e2e="$SKIP_PACK_E2E" || true
+
+pick_latest_run() {
+  gh run list --repo "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId'
+}
+
+RUN_ID="$(pick_latest_run || true)"
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then echo "No run found after dispatch" >&2; exit 3; fi
+echo "==> Using RUN_ID=$RUN_ID"
+
+deadline=$(( $(date +%s) + WAIT_MIN*60 ))
+while true; do
+  now=$(date +%s)
+  if [ "$now" -ge "$deadline" ]; then echo "TIMEOUT after ${WAIT_MIN}m"; exit 2; fi
+  r_status="$(gh run view "$RUN_ID" --repo "$REPO" --json status -q '.status' 2>/dev/null || echo unknown)"
+  r_conclusion="$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion -q '.conclusion // ""' 2>/dev/null || echo "")"
+  r_url="$(gh run view "$RUN_ID" --repo "$REPO" --json url -q '.url' 2>/dev/null || echo "")"
+  echo "[$(date +%H:%M:%S)] status=$r_status conclusion=${r_conclusion:-} url=$r_url"
+  if [ "$r_status" = "queued" ] || [ "$r_status" = "in_progress" ]; then
+    sleep "$POLL"; continue
+  fi
+  if [ "$r_status" = "completed" ]; then break; fi
+  sleep "$POLL"
+done
+
+OUT="$OUT_ROOT/$RUN_ID"
+mkdir -p "$OUT"
+echo "Downloading artifacts to $OUT ..."
+gh run download "$RUN_ID" --repo "$REPO" --dir "$OUT" || true
+
+REPORT=$(find "$OUT" -type f -name index.html | grep -E 'playwright-report|playwright' | head -n 1 || true)
+if [ -n "$REPORT" ]; then
+  echo "Playwright report: $REPORT"
+  command -v open >/dev/null 2>&1 && open "$REPORT" || true
+else
+  echo "No Playwright report found; listing artifact names:"
+  gh run view "$RUN_ID" --repo "$REPO" --json artifacts -q '.artifacts[]?.name' || true
+fi
+
+echo "==> Files (first 200):"
+find "$OUT" -maxdepth 5 -type f | head -n 200 | sed 's#^#  - #' || true
+#!/usr/bin/env bash
+set -euo pipefail
+
 # ====== CONFIG ======
 OWNER="AustinRader123"
 REPO="-Users-austinrader-New1jan2925-print-saas-platform"

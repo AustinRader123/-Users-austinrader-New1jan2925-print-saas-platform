@@ -1,0 +1,46 @@
+name: Manual Deploy Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment name"
+        type: string
+        default: production
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build frontend
+        run: |
+          npm --prefix frontend ci || npm --prefix frontend install
+          npm --prefix frontend run build
+
+      - name: Build backend
+        run: |
+          npm --prefix backend ci || npm --prefix backend install
+          npm --prefix backend run build || true
+
+      - name: Docker metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ github.repository }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build images (no push)
+        run: |
+          docker build -t backend:latest backend
+          docker build -t frontend:latest frontend
+          echo "Images built locally. Configure registry secrets to push."

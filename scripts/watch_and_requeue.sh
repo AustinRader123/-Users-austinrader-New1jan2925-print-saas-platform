@@ -1,6 +1,75 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Watch a RUN_ID and if stuck queued beyond timeout, cancel and re-dispatch.
+# Usage:
+#  REPO="owner/repo" RUN_ID="123" QUEUE_TIMEOUT_MIN=5 SUITE=regression SKIP_PACK_E2E=false BRANCH=chore/nightly-regression-pass bash scripts/watch_and_requeue.sh
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1"; exit 127; }; }
+need gh; need jq;
+
+REPO="${REPO:-}"
+WORKFLOW="${WORKFLOW:-nightly-e2e.yml}"
+BRANCH="${BRANCH:-chore/nightly-regression-pass}"
+RUN_ID="${RUN_ID:-}"
+SUITE="${SUITE:-regression}"
+SKIP_PACK_E2E="${SKIP_PACK_E2E:-false}"
+QUEUE_TIMEOUT_MIN="${QUEUE_TIMEOUT_MIN:-5}"
+POLL="${POLL:-15}"
+HARD_TIMEOUT_MIN="${HARD_TIMEOUT_MIN:-120}"
+OUT_ROOT="${OUT_ROOT:-artifacts_download}"
+
+if [ -z "$REPO" ]; then echo "REPO is required" >&2; exit 2; fi
+
+pick_latest_run() { gh run list --repo "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId'; }
+dispatch_new() { gh workflow run "$WORKFLOW" --repo "$REPO" --ref "$BRANCH" -f suite="$SUITE" -f skip_pack_e2e="$SKIP_PACK_E2E"; }
+
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "latest" ]; then RUN_ID="$(pick_latest_run || true)"; fi
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then echo "No run found" >&2; exit 3; fi
+echo "Watching RUN_ID=$RUN_ID (queue timeout ${QUEUE_TIMEOUT_MIN}m; hard timeout ${HARD_TIMEOUT_MIN}m)"
+
+started=$(date +%s)
+while true; do
+  now=$(date +%s)
+  if [ $(( (now - started)/60 )) -ge "$HARD_TIMEOUT_MIN" ]; then echo "Hard timeout reached"; exit 2; fi
+  r_status="$(gh run view "$RUN_ID" --repo "$REPO" --json status -q '.status' 2>/dev/null || echo unknown)"
+  r_conclusion="$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion -q '.conclusion // ""' 2>/dev/null || echo "")"
+  r_url="$(gh run view "$RUN_ID" --repo "$REPO" --json url -q '.url' 2>/dev/null || echo "")"
+  echo "[$(date +%H:%M:%S)] status=$r_status conclusion=${r_conclusion:-} url=$r_url"
+  if [ "$r_status" = "queued" ]; then
+    queued_for=$(( (now - started)/60 ))
+    if [ "$queued_for" -ge "$QUEUE_TIMEOUT_MIN" ]; then
+      echo "Queue timeout ${queued_for}m reached; cancelling and re-dispatching..."
+      gh run cancel "$RUN_ID" --repo "$REPO" || true
+      dispatch_new || true
+      RUN_ID="$(pick_latest_run || true)"
+      started=$(date +%s)
+      echo "New RUN_ID=$RUN_ID"
+      continue
+    fi
+    sleep "$POLL"; continue
+  fi
+  if [ "$r_status" = "in_progress" ]; then sleep "$POLL"; continue; fi
+  if [ "$r_status" = "completed" ]; then break; fi
+  sleep "$POLL"
+done
+
+OUT="$OUT_ROOT/$RUN_ID"
+mkdir -p "$OUT"
+echo "Downloading artifacts to $OUT ..."
+gh run download "$RUN_ID" --repo "$REPO" --dir "$OUT" || true
+
+REPORT=$(find "$OUT" -type f -name index.html | grep -E 'playwright-report|playwright' | head -n 1 || true)
+if [ -n "$REPORT" ]; then
+  echo "Playwright report: $REPORT"
+  command -v open >/dev/null 2>&1 && open "$REPORT" || true
+fi
+
+echo "==> Files (first 200):"
+find "$OUT" -maxdepth 5 -type f | head -n 200 | sed 's#^#  - #'
+#!/usr/bin/env bash
+set -euo pipefail
+
 # ====== CONFIG (edit if needed) ======
 OWNER="AustinRader123"
 REPO="-Users-austinrader-New1jan2925-print-saas-platform"

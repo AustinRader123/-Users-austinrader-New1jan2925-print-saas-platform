@@ -1,4 +1,42 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+# Download artifacts for a specific or latest run and open Playwright report.
+# Usage:
+#  REPO="owner/repo" RUN_ID="latest" bash scripts/finalize_run_and_open_report.sh
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1"; exit 127; }; }
+need gh; need jq;
+
+REPO="${REPO:-}"
+WORKFLOW="${WORKFLOW:-nightly-e2e.yml}"
+BRANCH="${BRANCH:-chore/nightly-regression-pass}"
+RUN_ID="${RUN_ID:-latest}"
+OUT_ROOT="${OUT_ROOT:-artifacts_download}"
+
+if [ -z "$REPO" ]; then echo "REPO is required" >&2; exit 2; fi
+
+pick_latest_run() { gh run list --repo "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId'; }
+
+if [ "$RUN_ID" = "latest" ]; then RUN_ID="$(pick_latest_run || true)"; fi
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then echo "No run found" >&2; exit 3; fi
+echo "Finalizing RUN_ID=$RUN_ID"
+
+OUT="$OUT_ROOT/$RUN_ID"
+mkdir -p "$OUT"
+gh run download "$RUN_ID" --repo "$REPO" --dir "$OUT" || true
+
+REPORT=$(find "$OUT" -type f -name index.html | grep -E 'playwright-report|playwright' | head -n 1 || true)
+if [ -n "$REPORT" ]; then
+  echo "Playwright report: $REPORT"
+  command -v open >/dev/null 2>&1 && open "$REPORT" || true
+else
+  echo "No report found. Artifacts:"; gh run view "$RUN_ID" --repo "$REPO" --json artifacts -q '.artifacts[]?.name' || true
+fi
+
+echo "==> Files (first 200):"
+find "$OUT" -maxdepth 5 -type f | head -n 200 | sed 's#^#  - #'
+#!/usr/bin/env bash
 # Next step: when the run finishes, print a clean summary,
 # download artifacts (if any), and auto-open the Playwright HTML report (if present).
 #

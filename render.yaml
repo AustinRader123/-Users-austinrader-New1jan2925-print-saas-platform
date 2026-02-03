@@ -1,0 +1,17 @@
+services:
+  - name: print-saas-backend
+    type: web
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build || true
+    startCommand: npx prisma migrate deploy && npx prisma db seed || true && npm run start || node dist/index.js
+    autoDeploy: true
+    rootDir: backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false

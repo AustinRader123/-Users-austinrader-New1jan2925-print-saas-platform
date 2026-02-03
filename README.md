@@ -7,35 +7,35 @@ Complete enterprise-grade platform for designing, pricing, and manufacturing cus
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- PostgreSQL 15+
-- Redis 6+
+- Docker + Docker Compose (recommended)
+- Alternatively: Node.js 20+, PostgreSQL 15+
 
-### Installation
+### One-command local run (recommended)
 
-**Backend:**
 ```bash
-cd backend
-npm install
-cp .env.example .env
-npm run dev
+docker compose up -d
 ```
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-npm run dev
-```
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3000/api
+- Postgres: localhost:5432 (user `app`, password `password`, db `app`)
 
-**Database:**
-```bash
-cd backend
-npm run db:migrate
-npm run db:seed
-```
+Environment examples:
+- Backend: `.env.backend.example` or `backend/.env.example`
+- Frontend: `.env.frontend.example` or `frontend/.env.example`
 
-Access the application at `http://localhost:5173`
+If running without Docker:
+
+```bash
+# Terminal 1
+cd backend && cp .env.example .env && npm install && npm run dev
+
+# Terminal 2
+cd frontend && npm install && npm run dev
+
+# (Optional) apply migrations/seed
+cd backend && npm run db:migrate && npm run db:seed
+```
 
 ## 🧪 E2E Testing (Playwright)
 
@@ -56,18 +56,14 @@ Notes:
 - Frontend preview uses `VITE_API_URL=http://localhost:3000/api` during CI/local runs.
 - Pack-related tests are tagged `@pack` and can be excluded via `--grep-invert @pack`.
 
-### How to trigger Nightly E2E manually
-- In GitHub: Actions → Nightly E2E → Run workflow
-- Choose branch: `chore/nightly-regression-pass` (or `main`)
-- Optional inputs (if present): set flags to skip pack tests
-- Artifacts:
-  - Playwright HTML report: `frontend/playwright-report`
-
-Local smoke reminder:
-
-```bash
-SKIP_PACK_E2E=true bash scripts/ci-e2e.sh
-```
+### Nightly E2E: triggering and artifacts
+- GitHub → Actions → Nightly Playwright E2E → Run workflow
+- Inputs: `skip_pack_e2e` (boolean), `suite` (`smoke` | `regression`)
+- Concurrency: branch-scoped `nightly-e2e-${branch}` with cancel-in-progress
+- Artifacts (always uploaded):
+  - `early-diagnostics/` (meta.txt, ls.txt)
+  - `e2e-logs/` (backend.log, frontend.log)
+  - `playwright-report/` (HTML report with `index.html`)
 
 Base URL precedence: `PLAYWRIGHT_BASE_URL` > `E2E_BASE_URL` > `http://127.0.0.1:5173`.
 
@@ -361,6 +357,53 @@ Architecture supports:
    - E2E tests for workflows
 
 ## 📚 Documentation
+## 🌐 Production Deployment (Render + Vercel)
+
+### Backend on Render
+- Use `render.yaml` (root) to create the backend service.
+- Required env vars on Render:
+  - `DATABASE_URL`: provision a Render PostgreSQL instance and set its connection string.
+  - `PORT=3000`
+- Build/Start:
+  - Build: `npm install && npm run build`
+  - Start: `npx prisma migrate deploy && npx prisma db seed || true && npm run start`
+  - Health: `GET /__ping` should return `pong`.
+
+### Frontend on Vercel
+- Configure a project pointing to `frontend/`.
+- `vercel.json` (root) uses `@vercel/static-build` to output `frontend/dist`.
+- Set env var `VITE_API_URL=https://<RENDER_BACKEND_URL>/api` in Vercel.
+
+### CORS
+- If you restrict origins, set `CORS_ORIGINS` on the backend (comma-separated), e.g. `https://your-frontend.vercel.app`.
+
+## 🧭 CI Master One-Liner
+
+Dispatch both lanes, watch, download artifacts, auto-open the report:
+
+```bash
+DISPATCH=1 bash scripts/master.sh
+```
+
+Inspect a specific run, open logs, list artifact URLs:
+
+```bash
+RUN_ID=<github_run_id> OPEN_LOGS=1 PRINT_ARTIFACT_URLS=1 bash scripts/master.sh
+```
+
+## 🔀 Branch & PR
+
+Target branch: `main`.
+
+Create a working branch, commit, push, and open PR:
+
+```bash
+git checkout -b chore/public-deploy-and-ci
+git add -A
+git commit -m "CI: stabilize nightly E2E, add dev docker-compose, Render+Vercel configs, README"
+git push -u origin chore/public-deploy-and-ci
+gh pr create --title "CI + Public Deploy: Nightly E2E, Docker Compose, Render/Vercel" --body-file README.md
+```
 
 - **[System Inventory](docs/system-inventory.md)** - Complete architecture
 - **[API Reference](docs/api.md)** - Endpoint documentation with examples

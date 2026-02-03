@@ -1,6 +1,55 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Usage:
+#  REPO="owner/repo" RUN_ID="123456" bash scripts/check_run_and_artifacts.sh
+#  or just: REPO="owner/repo" bash scripts/check_run_and_artifacts.sh (auto-latest)
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1"; exit 127; }; }
+need gh; need jq;
+
+REPO="${REPO:-}"
+WORKFLOW="${WORKFLOW:-nightly-e2e.yml}"
+BRANCH="${BRANCH:-chore/nightly-regression-pass}"
+RUN_ID="${RUN_ID:-}"
+OUT_ROOT="${OUT_ROOT:-artifacts_download}"
+
+if [ -z "$REPO" ]; then
+  echo "REPO is required (e.g. owner/repo)." >&2
+  exit 2
+fi
+
+pick_latest_run() {
+  gh run list --repo "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId'
+}
+
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "latest" ]; then
+  RUN_ID="$(pick_latest_run || true)"
+fi
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+  echo "No run found for WORKFLOW=$WORKFLOW BRANCH=$BRANCH" >&2
+  exit 3
+fi
+
+echo "==> Using RUN_ID=$RUN_ID"
+status="$(gh run view "$RUN_ID" --repo "$REPO" --json status -q '.status')"
+conclusion="$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion -q '.conclusion // ""')"
+url="$(gh run view "$RUN_ID" --repo "$REPO" --json url -q '.url')"
+echo "Status: $status; Conclusion: ${conclusion:-}"; echo "URL: $url"
+
+OUT="$OUT_ROOT/$RUN_ID"
+mkdir -p "$OUT"
+echo "Downloading artifacts to $OUT ..."
+gh run download "$RUN_ID" --repo "$REPO" --dir "$OUT" || true
+
+echo "==> Artifact list:"
+gh run view "$RUN_ID" --repo "$REPO" --json artifacts -q '.artifacts[]?.name' || true
+
+echo "==> Files (first 200):"
+find "$OUT" -maxdepth 5 -type f | head -n 200 | sed 's#^#  - #' || true
+#!/usr/bin/env bash
+set -euo pipefail
+
 # ====== CONFIG ======
 OWNER="AustinRader123"
 REPO="-Users-austinrader-New1jan2925-print-saas-platform"

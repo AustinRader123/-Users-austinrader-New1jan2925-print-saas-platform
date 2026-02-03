@@ -98,3 +98,15 @@ echo "Run: $RUN_ID"
 echo "Conclusion: ${CONCLUSION:-null}"
 echo "URL: $URL"
 echo "Artifacts dir: $OUT"
+
+# If failure, attempt per-job log tails using databaseId
+if [[ "${CONCLUSION:-}" != "success" ]]; then
+  echo
+  echo "📝 Job logs (tail 300 per job)"
+  gh run view "$RUN_ID" --repo "$REPO" --json jobs -q '.jobs[] | "\(.databaseId)\t\(.name)\t\(.conclusion // \"null\")"' \
+    | while IFS=$'\t' read -r JOB_ID JOB_NAME JOB_CONC; do
+        echo
+        echo "----- JOB: $JOB_NAME (id=$JOB_ID, conclusion=$JOB_CONC) -----"
+        gh run view "$RUN_ID" --repo "$REPO" --log --job "$JOB_ID" 2>/dev/null | tail -300 || true
+      done
+fi
