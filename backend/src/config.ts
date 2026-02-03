@@ -7,6 +7,8 @@ export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3000'),
   API_URL: process.env.API_URL || 'http://localhost:3000',
+  // CORS
+  CORS_ORIGINS: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter((s) => s.length > 0),
 
   // Database
   DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/deco_network',

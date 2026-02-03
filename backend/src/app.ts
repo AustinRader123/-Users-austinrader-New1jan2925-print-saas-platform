@@ -35,13 +35,18 @@ app.get('/__ping', (req, res) => {
 // Middleware - RequestID must be first
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
 app.use(helmet());
-app.use(cors());
+// CORS: allow configured origins when provided; otherwise permissive
+if (config.CORS_ORIGINS && config.CORS_ORIGINS.length > 0) {
+  app.use(cors({ origin: config.CORS_ORIGINS, credentials: true }));
+} else {
+  app.use(cors());
+}
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+  res.json({ ok: true, timestamp: new Date() });
 });
 
 // Readiness probe - checks DB quickly with strict timeout
