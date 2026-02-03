@@ -80,8 +80,15 @@ PW_EXTRA_ARGS=""
 if [[ "${SKIP_PACK_E2E:-}" == "true" ]]; then
   PW_EXTRA_ARGS="--grep-invert @pack"
 fi
+# When pack tests are skipped, running regression may yield no matches if all
+# regression tests are tagged with @pack. In that case, fall back to @smoke.
 if [[ "$SUITE" == "regression" ]]; then
-  ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @regression $PW_EXTRA_ARGS )
+  if [[ "${SKIP_PACK_E2E:-}" == "true" ]]; then
+    log "SKIP_PACK_E2E=true for regression; falling back to @smoke suite"
+    ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @smoke )
+  else
+    ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @regression $PW_EXTRA_ARGS )
+  fi
 else
   ( cd "$FRONTEND_DIR" && npx playwright install --with-deps && npx playwright test --grep @smoke $PW_EXTRA_ARGS )
 fi
