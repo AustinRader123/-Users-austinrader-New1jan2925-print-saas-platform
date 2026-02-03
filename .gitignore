@@ -57,3 +57,11 @@ yarn-error.log
 
 # Optional eslint cache
 .eslintcache
+
+# CI artifacts and local downloads
+artifacts/
+artifacts_download/
+artifacts_*/
+
+# Embedded repo snapshot (avoid committing nested repo)
+repo/
