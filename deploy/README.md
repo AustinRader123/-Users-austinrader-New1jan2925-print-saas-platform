@@ -1,65 +1,85 @@
-# Deploy Scaffold: Print SaaS Platform
+# Production Deployment: Render (Backend + Postgres) + Vercel (Frontend)
 
-This folder provides a baseline to deploy the app publicly without secrets hardcoded. It includes Docker Compose for production, environment templates, and a GitHub Actions deploy workflow.
-
-## Overview
-
-- Services:
-  - Backend (Node.js + Prisma + Postgres)
-  - Frontend (Vite/React, served via preview or static server)
-  - Postgres (stateful)
+This guide deploys the backend and database on Render, and the static frontend on Vercel.
 
 ## Prerequisites
+- GitHub repository: AustinRader123/-Users-austinrader-New1jan2925-print-saas-platform
+- Render account
+- Vercel account
 
-- Docker and Docker Compose
-- Provisioned Postgres (or use the included service)
-- Populate environment files under `deploy/`
+## Step 1: Backend + Postgres on Render
 
-## Environment Files
+1) Create a Postgres instance on Render:
+  - Render Dashboard → New → PostgreSQL
+  - Note the Internal DB URL (use the External URL if needed).
 
-- See `deploy/.env.example` for compose-level variables
-- See `deploy/backend.env.example` for backend service vars
-- See `deploy/frontend.env.example` for frontend service vars
+2) Create the backend web service using `render.yaml`:
+  - Render Dashboard → New → Blueprint → Connect your GitHub repo
+  - Select `render.yaml` at repo root
+  - Service name: `print-saas-backend`
+  - Environment variables:
+    - `NODE_ENV=production`
+    - `PORT=3000`
+    - `DATABASE_URL=<Render Postgres connection string>` (set as protected/secret)
 
-Copy and edit:
+3) Build/Start commands (from `render.yaml`):
+  - Build: `npm install && npm run build || true`
+  - Start: `npx prisma migrate deploy && npx prisma db seed || true && npm run start || node dist/index.js`
+
+4) Health checks:
+  - `GET /__ping` returns `pong`
+  - `GET /health` returns `{ status: 'ok' }`
+  - `GET /ready` returns `{ ready: true }` if DB reachable
+
+5) After deploy completes, note the public backend URL, e.g. `https://print-saas-backend.onrender.com`.
+
+## Step 2: Frontend on Vercel
+
+1) Create a new project on Vercel:
+  - Import the same GitHub repo
+  - Set Root Directory: `frontend`
+
+2) Configure build settings:
+  - Build command: `npm run build`
+  - Output directory: `dist`
+  - Framework preset: `Vite`
+
+3) Set environment variables on Vercel:
+  - `VITE_API_URL=https://<Render Backend URL>/api`
+
+4) Deploy; copy the public frontend URL (e.g., `https://print-saas-frontend.vercel.app`).
+
+## CORS
+If you lock down origins, set `CORS_ORIGINS` in backend env to your Vercel domain (comma-separated). Example:
+
+```
+CORS_ORIGINS=https://print-saas-frontend.vercel.app
+```
+
+## Optional: Single VPS Deployment
+For a single host, use `docker-compose.production.yml` with `deploy/.env`:
 
 ```bash
 cp deploy/.env.example deploy/.env
 cp deploy/backend.env.example deploy/backend.env
 cp deploy/frontend.env.example deploy/frontend.env
-```
-
-## Database and Migrations
-
-- Ensure `DATABASE_URL` is set in `deploy/backend.env` to match your DB.
-- Run migrations inside backend container:
-
-```bash
-docker compose -f docker-compose.production.yml --env-file deploy/.env run --rm backend npm run prisma:migrate
-```
-
-> TODO: Replace `npm run prisma:migrate` with the actual migration script if different.
-
-## Build and Run (Production)
-
-```bash
 docker compose -f docker-compose.production.yml --env-file deploy/.env up --build -d
 ```
 
-## Exposed Ports
+Expose ports 80/443 via Nginx, proxy to backend:3000 and serve frontend `dist`.
 
-- Backend: 3000
-- Frontend: 5173 (change if serving statically)
-- Postgres: 5432
+## Smoke Verification
+After deployment:
+- `curl -s https://<backend>/__ping` → `pong`
+- `curl -s https://<backend>/health` → `{ status: 'ok' }`
+- `curl -s https://<backend>/ready` → `{ ready: true }`
+- Visit the frontend; login and basic flows should work against `VITE_API_URL`.
 
-## Hosting Options (choose one)
+## CI/CD (Optional)
+Run nightly E2E from GitHub Actions:
 
-- Vercel (frontend) + Render/Fly (backend)
-- Fly.io for both services
-- Supabase for managed Postgres
+```
+DISPATCH=1 bash scripts/master.sh
+```
 
-> TODO: Configure image registry and deploy strategy based on your provider.
-
-## GitHub Actions Deploy Workflow (Optional)
-
-See `.github/workflows/deploy.yml`. It builds images on manual dispatch. It does not push images unless you configure secrets (e.g., `REGISTRY`, `REGISTRY_USER`, `REGISTRY_PASSWORD`).
+Artifacts appear under `artifacts_download/<RUN_ID>/` with Playwright report and logs.

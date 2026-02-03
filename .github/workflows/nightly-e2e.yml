@@ -14,6 +14,10 @@ on:
           - smoke
           - regression
         default: regression
+      base_url:
+        description: "Override base URL (optional)"
+        type: string
+        default: ""
   schedule:
     - cron: "0 2 * * *" # 02:00 UTC nightly
 
@@ -125,13 +129,15 @@ jobs:
         env:
           INPUT_SKIP_PACK_E2E: ${{ inputs.skip_pack_e2e }}
           INPUT_SUITE: ${{ inputs.suite }}
+          INPUT_BASE_URL: ${{ inputs.base_url }}
           DATABASE_URL: postgresql://app:password@localhost:5432/app
         run: |
           set -euo pipefail
           export SKIP_PACK_E2E="${INPUT_SKIP_PACK_E2E}"
           export SUITE="${INPUT_SUITE}"
           # Resolve Base URL precedence
-          BASE_URL="${PLAYWRIGHT_BASE_URL:-}"
+          BASE_URL="${INPUT_BASE_URL:-}"
+          if [ -z "${BASE_URL}" ]; then BASE_URL="${PLAYWRIGHT_BASE_URL:-}"; fi
           if [ -z "${BASE_URL}" ]; then BASE_URL="${E2E_BASE_URL:-}"; fi
           if [ -z "${BASE_URL}" ]; then BASE_URL="${DEFAULT_BASE_URL}"; fi
           export PLAYWRIGHT_BASE_URL="$BASE_URL"
