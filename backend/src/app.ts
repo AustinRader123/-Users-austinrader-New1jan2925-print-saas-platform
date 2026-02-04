@@ -68,6 +68,11 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// API health check (useful for frontend hitting /api base)
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Readiness probe - checks DB quickly with strict timeout
 const readyPrisma = new PrismaClient();
 app.get('/ready', async (req, res) => {
