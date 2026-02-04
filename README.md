@@ -1,4 +1,4 @@
-# DecoNetwork - Custom Product Commerce & Production Platform
+# SkuFlow - Custom Product Commerce & Production Platform
 
 Complete enterprise-grade platform for designing, pricing, and manufacturing custom products.
 

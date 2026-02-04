@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center">
-          <h1 className="text-5xl font-bold mb-4">Welcome to DecoNetwork</h1>
+          <h1 className="text-5xl font-bold mb-4">Welcome to SkuFlow</h1>
           <p className="text-xl text-slate-600 dark:text-slate-400 mb-8">
             Custom Product Commerce & Production Platform
           </p>

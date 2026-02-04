@@ -1,7 +1,7 @@
 # Frontend README
-# DecoNetwork - Custom Product Commerce Platform
+# SkuFlow - Custom Product Commerce Platform
 
-Modern React/TypeScript frontend for the DecoNetwork platform.
+Modern React/TypeScript frontend for the SkuFlow platform.
 
 ## Setup
 

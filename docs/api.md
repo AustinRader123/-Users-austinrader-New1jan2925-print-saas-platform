@@ -1,6 +1,6 @@
-# DecoNetwork API Documentation
+# SkuFlow API Documentation
 
-Complete API reference for DecoNetwork Commerce Platform.
+Complete API reference for SkuFlow Commerce Platform.
 
 ## Base URL
 

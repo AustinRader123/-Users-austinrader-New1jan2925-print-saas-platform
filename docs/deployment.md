@@ -1,4 +1,4 @@
-# DecoNetwork Deployment Guide
+# SkuFlow Deployment Guide
 
 ## Prerequisites
 
@@ -32,10 +32,10 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-S3_BUCKET=deco-network-prod
+S3_BUCKET=skuflow-prod
 
 SENDGRID_API_KEY=...
-SENDGRID_FROM_EMAIL=noreply@deconetwork.com
+SENDGRID_FROM_EMAIL=noreply@skuflow.ai
 
 ENABLE_VENDOR_SYNC=true
 ENABLE_MOCKUP_GENERATION=true
@@ -117,12 +117,12 @@ docker-compose up
 
 ```bash
 # Build Docker image
-docker build -t deco-network-backend ./backend
+docker build -t skuflow-backend ./backend
 
 # Push to ECR
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789.dkr.ecr.us-east-1.amazonaws.com
-docker tag deco-network-backend:latest 123456789.dkr.ecr.us-east-1.amazonaws.com/deco-network-backend:latest
-docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/deco-network-backend:latest
+docker tag skuflow-backend:latest 123456789.dkr.ecr.us-east-1.amazonaws.com/skuflow-backend:latest
+docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/skuflow-backend:latest
 ```
 
 #### Frontend to S3 + CloudFront:
@@ -132,7 +132,7 @@ docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/deco-network-backend:lates
 npm run build
 
 # Deploy to S3
-aws s3 sync dist/ s3://deco-network-frontend --delete
+aws s3 sync dist/ s3://skuflow-frontend --delete
 
 # Invalidate CloudFront cache
 aws cloudfront create-invalidation --distribution-id E123ABC456 --paths "/*"
@@ -142,7 +142,7 @@ aws cloudfront create-invalidation --distribution-id E123ABC456 --paths "/*"
 
 ```bash
 aws rds create-db-instance \
-  --db-instance-identifier deco-network-db \
+  --db-instance-identifier skuflow-db \
   --engine postgres \
   --db-instance-class db.t3.micro \
   --master-username admin \
@@ -154,7 +154,7 @@ aws rds create-db-instance \
 
 ```bash
 aws elasticache create-cache-cluster \
-  --cache-cluster-id deco-network-redis \
+  --cache-cluster-id skuflow-redis \
   --engine redis \
   --cache-node-type cache.t3.micro
 ```
@@ -169,7 +169,7 @@ vercel
 
 **Backend on Heroku:**
 ```bash
-heroku create deco-network-api
+heroku create skuflow-api
 git push heroku main
 heroku config:set DATABASE_URL=postgresql://...
 ```
@@ -256,7 +256,7 @@ psql postgresql://user:pass@host:5432/deco_network < backup.sql
 
 ```bash
 aws s3api put-bucket-versioning \
-  --bucket deco-network \
+  --bucket skuflow \
   --versioning-configuration Status=Enabled
 ```
 
@@ -360,8 +360,8 @@ pm2 start npm --name worker2 -- run worker
 ```bash
 # Read replicas
 aws rds create-db-instance-read-replica \
-  --db-instance-identifier deco-network-db-replica \
-  --source-db-instance-identifier deco-network-db
+  --db-instance-identifier skuflow-db-replica \
+  --source-db-instance-identifier skuflow-db
 ```
 
 ### Caching

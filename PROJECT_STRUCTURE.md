@@ -1,4 +1,4 @@
-# DecoNetwork Project Structure
+# SkuFlow Project Structure
 
 ```
 feb1/
