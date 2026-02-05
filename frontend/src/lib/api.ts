@@ -244,16 +244,35 @@ class ApiClient {
   // Admin - Vendor Import
   async adminImportVendorCsv(
     vendorId: string,
-    params: { storeId: string; file: File; mapping?: any }
+    params: { storeId: string; file: File; mapping?: any } | { storeId: string; csv: string; mapping?: any }
   ) {
-    const form = new FormData();
-    form.append('storeId', params.storeId);
-    form.append('file', params.file);
-    if (params.mapping) form.append('mapping', JSON.stringify(params.mapping));
-    const { data } = await this.client.post(`/vendors/${vendorId}/import-csv`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
+    // Support both multipart file upload and raw CSV string body
+    if ((params as any).file) {
+      const p = params as { storeId: string; file: File; mapping?: any };
+      const form = new FormData();
+      form.append('storeId', p.storeId);
+      form.append('file', p.file);
+      if (p.mapping) form.append('mapping', JSON.stringify(p.mapping));
+      const { data } = await this.client.post(`/vendors/${vendorId}/import-csv`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    } else {
+      const p = params as { storeId: string; csv: string; mapping?: any };
+      const { data } = await this.client.post(`/vendors/${vendorId}/import-csv`, {
+        storeId: p.storeId,
+        csv: p.csv,
+        mapping: p.mapping,
+      });
+      return data;
+    }
+  }
+
+  // Admin - Production pack (fallback stub)
+  async adminGenerateProductionPack(jobId: string): Promise<{ url: string }> {
+    // Backend may generate a downloadable pack via a specific route.
+    // Fallback returns the expected pack download path used in UI.
+    return { url: `/api/admin/production/jobs/${jobId}/pack/download` };
   }
 
   async adminListVendorCatalog(vendorId: string) {

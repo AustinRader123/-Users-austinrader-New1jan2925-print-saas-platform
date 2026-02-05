@@ -24,7 +24,7 @@ export default function KanbanPackButton({ jobId, onSuccess, initialReady }: { j
     <div className="mt-2 flex items-center justify-between">
       {packUrl ? (
         <a
-          href={`/api/admin/production/jobs/${jobId}/pack/download`}
+          href={packUrl}
           target="_blank"
           rel="noreferrer"
           className="text-blue-600 underline"
