@@ -94,3 +94,4 @@ fi
 
 echo -e "\n${GREEN}=========================================================${NC}"
 echo -e "${GREEN}✓ Test suite completed!${NC}"
+
