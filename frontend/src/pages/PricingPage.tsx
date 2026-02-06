@@ -115,6 +115,38 @@ export default function PricingPage() {
           );
         })}
       </div>
+
+      {/* Competitor comparison */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-semibold text-white text-center">Compare with Competitors</h2>
+        <p className="text-slate-300 text-center mt-2">How SkuFlow stacks up against platforms like Deco Network.</p>
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-700">
+          <table className="w-full text-left bg-slate-800">
+            <thead className="bg-slate-900">
+              <tr>
+                <th className="px-4 py-3 text-slate-200">Feature</th>
+                <th className="px-4 py-3 text-slate-200">SkuFlow</th>
+                <th className="px-4 py-3 text-slate-200">Typical Competitor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { f: 'On-site design editor', s: 'Modern, fast, multi-layer', c: 'Varies, often legacy UX' },
+                { f: 'Production boards & assets', s: 'Built-in with status tracking', c: 'Often custom or add-on' },
+                { f: 'Catalog integrations', s: 'Multi-supplier with rich variants', c: 'Single supplier or limited' },
+                { f: 'API & webhooks', s: 'Available on Scale', c: 'Limited or extra cost' },
+                { f: 'Pricing flexibility', s: 'Tiered + custom contracts', c: 'Fixed tiers' },
+              ].map((row) => (
+                <tr key={row.f} className="odd:bg-slate-800 even:bg-slate-800/80">
+                  <td className="px-4 py-3 text-slate-300">{row.f}</td>
+                  <td className="px-4 py-3 text-green-300">{row.s}</td>
+                  <td className="px-4 py-3 text-slate-300">{row.c}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
