@@ -32,18 +32,23 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .map((s) => s.trim())
   .filter(Boolean);
 const isProd = (process.env.NODE_ENV || 'development') === 'production';
+const commonHeaders = ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID', 'X-Correlation-ID'];
+const allowAllInProd = allowedOrigins.length === 0;
 const corsOptions: CorsOptions = isProd
   ? {
       origin: (origin, callback) => {
         // Allow non-browser requests and exact matches
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (allowAllInProd || !origin || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
       },
       credentials: true,
+      allowedHeaders: commonHeaders,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      optionsSuccessStatus: 204,
     }
-  : { origin: true, credentials: true };
+  : { origin: true, credentials: true, allowedHeaders: commonHeaders };
 
 // Ultra-safe ping registered BEFORE any middleware
 // Must respond instantly and never touch DB or other async layers
@@ -55,6 +60,7 @@ app.get('/__ping', (req, res) => {
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
 app.use(helmet());
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
