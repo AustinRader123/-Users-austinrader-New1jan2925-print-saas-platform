@@ -6,18 +6,36 @@ import { v4 as uuidv4 } from 'uuid';
 // when an edge proxy or rewrite forwards /api to the backend.
 const RAW_API = import.meta.env.VITE_API_URL as string | undefined;
 const API_URL = (() => {
+  // Prefer same-origin relative '/api' whenever RAW_API points to a different origin.
+  // This lets platform rewrites (e.g., Vercel) proxy to the backend and avoids CORS.
+  if (typeof window !== 'undefined') {
+    const currentOrigin = `${window.location.protocol}//${window.location.host}`;
+    if (!RAW_API || RAW_API.startsWith('/')) return '/api';
+    try {
+      const u = new URL(RAW_API);
+      const apiOrigin = `${u.protocol}//${u.host}`;
+      if (apiOrigin !== currentOrigin) {
+        return '/api';
+      }
+    } catch {
+      // Malformed RAW_API; use relative proxy
+      return '/api';
+    }
+    return RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
+  }
+  // SSR or non-browser: use RAW_API if provided, else relative '/api'
   if (RAW_API && RAW_API.length > 0) {
     return RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
   }
-  // Fallback: use relative '/api' so the frontend host can proxy
   return '/api';
 })();
 // Root base for health checks (strip trailing '/api' if present) or use relative '/api'
 const API_ROOT = (() => {
+  // If we ended up with relative '/api', use relative root
+  if (API_URL === '/api') return '';
   if (RAW_API && RAW_API.length > 0) {
     return RAW_API.endsWith('/api') ? RAW_API.replace(/\/api$/, '') : RAW_API;
   }
-  // When RAW_API isn't set, call relative '/api/health'
   return '';
 })();
 
