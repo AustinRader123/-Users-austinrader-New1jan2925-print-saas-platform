@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://your-render-service.onrender.com/api/:match*"
+      "destination": "https://users-austinrader-new1jan2925-print-saas-50g3.onrender.com/:match*"
     }
   ]
 }
