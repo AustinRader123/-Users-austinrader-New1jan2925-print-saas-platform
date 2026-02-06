@@ -1,15 +1,24 @@
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-// Prefer dev proxy via relative '/api' to avoid CORS and hard-coded ports.
-// Allows overriding via VITE_API_URL when needed.
-// API base: ensure we call backend under /api
-const RAW_API = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
-const API_URL = RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
-// Root base for health checks (strip trailing '/api' if present)
-const API_ROOT = ((): string => {
-  const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
-  return raw.endsWith('/api') ? raw.replace(/\/api$/, '') : raw;
+// Prefer relative '/api' in production when VITE_API_URL is not provided.
+// This avoids hard-coding localhost in deployed environments and reduces CORS issues
+// when an edge proxy or rewrite forwards /api to the backend.
+const RAW_API = import.meta.env.VITE_API_URL as string | undefined;
+const API_URL = (() => {
+  if (RAW_API && RAW_API.length > 0) {
+    return RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
+  }
+  // Fallback: use relative '/api' so the frontend host can proxy
+  return '/api';
+})();
+// Root base for health checks (strip trailing '/api' if present) or use relative '/api'
+const API_ROOT = (() => {
+  if (RAW_API && RAW_API.length > 0) {
+    return RAW_API.endsWith('/api') ? RAW_API.replace(/\/api$/, '') : RAW_API;
+  }
+  // When RAW_API isn't set, call relative '/api/health'
+  return '';
 })();
 
 class ApiClient {
@@ -39,8 +48,20 @@ class ApiClient {
       }
       return config;
     });
-    // Avoid hanging requests in dev; fail fast for diagnostics
+    // Avoid hanging requests; fail fast for diagnostics
     this.client.defaults.timeout = 10000; // 10s
+
+    // Basic response interceptor to unify network/CORS errors
+    this.client.interceptors.response.use(
+      (resp) => resp,
+      (error) => {
+        // Axios uses 'Network Error' for CORS/mixed-content or DNS failures
+        if (error && !error.response) {
+          error.message = 'Network error. Check API URL, HTTPS, and CORS settings.';
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   setToken(token: string) {
@@ -362,7 +383,7 @@ class ApiClient {
 
   // Health check against backend root (not prefixed by /api)
   async health(): Promise<{ status: string }> {
-    const url = `${API_ROOT}/health`;
+    const url = API_ROOT ? `${API_ROOT}/health` : `/api/health`;
     const { data } = await axios.get(url, { timeout: 5000 });
     return data;
   }
