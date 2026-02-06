@@ -17,6 +17,13 @@ import AdminPricingRulesPage from './pages/AdminPricingRulesPage';
 import AdminVendorsPage from './pages/AdminVendorsPage';
 import AdminVendorDetailPage from './pages/AdminVendorDetailPage';
 import AdminPricingSimulatorPage from './pages/AdminPricingSimulatorPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import SolutionsPage from './pages/SolutionsPage';
+import FeaturesPage from './pages/FeaturesPage';
+import CatalogsPage from './pages/CatalogsPage';
+import ResourcesPage from './pages/ResourcesPage';
+import ContactPage from './pages/ContactPage';
+import PricingPage from './pages/PricingPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -67,6 +74,12 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/solutions" element={<SolutionsPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/catalogs" element={<CatalogsPage />} />
+            <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/products/:productId" element={<ProductPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -114,6 +127,14 @@ function App() {
             />
 
             {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/production"
               element={
