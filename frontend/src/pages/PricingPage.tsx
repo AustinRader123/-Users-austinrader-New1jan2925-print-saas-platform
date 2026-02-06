@@ -46,26 +46,26 @@ export default function PricingPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Pricing</h1>
-        <p className="text-slate-600 mt-2">Flexible plans for growing print shops. Choose monthly or annual billing.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Pricing</h1>
+        <p className="text-slate-300 mt-2">Flexible plans for growing print shops. Choose monthly or annual billing.</p>
       </div>
 
       <div className="flex items-center justify-center mb-8">
-        <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-          <span className="text-sm text-slate-600">Billing</span>
+        <div className="inline-flex items-center gap-3 rounded-full border border-slate-700 bg-slate-800 px-3 py-2 shadow-sm">
+          <span className="text-sm text-slate-300">Billing</span>
           <button
             aria-pressed={!annual}
             onClick={() => setAnnual(false)}
-            className={`${!annual ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'} text-sm px-3 py-1 rounded-full`}
+            className={`${!annual ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'} text-sm px-3 py-1 rounded-full`}
           >
             Monthly
           </button>
           <button
             aria-pressed={annual}
             onClick={() => setAnnual(true)}
-            className={`${annual ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'} text-sm px-3 py-1 rounded-full`}
+            className={`${annual ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'} text-sm px-3 py-1 rounded-full`}
           >
-            Annual <span className="ml-1 text-xs">(save 10%)</span>
+            Annual <span className="ml-1 text-xs text-slate-200">(save 10%)</span>
           </button>
         </div>
       </div>
@@ -76,27 +76,27 @@ export default function PricingPage() {
           return (
             <div
               key={t.name}
-              className={`rounded-xl border ${t.highlight ? 'border-blue-300' : 'border-slate-200'} bg-white p-6 shadow-sm hover:shadow-md transition-shadow`}
+              className={`rounded-xl border ${t.highlight ? 'border-blue-400' : 'border-slate-700'} bg-slate-800 p-6 hover:bg-slate-700 transition-colors`}
             >
               <div className="flex items-center justify-between">
-                <div className="text-lg font-semibold">{t.name}</div>
+                <div className="text-lg font-semibold text-white">{t.name}</div>
                 {t.highlight && (
-                  <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded">Most Popular</span>
+                  <span className="text-xs font-medium text-blue-200 bg-blue-900/40 border border-blue-700 px-2 py-1 rounded">Most Popular</span>
                 )}
               </div>
               <div className="mt-3">
                 {price !== null ? (
-                  <div className="text-3xl font-bold">${price}<span className="text-base font-medium text-slate-600">/mo</span></div>
+                  <div className="text-3xl font-bold text-white">${price}<span className="text-base font-medium text-slate-300">/mo</span></div>
                 ) : (
-                  <div className="text-3xl font-bold">Custom</div>
+                  <div className="text-3xl font-bold text-white">Custom</div>
                 )}
               </div>
 
-              <ul className="mt-6 space-y-3 text-slate-700">
+              <ul className="mt-6 space-y-3">
                 {t.features.map((f) => (
                   <li key={f} className="flex items-start gap-2">
-                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-green-100 text-green-700 text-xs">✓</span>
-                    <span>{f}</span>
+                    <span className="text-green-400">✓</span>
+                    <span className="text-slate-300">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -109,7 +109,7 @@ export default function PricingPage() {
               </a>
 
               <div className="mt-3 text-center">
-                <a href="/contact" className="text-sm text-blue-700 hover:text-blue-800">Request Demo</a>
+                <a href="/contact" className="text-sm text-blue-300 hover:text-blue-200">Request Demo</a>
               </div>
             </div>
           );
