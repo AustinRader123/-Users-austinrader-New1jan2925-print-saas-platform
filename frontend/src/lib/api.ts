@@ -1,9 +1,24 @@
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-// Prefer dev proxy via relative '/api' to avoid CORS and hard-coded ports.
-// Allows overriding via VITE_API_URL when needed.
-const API_URL = (import.meta.env.VITE_API_URL as string) || '/api';
+// Prefer same-origin '/api' to leverage platform rewrites and avoid CORS.
+// Allows overriding via VITE_API_URL when needed, but forces same-origin if cross-origin.
+function resolveApiBase(): string {
+  const raw = (import.meta.env.VITE_API_URL as string) || '';
+  try {
+    if (!raw) return '/api';
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      // Cross-origin configured; use same-origin '/api' so Vercel rewrites can proxy.
+      return '/api';
+    }
+    return url.pathname || '/api';
+  } catch {
+    return '/api';
+  }
+}
+
+const API_URL = resolveApiBase();
 
 class ApiClient {
   private client: AxiosInstance;
@@ -32,8 +47,19 @@ class ApiClient {
       }
       return config;
     });
-    // Avoid hanging requests in dev; fail fast for diagnostics
+    // Avoid hanging requests; fail fast for diagnostics
     this.client.defaults.timeout = 10000; // 10s
+
+    // Clarify network errors in UI/devtools
+    this.client.interceptors.response.use(
+      (resp) => resp,
+      (error) => {
+        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+          error.message = 'Network error: API unreachable or blocked by CORS/proxy.';
+        }
+        throw error;
+      }
+    );
   }
 
   setToken(token: string) {
