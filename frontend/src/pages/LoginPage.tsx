@@ -12,7 +12,7 @@ export default function LoginPage() {
   // Redirect authenticated users away from login
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     }
   }, [user, navigate]);
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
       // If redirected here with next param, honor it
       const params = new URLSearchParams(window.location.search);
       const next = params.get('next');
-      navigate(next || '/', { replace: true });
+      navigate(next || '/app', { replace: true });
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
     }

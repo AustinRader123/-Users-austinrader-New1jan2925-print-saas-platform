@@ -14,7 +14,7 @@ export default function RegisterPage() {
   // Redirect authenticated users away from register
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     }
   }, [user, navigate]);
 
@@ -25,7 +25,7 @@ export default function RegisterPage() {
       toast.success('Registration successful!');
       const params = new URLSearchParams(window.location.search);
       const next = params.get('next');
-      navigate(next || '/', { replace: true });
+      navigate(next || '/app', { replace: true });
     } catch (error: any) {
       toast.error(extractErrorMessage(error) || 'Registration failed');
     }

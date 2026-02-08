@@ -24,6 +24,7 @@ import ResourcesPage from './pages/ResourcesPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
 import AdminDemoPage from './pages/AdminDemoPage';
+import DashboardPage from './pages/DashboardPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -93,8 +94,8 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              {/* Default to Orders/Dashboard */}
-              <Route index element={<OrdersPage />} />
+              {/* Default to Dashboard */}
+              <Route index element={<DashboardPage />} />
               <Route path="orders" element={<OrdersPage />} />
               <Route path="designs" element={<DesignPage />} />
               <Route path="designs/:designId/edit" element={<DesignEditorPage />} />
