@@ -25,6 +25,11 @@ import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
 import AdminDemoPage from './pages/AdminDemoPage';
 import DashboardPage from './pages/DashboardPage';
+import AppShell from './components/AppShell';
+import OrdersListPage from './pages/OrdersListPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import ProductionQueuePage from './pages/ProductionQueuePage';
+import ArtworkApprovalsPage from './pages/ArtworkApprovalsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -90,13 +95,16 @@ function App() {
               path="/app"
               element={
                 <ProtectedRoute>
-                  <Outlet />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
               {/* Default to Dashboard */}
               <Route index element={<DashboardPage />} />
-              <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders" element={<OrdersListPage />} />
+              <Route path="orders/:orderId" element={<OrderDetailPage />} />
+              <Route path="production" element={<ProductionQueuePage />} />
+              <Route path="artwork" element={<ArtworkApprovalsPage />} />
               <Route path="designs" element={<DesignPage />} />
               <Route path="designs/:designId/edit" element={<DesignEditorPage />} />
               <Route path="cart" element={<CartPage />} />
