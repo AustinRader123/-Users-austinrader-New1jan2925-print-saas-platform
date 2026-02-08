@@ -22,7 +22,7 @@ export default function Navbar() {
             <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold">S</span>
             </div>
-            <span className="font-bold text-lg hidden sm:inline">SkuFlow</span>
+            <span className="font-bold text-lg hidden sm:inline text-slate-900">SkuFlow</span>
           </Link>
 
           {/* Right Navigation (marketing) */}
