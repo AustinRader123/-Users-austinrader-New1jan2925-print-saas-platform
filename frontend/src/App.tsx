@@ -23,6 +23,7 @@ import CatalogsPage from './pages/CatalogsPage';
 import ResourcesPage from './pages/ResourcesPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
+import AdminDemoPage from './pages/AdminDemoPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -131,6 +132,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <ProductionDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/demo"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminDemoPage />
                 </ProtectedRoute>
               }
             />
