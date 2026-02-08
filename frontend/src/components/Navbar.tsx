@@ -19,7 +19,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold">S</span>
             </div>
             <span className="font-bold text-lg hidden sm:inline">SkuFlow</span>
@@ -60,7 +60,7 @@ export default function Navbar() {
                 </span>
                 <button
                   onClick={logout}
-                  className="p-2 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800"
                 >
                   <LogOut size={20} />
                 </button>
@@ -70,7 +70,7 @@ export default function Navbar() {
                 <Link to="/login" className="btn btn-secondary">
                   Login
                 </Link>
-                <Link to="/register" className="btn btn-primary">
+                <Link to="/register" className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800">
                   Sign Up
                 </Link>
               </div>
