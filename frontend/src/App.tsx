@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
@@ -83,6 +83,82 @@ function App() {
             <Route path="/products/:productId" element={<ProductPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            {/* Protected App namespace */}
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <Outlet />
+                </ProtectedRoute>
+              }
+            >
+              {/* Default to Orders/Dashboard */}
+              <Route index element={<OrdersPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="designs" element={<DesignPage />} />
+              <Route path="designs/:designId/edit" element={<DesignEditorPage />} />
+              <Route path="cart" element={<CartPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
+
+              {/* Admin within /app */}
+              <Route
+                path="admin/production"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <ProductionDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/vendors/import"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminVendorImportPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/vendors"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminVendorsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/vendors/:vendorId"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminVendorDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/pricing"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminPricingRulesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/pricing-rules"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminPricingRulesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/pricing-simulator"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminPricingSimulatorPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
             {/* Protected Routes - Customer */}
             <Route

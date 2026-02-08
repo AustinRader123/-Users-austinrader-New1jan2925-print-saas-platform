@@ -1,4 +1,5 @@
 import express, { Express } from 'express';
+import rateLimit from 'express-rate-limit';
 import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import 'express-async-errors';
@@ -69,6 +70,15 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Basic rate limiting for production safety
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // max requests per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 
 // Health check (Render health path)
 app.get('/health', (_req, res) => {
