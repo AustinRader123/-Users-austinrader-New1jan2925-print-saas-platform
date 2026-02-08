@@ -30,6 +30,7 @@ import OrdersListPage from './pages/OrdersListPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import ProductionQueuePage from './pages/ProductionQueuePage';
 import ArtworkApprovalsPage from './pages/ArtworkApprovalsPage';
+import ReportsPage from './pages/ReportsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -167,6 +168,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+                <Route
+                  path="admin/reports"
+                  element={
+                    <ProtectedRoute requiredRole="ADMIN">
+                      <ReportsPage />
+                    </ProtectedRoute>
+                  }
+                />
             </Route>
 
             {/* Protected Routes - Customer */}
@@ -277,6 +286,8 @@ function App() {
               }
             />
           </Routes>
+              }
+            />
         </main>
       </div>
     </Router>
