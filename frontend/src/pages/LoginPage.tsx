@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, loading } = useAuthStore();
+  const { login, loading, user } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Redirect authenticated users away from login
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await login(email, password);
       toast.success('Login successful!');
-      navigate('/');
+      // If redirected here with next param, honor it
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      navigate(next || '/', { replace: true });
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
     }

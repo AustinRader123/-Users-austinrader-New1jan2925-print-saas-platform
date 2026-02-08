@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
@@ -6,17 +6,26 @@ import { extractErrorMessage } from '../lib/errors';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register, loading } = useAuthStore();
+  const { register, loading, user } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+
+  // Redirect authenticated users away from register
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await register(email, password, name);
       toast.success('Registration successful!');
-      navigate('/');
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      navigate(next || '/', { replace: true });
     } catch (error: any) {
       toast.error(extractErrorMessage(error) || 'Registration failed');
     }

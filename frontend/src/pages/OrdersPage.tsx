@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiClient } from '../lib/api';
+import * as Orders from '../services/orders';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -9,7 +9,7 @@ export default function OrdersPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiClient.listOrders();
+        const data = await Orders.listOrders();
         setOrders(data || []);
       } catch (e: any) {
         setError(e?.response?.data?.error || 'Failed to load orders');

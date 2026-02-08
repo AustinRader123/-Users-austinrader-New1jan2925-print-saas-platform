@@ -77,6 +77,19 @@ class ApiClient {
         if (error && !error.response) {
           error.message = 'Network error. Check API URL, HTTPS, and CORS settings.';
         }
+        // Auto-logout on 401 and redirect to login
+        const status = error?.response?.status;
+        if (status === 401) {
+          try {
+            this.clearToken();
+          } catch {}
+          if (typeof window !== 'undefined') {
+            // Preserve current path to return after auth
+            const path = window.location.pathname;
+            const redirect = path && path !== '/login' ? `?next=${encodeURIComponent(path)}` : '';
+            window.location.href = `/login${redirect}`;
+          }
+        }
         return Promise.reject(error);
       }
     );
