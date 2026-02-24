@@ -7,6 +7,7 @@ import Drawer from '../components/Drawer';
 import Skeleton from '../components/Skeleton';
 import ErrorState from '../components/ErrorState';
 import { getOrder } from '../services/orders.service';
+import { DropdownMenu } from '../ui/DropdownMenu';
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
@@ -53,9 +54,14 @@ export default function OrderDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <StatusChip value={order.status || 'DRAFT'} />
-          <button className="rounded-sm border px-2 py-1 text-xs" onClick={() => setNotesOpen(true)}>Production Notes</button>
-          <button className="rounded-sm border px-2 py-1 text-xs">Export</button>
-          <button className="rounded-sm border px-2 py-1 text-xs">Packing Slip</button>
+          <DropdownMenu
+            trigger={<span>Actions</span>}
+            items={[
+              { label: 'Production Notes', onSelect: () => setNotesOpen(true) },
+              { label: 'Export', onSelect: () => {} },
+              { label: 'Packing Slip', onSelect: () => {} },
+            ]}
+          />
         </div>
       </div>
 
