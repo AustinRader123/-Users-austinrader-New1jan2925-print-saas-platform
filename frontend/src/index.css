@@ -3,96 +3,41 @@
 @tailwind utilities;
 
 :root {
-  /* Base */
-  --bg-page: #F5F7FA;
-  --bg-surface: #FFFFFF;
-  --bg-sidebar: #F1F4F8;
-  --border-default: #E2E8F0;
-  --border-muted: #EDF2F7;
-  --text-primary: #1E293B;
-  --text-secondary: #475569;
-  --text-muted: #64748B;
+  --primary: 59, 130, 246;
+  --secondary: 168, 85, 247;
+  --accent: 236, 72, 153;
+  --destructive: 239, 68, 68;
+  --muted: 107, 114, 128;
+  --success: 34, 197, 94;
+}
 
-  /* Primary Actions */
-  --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-muted: #EFF6FF;
-  --primary-text: #1E3A8A;
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  /* Status Colors */
-  --success: #15803D;
-  --warning: #B45309;
-  --danger: #B91C1C;
-    --info: #1D4ED8;
-    --draft: #64748B;
-    --production: #0F766E;
-    --approved: #15803D;
-    --cancelled: #B91C1C;
+body {
+  @apply bg-white dark:bg-slate-950 text-slate-950 dark:text-slate-50 transition-colors;
+}
 
-    /* Density */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --radius: 4px;
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
   }
 
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  .btn-primary {
+    @apply bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50;
   }
 
-  body {
-    background: var(--bg-page);
-    color: var(--text-primary);
+  .btn-secondary {
+    @apply bg-slate-200 text-slate-950 hover:bg-slate-300 disabled:opacity-50;
   }
 
-  @layer components {
-    /* Buttons */
-    .btn {
-      @apply inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:pointer-events-none;
-      border-radius: var(--radius);
-    }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-secondary { background: var(--border-muted); color: var(--text-primary); }
-    .btn-secondary:hover { background: var(--border-default); }
-    .btn-ghost { background: transparent; color: var(--text-primary); }
-    .btn-ghost:hover { background: var(--border-muted); }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-danger:hover { filter: brightness(0.95); }
-
-    /* Inputs */
-    .input-base {
-      @apply w-full px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary;
-      border: 1px solid var(--border-default);
-      border-radius: var(--radius);
-      background: var(--bg-surface);
-      color: var(--text-primary);
-    }
-    .select-base { @apply input-base appearance-none pr-7; background-image: url("data:image/svg+xml;utf8,<svg fill='none' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path fill='%2364758B' d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.17l3.71-2.94a.75.75 0 1 1 .94 1.17l-4.24 3.36a.75.75 0 0 1-.94 0L5.25 8.4a.75.75 0 0 1-.02-1.19Z'/></svg>"); background-repeat: no-repeat; background-position: right 0.4rem center; background-size: 16px 16px; }
-
-    /* Cards */
-    .card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius); }
-    .card-header { border-bottom: 1px solid var(--border-default); padding: 8px 12px; font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
-    .card-body { padding: 8px 12px; }
-
-    /* Badges */
-    .badge { @apply inline-flex items-center px-2 py-0.5 text-xs; border: 1px solid var(--border-default); border-radius: var(--radius); }
-
-    /* Tables */
-    .table { @apply w-full text-sm; }
-    .table-th { @apply px-3 py-2 text-left font-medium; color: var(--text-secondary); background: var(--bg-surface); border-bottom: 1px solid var(--border-default); }
-    .table-td { @apply px-3 py-1.5; }
-    .table-row { border-top: 1px solid var(--border-default); }
-    .table-row:hover { background: #F8FAFC; }
-
-    /* Layout shells */
-    .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border-default); }
-    .topbar { background: var(--bg-surface); border-bottom: 1px solid var(--border-default); }
-    .panel { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius); }
+  .input-base {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500;
   }
 
-  /* Sticky table header utility */
-  .sticky-header thead { position: sticky; top: 0; z-index: 10; }
-
+  .card {
+    @apply bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800;
+  }
+}

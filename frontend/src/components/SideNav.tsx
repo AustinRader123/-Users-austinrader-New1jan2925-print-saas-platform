@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useUIStore } from '../stores/uiStore';
 
 type Group = {
   label: string;
@@ -48,7 +47,6 @@ const GROUPS: Group[] = [
 ];
 
 export default function SideNav() {
-  const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     GROUPS.forEach((g) => (init[g.label] = true));
@@ -56,19 +54,15 @@ export default function SideNav() {
   });
 
   return (
-    <aside className={`sidebar h-full ${sidebarCollapsed ? 'w-[56px]' : 'w-[260px]'} transition-all`}>
-      <div className="px-3 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-default)' }}>
+    <aside className="h-full border-r border-slate-200 bg-white w-[260px]">
+      <div className="px-3 py-3 border-b border-slate-200">
         <div className="text-sm font-semibold">SkuFlow Admin</div>
-        <button className="btn btn-ghost" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label="Toggle sidebar">
-          {sidebarCollapsed ? '→' : '←'}
-        </button>
       </div>
       <nav className="px-2 py-2 space-y-2">
         {GROUPS.map((group) => (
           <div key={group.label}>
             <button
-              className="flex w-full items-center justify-between px-2 py-1 text-xs font-medium"
-              style={{ color: 'var(--text-secondary)' }}
+              className="flex w-full items-center justify-between rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
               onClick={() => setOpenGroups((s) => ({ ...s, [group.label]: !s[group.label] }))}
             >
               <span>{group.label}</span>
@@ -81,16 +75,9 @@ export default function SideNav() {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                      `block px-2 py-1 text-sm ${isActive ? 'font-medium' : ''}`
+                      `block rounded px-2 py-1 text-sm ${isActive ? 'bg-slate-200 text-slate-900' : 'text-slate-700 hover:bg-slate-100'}`
                     }
-                    style={({ isActive }) => ({
-                      color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      background: isActive ? 'var(--primary-muted)' : 'transparent',
-                      borderLeft: `3px solid ${isActive ? 'var(--primary)' : 'transparent'}`,
-                    })}
                   >
-                    {/* Simple icon placeholder */}
-                    <span className="mr-1">•</span>
                     {item.label}
                   </NavLink>
                 ))}

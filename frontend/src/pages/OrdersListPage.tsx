@@ -5,9 +5,6 @@ import ErrorState from '../components/ErrorState';
 import Skeleton from '../components/Skeleton';
 import { listOrders } from '../services/orders.service';
 import { Link, useNavigate } from 'react-router-dom';
-import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
-import { DropdownMenu } from '../ui/DropdownMenu';
 
 type OrderRow = {
   id: string;
@@ -67,27 +64,27 @@ export default function OrdersListPage() {
 
   const Filters = (
     <div className="flex items-center gap-2">
-      <Select className="w-[140px]">
+      <select className="rounded-sm border border-slate-300 px-2 py-1 text-xs">
         <option>All Statuses</option>
         <option>Draft</option>
         <option>Paid</option>
         <option>In Production</option>
         <option>Ready</option>
         <option>Shipped</option>
-      </Select>
-      <Input type="date" />
-      <Input type="date" />
-      <Select className="w-[140px]">
+      </select>
+      <input type="date" className="rounded-sm border border-slate-300 px-2 py-1 text-xs" />
+      <input type="date" className="rounded-sm border border-slate-300 px-2 py-1 text-xs" />
+      <select className="rounded-sm border border-slate-300 px-2 py-1 text-xs">
         <option>All Stores</option>
-      </Select>
-      <Input placeholder="Customer" />
-      <Select className="w-[140px]">
+      </select>
+      <input placeholder="Customer" className="rounded-sm border border-slate-300 px-2 py-1 text-xs" />
+      <select className="rounded-sm border border-slate-300 px-2 py-1 text-xs">
         <option>All Payments</option>
         <option>Paid</option>
         <option>Pending</option>
         <option>Failed</option>
-      </Select>
-      <button className="btn btn-secondary">Apply</button>
+      </select>
+      <button className="rounded-sm border px-2 py-1 text-xs">Apply</button>
     </div>
   );
 
@@ -123,18 +120,6 @@ export default function OrdersListPage() {
           sort={sort}
           onSelectionChange={setSelection}
           getRowId={(r) => r.id}
-          stickyHeader
-          rowActions={(r) => (
-            <DropdownMenu
-              trigger={<span>⋮</span>}
-              items={[
-                { label: 'View', onSelect: () => navigate(`/app/orders/${r.id}`) },
-                { label: 'Edit', onSelect: () => navigate(`/app/orders/${r.id}?tab=summary`) },
-                { label: 'Print', onSelect: () => {} },
-                { label: 'Cancel', onSelect: () => {} },
-              ]}
-            />
-          )}
         />
       )}
     </div>
