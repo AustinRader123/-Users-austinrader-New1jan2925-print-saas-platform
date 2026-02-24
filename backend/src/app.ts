@@ -19,11 +19,14 @@ import ordersRoutes from './routes/orders.js';
 import pricingRoutes from './routes/pricing.js';
 import productionRoutes from './routes/production.js';
 import vendorRoutes from './routes/vendors.js';
+import dnConnectionsRoutes from './routes/dn_connections.js';
+import dnSyncRoutes from './routes/dn_sync.js';
 import adminRoutes from './routes/admin.js';
 import adminPricingRulesRoutes from './routes/admin_pricing_rules.js';
 import importJobsRoutes from './routes/import_jobs.js';
 import paymentsRoutes from './routes/payments.js';
 import debugRoutes from './routes/debug.js';
+import dnExploreRoutes from './routes/dn_explore.js';
 
 const app: Express = express();
 
@@ -116,9 +119,12 @@ app.use('/api', paymentsRoutes);
 app.use('/api/pricing', optionalAuthMiddleware, pricingRoutes);
 app.use('/api/production', authMiddleware, productionRoutes);
 app.use('/api/vendors', authMiddleware, vendorRoutes);
+app.use('/api/dn/connections', authMiddleware, dnConnectionsRoutes);
+app.use('/api/dn', authMiddleware, dnSyncRoutes);
 app.use('/api/admin', authMiddleware, adminRoutes);
 app.use('/api/admin/pricing-rules', authMiddleware, adminPricingRulesRoutes);
 app.use('/api', importJobsRoutes);
+app.use('/api/dn', authMiddleware, dnExploreRoutes);
 app.use('/api/debug', debugRoutes);
 
 // Error handling
