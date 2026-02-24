@@ -18,11 +18,12 @@ export default function Drawer({ open, onClose, title, children, width = 420 }: 
       />
       {/* Panel */}
       <div
-        className={`absolute right-0 top-0 h-full bg-white border-l border-slate-200 w-[${width}px] shadow-xl transition-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute right-0 top-0 h-full w-[${width}px] transition-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border-default)' }}
       >
-        <div className="border-b border-slate-200 px-3 py-2 text-sm font-semibold flex items-center justify-between">
+        <div className="px-3 py-2 text-sm font-semibold flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-default)' }}>
           <span>{title}</span>
-          <button className="rounded-sm border px-2 py-1 text-xs" onClick={onClose}>Close</button>
+          <button className="btn btn-ghost" onClick={onClose}>Close</button>
         </div>
         <div className="p-3 text-sm">{children}</div>
       </div>

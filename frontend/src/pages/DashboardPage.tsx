@@ -2,13 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 function Card({ children, className = '' }: React.PropsWithChildren<{ className?: string }>) {
-  return <div className={`rounded-2xl border border-black/10 bg-white shadow-sm ${className}`}>{children}</div>;
+  return <div className={`card ${className}`}>{children}</div>;
 }
 function CardHeader({ children }: React.PropsWithChildren) {
-  return <div className="px-4 py-3 border-b border-black/10">{children}</div>;
+  return <div className="card-header">{children}</div>;
 }
 function CardContent({ children }: React.PropsWithChildren) {
-  return <div className="px-4 py-3">{children}</div>;
+  return <div className="card-body">{children}</div>;
 }
 
 function Page({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -38,7 +38,7 @@ export default function DashboardPage() {
           <motion.div key={c.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
             <Card>
               <CardHeader>
-                <div className="text-sm text-black/60">{c.label}</div>
+                <div className="text-sm text-slate-600">{c.label}</div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-semibold">{c.value}</div>
@@ -52,20 +52,20 @@ export default function DashboardPage() {
         <Card className="xl:col-span-2">
           <CardHeader>
             <div className="font-medium">Revenue Trend</div>
-            <div className="text-sm text-black/60">Placeholder chart block</div>
+            <div className="text-xs text-slate-600">Placeholder chart block</div>
           </CardHeader>
           <CardContent>
-            <div className="h-[240px] rounded-xl bg-black/[0.03]" />
+            <div className="h-[240px] rounded-sm bg-slate-100" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <div className="font-medium">Production Breakdown</div>
-            <div className="text-sm text-black/60">Placeholder chart block</div>
+            <div className="text-xs text-slate-600">Placeholder chart block</div>
           </CardHeader>
           <CardContent>
-            <div className="h-[240px] rounded-xl bg-black/[0.03]" />
+            <div className="h-[240px] rounded-sm bg-slate-100" />
           </CardContent>
         </Card>
       </div>

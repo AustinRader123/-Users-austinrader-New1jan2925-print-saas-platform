@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import SideNav from './SideNav';
 import TopBar from './TopBar';
+import { Toasts } from '../ui/Toasts';
 
 export default function AppShell() {
   return (
@@ -13,6 +14,7 @@ export default function AppShell() {
           <main className="min-w-0 flex-1">
             <Outlet />
           </main>
+          <Toasts />
         </div>
       </div>
     </div>

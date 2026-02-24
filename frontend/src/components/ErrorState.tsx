@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded border border-rose-200 bg-rose-50 p-4 text-rose-700 text-sm">
+    <div className="panel p-4 text-sm" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', background: 'var(--bg-surface)' }}>
       {message}
     </div>
   );

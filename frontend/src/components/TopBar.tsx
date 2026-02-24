@@ -1,25 +1,31 @@
 import React from 'react';
+import { useUIStore } from '../stores/uiStore';
+import { Input } from '../ui/Input';
 
 export default function TopBar() {
+  const { toggleDensity, density } = useUIStore();
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="topbar sticky top-0 z-30">
       <div className="flex items-center justify-between gap-3 px-3 py-2">
         <div className="flex items-center gap-2">
-          <input
-            placeholder="Search orders, customers, products..."
-            className="w-[420px] rounded-sm border border-slate-300 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-slate-200"
-          />
-          <button className="rounded-sm border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">New Order</button>
-          <button className="rounded-sm border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">Add Product</button>
+          <Input className="w-[420px]" placeholder="Search orders, customers, products..." />
+          <button className="btn btn-secondary">New Order</button>
+          <button className="btn btn-secondary">Add Product</button>
         </div>
-
         <div className="flex items-center gap-2">
-          <select className="rounded-sm border border-slate-300 px-2 py-1 text-xs">
+          <select className="select-base w-[160px]">
             <option>Default Store</option>
           </select>
-          <button className="rounded-sm border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">Notifications</button>
-          <button className="rounded-sm border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">Account</button>
+          <button className="btn btn-secondary">Notifications</button>
+          <button className="btn btn-secondary">Account</button>
+          <button className="btn btn-ghost" onClick={toggleDensity} aria-label="Toggle density">
+            {density === 'compact' ? 'Compact' : 'Comfortable'}
+          </button>
         </div>
+      </div>
+      <div className="px-3 py-1 text-xs" style={{ borderTop: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
+        {/* Breadcrumb row placeholder; use <Breadcrumbs /> in pages */}
+        <span>Admin Portal</span>
       </div>
     </header>
   );

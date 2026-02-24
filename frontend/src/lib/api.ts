@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { notify } from '../stores/notifyStore';
 
 // Prefer relative '/api' in production when VITE_API_URL is not provided.
 // This avoids hard-coding localhost in deployed environments and reduces CORS issues
@@ -76,6 +77,7 @@ class ApiClient {
         // Axios uses 'Network Error' for CORS/mixed-content or DNS failures
         if (error && !error.response) {
           error.message = 'Network error. Check API URL, HTTPS, and CORS settings.';
+          notify('Network error / API unreachable', 'danger');
         }
         // Auto-logout on 401 and redirect to login
         const status = error?.response?.status;
@@ -89,6 +91,12 @@ class ApiClient {
             const redirect = path && path !== '/login' ? `?next=${encodeURIComponent(path)}` : '';
             window.location.href = `/login${redirect}`;
           }
+        }
+        if (status === 403) {
+          notify('Access denied', 'warning');
+        }
+        if (status >= 500) {
+          notify('Server error — please try again later', 'danger');
         }
         return Promise.reject(error);
       }

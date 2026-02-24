@@ -1,3 +1,90 @@
+# Decostack Integration Platform (Prototype)
+
+This repository contains a production-ready scaffold for a multi-tenant DecoNetwork integration platform.
+
+Key pieces:
+- `packages/dn-sdk`: DecoNetwork API client base + typed Orders client
+- `apps/api`: NestJS backend with modules for DN connections and sync, Prisma schema
+- `apps/web`: Next.js admin UI skeleton (Connections, Sync)
+- `docker-compose.yml`: Postgres, Redis, LocalStack for dev
+
+Getting started (dev):
+
+1. Install dependencies
+
+```bash
+pnpm install
+```
+
+2. Start dev services
+
+```bash
+docker compose up -d
+```
+
+3. Copy env for API
+
+```bash
+cp apps/api/.env.example .env
+# edit DATABASE_URL if needed
+```
+
+4. Run the API in dev
+
+```bash
+pnpm --filter apps/api run start:dev
+```
+
+5. Run the frontend
+
+```bash
+pnpm --filter apps/web run dev
+```
+
+Design notes and next steps are in the top-level task description. The scaffolding includes:
+
+- a `DNApiClient` with pagination and retry helpers in `packages/dn-sdk`
+- Prisma models for DecoNetwork integration in `backend/prisma/schema.prisma`
+- Encryption utilities at `backend/src/shared/crypto/crypto.ts` (uses `DN_ENC_KEY` env)
+- DN repositories and sync processors under `backend/src/modules/dn`
+
+Quick run (backend + queues + frontend):
+
+1. Start local infra:
+
+```bash
+docker compose up -d
+```
+
+2. Create or edit `backend/.env` from `backend/.env.example` and set `DATABASE_URL` and `DN_ENC_KEY`.
+
+3. Run migrations (Prisma):
+
+```bash
+# from repo root
+pnpm --filter backend run prisma:migrate || npx prisma migrate dev --schema=backend/prisma/schema.prisma
+```
+
+4. Start backend (dev):
+
+```bash
+node -r ts-node/register backend/src/index.ts
+```
+
+5. Start worker/queues (the app registers processors automatically when imported). Ensure Redis is running.
+
+6. Start frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+7. Create a DecoNetwork connection via the admin UI at `/admin/dn-connections` or POST `/api/dn/connections`.
+
+8. Trigger a bootstrap sync: POST `/api/dn/{connectionId}/sync/bootstrap` or use the UI button.
+
+Notes: The DN SDK lives in `packages/dn-sdk` and is referenced by backend processors. Endpoint paths for DecoNetwork are configurable in the SDK endpoint registry.
 # DecoNetwork - Custom Product Commerce & Production Platform
 
 Complete enterprise-grade platform for designing, pricing, and manufacturing custom products.
