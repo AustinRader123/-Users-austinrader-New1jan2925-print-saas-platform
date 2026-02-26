@@ -120,7 +120,8 @@ popd >/dev/null
 say "3) Build backend (and frontend if present)"
 
 pushd "${BACKEND_DIR}" >/dev/null
-npm ci
+# Ensure devDependencies (like TypeScript) are available for local builds
+npm ci --include=dev
 npm run build
 popd >/dev/null
 
