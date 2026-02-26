@@ -89,6 +89,8 @@ model Store {
   storeSettings StoreSettings?
   customPages   CustomPage[]
   importJobs    ImportJob[]
+  inventoryEvents InventoryEvent[]
+  dnInventoryEventMaps DnInventoryEventMap[]
   // DecoNetwork connections
   decoConnections DecoNetworkConnection[]
 
@@ -187,6 +189,7 @@ model Product {
   mockupTemplate MockupTemplate?
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
+  inventoryEvents InventoryEvent[]
 
   @@unique([storeId, slug])
   @@index([storeId])
@@ -231,6 +234,7 @@ model ProductVariant {
   // DecoNetwork mapping
   dnVariantMaps DnVariantMap[]
   dnInventoryMaps DnInventoryMap[]
+  inventoryEvents InventoryEvent[]
   vendorVariants  VendorProductVariant[]
 
   @@unique([productId, sku])
@@ -1025,12 +1029,12 @@ model DnProductMap {
 }
 
 model DnVariantMap {
-  id          String  @id @default(cuid())
+  id           String   @id @default(cuid())
   connectionId String
-  variantId   String
-  externalId  String
-  rawJson     Json
-  createdAt   DateTime @default(now())
+  variantId    String
+  externalId   String
+  rawJson      Json
+  createdAt    DateTime @default(now())
 
   connection DecoNetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   productVariant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
@@ -1040,19 +1044,64 @@ model DnVariantMap {
 }
 
 model DnInventoryMap {
-  id            String  @id @default(cuid())
-  connectionId  String
-  productVariantId String
-  externalId    String
-  rawJson       Json
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  connectionId String
+  variantId    String
+  externalId   String
+  rawJson      Json
+  createdAt    DateTime @default(now())
 
-  connection    DecoNetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  productVariant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  connection DecoNetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, externalId])
-  @@index([productVariantId])
+  @@index([variantId])
 }
+// Inventory events persisted by sync
+model InventoryEvent {
+  id           String   @id @default(cuid())
+  storeId      String
+  connectionId String?
+  externalId   String?  // DN event id
+  type         String
+  occurredAt   DateTime
+  productId    String?
+  variantId    String?
+  sku          String?
+  locationCode String?
+  deltaQty     Int?
+  resultingQty Int?
+  reference    String?
+  rawJson      Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  connection DecoNetworkConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  dnInventoryEventMaps DnInventoryEventMap[]
+
+  @@index([storeId, occurredAt])
+  @@index([storeId, variantId, occurredAt])
+}
+
+model DnInventoryEventMap {
+  id                 String   @id @default(cuid())
+  storeId            String
+  dnInventoryEventId String
+  inventoryEventId   String   @unique
+  payloadHash        String?
+  rawJson            Json
+  createdAt          DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  inventoryEvent InventoryEvent @relation(fields: [inventoryEventId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, dnInventoryEventId])
+  @@index([inventoryEventId])
+}
+ 
 
 model DnOrderMap {
   id           String @id @default(cuid())
@@ -1108,21 +1157,4 @@ model DnPurchaseOrderMap {
   @@index([purchaseOrderId])
 }
 
-model InventoryEvent {
-  id            String   @id @default(cuid())
-  connectionId  String
-  externalId    String?
-  changeType    String
-  oldQty        Int?
-  newQty        Int?
-  relatedOrderId String?
-  relatedPoId    String?
-  createdAt     DateTime @default(now())
-  rawJson       Json
-
-  connection DecoNetworkConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-
-  @@unique([connectionId, externalId])
-  @@index([connectionId, externalId])
-}
 
