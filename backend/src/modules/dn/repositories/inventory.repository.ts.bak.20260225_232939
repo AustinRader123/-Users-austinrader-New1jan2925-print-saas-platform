@@ -1,6 +1,3 @@
-
-// Added by master-fix script
-type VariantMapRow = { id: string; dnVariantId: string; productVariantId: string };
 import { PrismaClient, Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -45,7 +42,7 @@ export async function upsertInventoryEventsForConnection(opts: {
         const mapKey = { storeId_dnInventoryEventId: { storeId, dnInventoryEventId: dnId } };
         let existingMap = null;
         try {
-          existingMap = await tx.dnInventoryEventMap.findUnique({ where: mapKey, select: { id: true, inventoryEventId: true, payloadHash: true } });
+          existingMap = await tx.dnInventoryEventMap.findUnique({ where: mapKey, select: { inventoryEventId: true, payloadHash: true } });
         } catch (e) {
           existingMap = null;
         }
@@ -123,7 +120,7 @@ export async function upsertInventoryEventsForConnection(opts: {
           }
         }
       });
-    } catch (ex: any) {
+    } catch (ex) {
       // Log and continue; do not fail whole bootstrap for single event
       console.error('inventory upsert failed', ex?.message || ex);
     }

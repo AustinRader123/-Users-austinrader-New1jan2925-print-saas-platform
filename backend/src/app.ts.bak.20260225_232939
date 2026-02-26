@@ -10,9 +10,6 @@ import { authMiddleware, optionalAuthMiddleware } from './middleware/auth.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { PrismaClient } from '@prisma/client';
 
-import dnExplore from "./routes/dn_explore.js";
-import dnSync from "./routes/dn_sync.js";
-import dnConnections from "./routes/dn_connections.js";
 // Routes - to be added
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
@@ -22,14 +19,14 @@ import ordersRoutes from './routes/orders.js';
 import pricingRoutes from './routes/pricing.js';
 import productionRoutes from './routes/production.js';
 import vendorRoutes from './routes/vendors.js';
-import dnConnectionsRoutes from "./routes/dn_connections.js";
-import dnSyncRoutes from "./routes/dn_sync.js";
+import dnConnectionsRoutes from './routes/dn_connections.js';
+import dnSyncRoutes from './routes/dn_sync.js';
 import adminRoutes from './routes/admin.js';
 import adminPricingRulesRoutes from './routes/admin_pricing_rules.js';
 import importJobsRoutes from './routes/import_jobs.js';
 import paymentsRoutes from './routes/payments.js';
 import debugRoutes from './routes/debug.js';
-import dnExploreRoutes from "./routes/dn_explore.js";
+import dnExploreRoutes from './routes/dn_explore.js';
 
 const app: Express = express();
 
