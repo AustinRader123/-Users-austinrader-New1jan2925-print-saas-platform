@@ -89,8 +89,6 @@ model Store {
   storeSettings StoreSettings?
   customPages   CustomPage[]
   importJobs    ImportJob[]
-  inventoryEvents InventoryEvent[]
-  dnInventoryEventMaps DnInventoryEventMap[]
   // DecoNetwork connections
   decoConnections DecoNetworkConnection[]
 
@@ -189,7 +187,6 @@ model Product {
   mockupTemplate MockupTemplate?
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
-  inventoryEvents InventoryEvent[]
 
   @@unique([storeId, slug])
   @@index([storeId])
@@ -234,7 +231,6 @@ model ProductVariant {
   // DecoNetwork mapping
   dnVariantMaps DnVariantMap[]
   dnInventoryMaps DnInventoryMap[]
-  inventoryEvents InventoryEvent[]
   vendorVariants  VendorProductVariant[]
 
   @@unique([productId, sku])
@@ -1065,8 +1061,8 @@ model InventoryEvent {
   externalId   String?  // DN event id
   type         String
   occurredAt   DateTime
-  productId    String?
-  variantId    String?
+  productId    String?  @db.Null
+  variantId    String?  @db.Null
   sku          String?
   locationCode String?
   deltaQty     Int?
@@ -1077,10 +1073,8 @@ model InventoryEvent {
   updatedAt    DateTime @updatedAt
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  connection DecoNetworkConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   productVariant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  dnInventoryEventMaps DnInventoryEventMap[]
 
   @@index([storeId, occurredAt])
   @@index([storeId, variantId, occurredAt])

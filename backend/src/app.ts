@@ -7,6 +7,7 @@ import { config } from './config.js';
 import logger from './logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware, optionalAuthMiddleware } from './middleware/auth.js';
+import tenantMiddleware from './middleware/tenant.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { PrismaClient } from '@prisma/client';
 
@@ -113,6 +114,8 @@ app.get('/ready', async (req, res) => {
 });
 
 // API Routes
+// Run optional auth + tenant resolution for all /api routes so handlers can rely on `req.storeId`.
+app.use('/api', optionalAuthMiddleware, tenantMiddleware);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', optionalAuthMiddleware, productRoutes);
 app.use('/api/designs', authMiddleware, designRoutes);
