@@ -91,6 +91,8 @@ model Store {
   importJobs    ImportJob[]
   // DecoNetwork connections
   decoConnections DecoNetworkConnection[]
+  inventoryEvents InventoryEvent[]
+  dnInventoryEventMaps DnInventoryEventMap[]
 
   @@index([slug])
   @@index([status])
@@ -180,6 +182,7 @@ model Product {
   // Relations
   variants       ProductVariant[]
   images         ProductImage[]
+  inventoryEvents InventoryEvent[]
   decorationAreas DecorationArea[]
   cartItems      CartItem[]
   orderItems     OrderItem[]
@@ -228,6 +231,7 @@ model ProductVariant {
   cartItems       CartItem[]
   orderItems      OrderItem[]
   mockups         Mockup[]
+  inventoryEvents InventoryEvent[]
   // DecoNetwork mapping
   dnVariantMaps DnVariantMap[]
   dnInventoryMaps DnInventoryMap[]
@@ -1061,8 +1065,8 @@ model InventoryEvent {
   externalId   String?  // DN event id
   type         String
   occurredAt   DateTime
-  productId    String?  @db.Null
-  variantId    String?  @db.Null
+  productId    String?
+  variantId    String?
   sku          String?
   locationCode String?
   deltaQty     Int?
@@ -1075,6 +1079,8 @@ model InventoryEvent {
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   productVariant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  connection DecoNetworkConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  dnInventoryEventMaps DnInventoryEventMap[]
 
   @@index([storeId, occurredAt])
   @@index([storeId, variantId, occurredAt])
