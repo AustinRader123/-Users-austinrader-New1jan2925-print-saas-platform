@@ -143,6 +143,8 @@ model Store {
   supplierSyncRunErrors SupplierSyncRunError[]
   shippingRates ShippingRate[]
   taxRates TaxRate[]
+  paymentIntents PaymentIntent[]
+  taxQuotes TaxQuote[]
   storeDomains StoreDomain[]
   onboardingStates OnboardingState[]
   storeBrandings StoreBranding[]
@@ -2477,6 +2479,8 @@ model Order {
   productionJobs      ProductionJob[]
   shipments           Shipment[]
   invoices            Invoice[]
+  paymentIntents      PaymentIntent[]
+  taxQuotes           TaxQuote[]
   fileAssets          FileAsset[]
   proofApprovals      ProofApproval[]
   invoicePublicTokens InvoicePublicToken[]
@@ -3052,6 +3056,8 @@ model Invoice {
 
   lines           InvoiceLine[]
   ledgerEntries   PaymentLedgerEntry[]
+  paymentIntents  PaymentIntent[]
+  taxQuotes       TaxQuote[]
 
   @@index([orderId])
   @@index([status])
@@ -3131,10 +3137,39 @@ model PaymentLedgerEntry {
 
 enum PaymentLedgerEntryType {
   INVOICE_ISSUED
+  CHARGE
   PAYMENT_RECEIVED
   ADJUSTMENT
   CREDIT_NOTE
   REFUND
+}
+
+model PaymentIntent {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  provider      String
+  providerRef   String?
+  clientSecret  String?
+  status        String   @default("requires_confirmation")
+  amountCents   Int
+  currency      String   @default("USD")
+  metadata      Json?
+  confirmedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([provider])
+  @@index([providerRef])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model ShipmentEvent {
@@ -3154,6 +3189,29 @@ model ShipmentEvent {
   @@index([shipmentId])
   @@index([eventType])
   @@index([occurredAt])
+}
+
+model TaxQuote {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  provider      String
+  subtotalCents Int
+  shippingCents Int      @default(0)
+  taxCents      Int
+  totalCents    Int
+  breakdownJson Json?
+  createdAt     DateTime @default(now())
+
+  @@index([storeId])
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([provider])
+  @@index([createdAt])
 }
 
 // ============================================================================

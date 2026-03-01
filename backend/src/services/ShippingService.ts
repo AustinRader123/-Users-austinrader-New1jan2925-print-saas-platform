@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import ShippingAdapterService from './ShippingAdapterService.js';
+import { getShippingProvider } from '../providers/shipping/index.js';
 
 const prisma = new PrismaClient();
 
@@ -8,6 +8,10 @@ type JsonObject = Record<string, unknown>;
 type ShipmentRecord = {
   id: string;
   orderId: string;
+  provider?: string | null;
+  carrier?: string | null;
+  serviceLevel?: string | null;
+  trackingUrl?: string | null;
   trackingNumber?: string | null;
   labelAssetId?: string | null;
   metadata?: JsonObject | null;
@@ -38,6 +42,24 @@ type ShippingDbClient = {
 const shippingDb = prisma as unknown as ShippingDbClient;
 
 export class ShippingService {
+  async rateShop(input: { storeId: string; orderId: string }) {
+    const order = await shippingDb.order.findFirst({ where: { id: input.orderId, storeId: input.storeId } });
+    if (!order) throw new Error('Order not found');
+
+    const provider = getShippingProvider();
+    return provider.getRates({
+      storeId: input.storeId,
+      orderId: input.orderId,
+      to: {},
+      from: {},
+      items: [],
+    });
+  }
+
+  async getRates(input: { storeId: string; orderId: string }) {
+    return this.rateShop(input);
+  }
+
   async listShipments(storeId: string) {
     return shippingDb.shipment.findMany({
       where: { order: { storeId } },
@@ -75,6 +97,7 @@ export class ShippingService {
   async createLabel(input: {
     storeId: string;
     orderId: string;
+    rateId?: string;
     carrier?: string;
     serviceLevel?: string;
     weight?: number;
@@ -84,16 +107,27 @@ export class ShippingService {
     if (!order) throw new Error('Order not found');
 
     const shipment = await this.ensureShipmentForOrder(order.id);
-    if (shipment.trackingNumber && shipment.labelAssetId) {
+    if (shipment.trackingNumber && shipment.labelAssetId && shipment.provider) {
       return this.getShipment(input.storeId, shipment.id);
     }
 
-    const adapter = ShippingAdapterService.getAdapter();
-    const label = await adapter.createLabel({
-      shipmentId: shipment.id,
+    const provider = getShippingProvider();
+
+    let rateId = input.rateId;
+    if (!rateId) {
+      const rates = await this.rateShop({ storeId: input.storeId, orderId: input.orderId });
+      rateId = rates[0]?.id;
+    }
+    if (!rateId) throw new Error('No shipping rate available');
+
+    const label = await provider.createLabel({
+      storeId: input.storeId,
       orderId: order.id,
-      carrier: input.carrier,
-      serviceLevel: input.serviceLevel,
+      rateId,
+      metadata: {
+        carrier: input.carrier,
+        serviceLevel: input.serviceLevel,
+      },
     });
 
     return prisma.$transaction(async (tx) => {
@@ -103,13 +137,14 @@ export class ShippingService {
           storeId: input.storeId,
           orderId: order.id,
           kind: 'SHIPPING_LABEL_PDF',
-          fileName: `${label.trackingNumber}.pdf`,
-          mimeType: 'application/pdf',
-          url: label.labelUrl,
+          fileName: label.labelAsset?.fileName || `${label.trackingNumber}.pdf`,
+          mimeType: label.labelAsset?.mimeType || 'application/pdf',
+          url: label.labelAsset?.url || '',
           metadata: {
             provider: label.provider,
-            carrier: label.carrier,
             trackingNumber: label.trackingNumber,
+            providerRef: label.providerRef,
+            rateId,
           },
         },
       });
@@ -117,36 +152,46 @@ export class ShippingService {
       const updated = await txDb.shipment.update({
         where: { id: shipment.id },
         data: {
-          carrier: label.carrier,
+          carrier: input.carrier || shipment.carrier,
           provider: label.provider,
-          serviceLevel: input.serviceLevel,
+          serviceLevel: input.serviceLevel || shipment.serviceLevel,
           trackingNumber: label.trackingNumber,
           trackingUrl: label.trackingUrl,
           labelAssetId: file.id,
-          labelStatus: label.labelStatus,
+          labelStatus: 'created',
           status: label.status,
           weight: input.weight ?? shipment.weight,
           cost: input.cost ?? shipment.cost,
           metadata: {
             ...(shipment.metadata || {}),
-            ...(label.metadata || {}),
+            rateId,
+            providerRef: label.providerRef,
           },
         },
       });
 
-      await txDb.shipmentEvent.create({
-        data: {
-          storeId: input.storeId,
-          shipmentId: shipment.id,
+      const initialEvents = label.events?.length ? label.events : [
+        {
           eventType: 'LABEL_CREATED',
           status: 'label_created',
           message: `Label created (${label.provider})`,
-          payload: {
-            trackingNumber: label.trackingNumber,
-            trackingUrl: label.trackingUrl,
-          },
         },
-      });
+      ];
+      for (const event of initialEvents) {
+        await txDb.shipmentEvent.create({
+          data: {
+            storeId: input.storeId,
+            shipmentId: shipment.id,
+            eventType: event.eventType,
+            status: event.status,
+            message: event.message,
+            payload: {
+              trackingNumber: label.trackingNumber,
+              trackingUrl: label.trackingUrl,
+            },
+          },
+        });
+      }
 
       return updated;
     });
@@ -201,8 +246,8 @@ export class ShippingService {
     if (!shipment) throw new Error('Shipment not found');
     if (!shipment.trackingNumber) throw new Error('Shipment has no tracking number');
 
-    const adapter = ShippingAdapterService.getAdapter();
-    const tracking = await adapter.track(shipment.trackingNumber);
+    const provider = getShippingProvider();
+    const tracking = await provider.track(shipment.trackingNumber);
 
     await prisma.$transaction(async (tx) => {
       const txDb = tx as unknown as ShippingDbClient;

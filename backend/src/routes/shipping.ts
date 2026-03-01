@@ -17,6 +17,47 @@ const createLabelSchema = z.object({
   cost: z.number().optional(),
 });
 
+const ratesSchema = z.object({
+  storeId: z.string().min(1),
+  orderId: z.string().min(1),
+  destination: z.record(z.any()).optional(),
+  weightOz: z.number().optional(),
+});
+
+const providerLabelSchema = z.object({
+  storeId: z.string().min(1),
+  orderId: z.string().min(1),
+  rateId: z.string().min(1).optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+router.post('/rates', requirePermission('shipping.view'), async (req: AuthRequest, res) => {
+  const parsed = ratesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
+  }
+
+  const rates = await ShippingService.getRates({
+    storeId: parsed.data.storeId,
+    orderId: parsed.data.orderId,
+  });
+  return res.json(rates);
+});
+
+router.post('/label', requirePermission('shipping.manage'), async (req: AuthRequest, res) => {
+  const parsed = providerLabelSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
+  }
+
+  const shipment = await ShippingService.createLabel({
+    storeId: parsed.data.storeId,
+    orderId: parsed.data.orderId,
+    rateId: parsed.data.rateId,
+  });
+  return res.status(201).json(shipment);
+});
+
 const eventSchema = z.object({
   storeId: z.string().min(1),
   eventType: z.string().min(1),

@@ -13,7 +13,9 @@ const DEFAULT_FEATURES: Record<string, boolean> = {
   'inventory.enabled': false,
   'portal.enabled': false,
   'billing.enabled': false,
+  'payments.enabled': false,
   'shipping.enabled': false,
+  'tax.enabled': true,
 };
 
 const DEFAULT_LIMITS: Record<string, number> = {
