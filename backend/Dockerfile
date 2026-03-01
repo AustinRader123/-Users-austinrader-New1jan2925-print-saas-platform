@@ -1,20 +1,22 @@
-FROM node:20-alpine AS deps
+FROM node:20-bullseye AS deps
 WORKDIR /app
 COPY backend/package*.json backend/
 COPY backend/prisma backend/prisma
 RUN npm --prefix backend ci
 
-FROM node:20-alpine AS build
+FROM node:20-bullseye AS build
 WORKDIR /app
 COPY --from=deps /app/backend/node_modules backend/node_modules
 COPY backend backend
 COPY scripts scripts
 RUN npm --prefix backend run build
 
-FROM node:20-alpine AS runtime
+FROM node:20-bullseye AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache bash curl postgresql-client
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends curl postgresql-client \
+	&& rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/backend/node_modules backend/node_modules
 COPY --from=build /app/backend backend
 COPY --from=build /app/scripts scripts
