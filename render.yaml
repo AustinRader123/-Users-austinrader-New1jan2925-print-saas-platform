@@ -24,6 +24,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: APP_VERSION
+        value: v0.18.0
       - key: PORT
         fromService:
           type: web
