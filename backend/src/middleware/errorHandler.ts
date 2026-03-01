@@ -8,18 +8,19 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   logger.error('Unhandled error:', err);
+  const requestId = (req as any).id || (req as any).requestId;
 
   if (err.name === 'ValidationError') {
-    return res.status(400).json({ error: 'Validation error', details: err.message });
+    return res.status(400).json({ error: 'Validation error', details: err.message, requestId });
   }
 
   if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized', requestId });
   }
 
   if (err.statusCode) {
-    return res.status(err.statusCode).json({ error: err.message });
+    return res.status(err.statusCode).json({ error: err.message, requestId });
   }
 
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'Internal server error', requestId });
 };

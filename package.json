@@ -6,6 +6,7 @@
     "clean": "node scripts/run-platform.mjs clean",
     "stop": "node scripts/run-platform.mjs stop",
     "doctor": "node scripts/run-platform.mjs doctor",
+    "doctor:prod": "node scripts/run-platform.mjs doctor --prod",
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
     "rollback": "bash scripts/rollback.sh",
@@ -14,6 +15,7 @@
     "smoke:phase7_1": "bash backend/scripts/smoke-phase7_1.sh",
     "smoke:phase8": "bash backend/scripts/smoke-phase8.sh",
     "smoke:phase9": "bash backend/scripts/smoke-phase9.sh",
+    "smoke:phase17": "cd backend && npm run smoke:phase17",
     "smoke:prod_sim": "node scripts/smoke-prod-sim.mjs",
     "release:check": "node scripts/release-check.mjs"
   }

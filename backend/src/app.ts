@@ -104,6 +104,20 @@ app.get('/__ping', (req, res) => {
 
 // Middleware - RequestID must be first
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
+app.use((req: any, res, next) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    logger.info('http_request', {
+      requestId: req.id,
+      correlationId: req.correlationId,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+  next();
+});
 if (process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
 }
@@ -261,7 +275,7 @@ app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ error: 'Not found', requestId: (req as any).id });
 });
 
 export default app;
