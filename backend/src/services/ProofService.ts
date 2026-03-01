@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import WebhookService from './WebhookService.js';
 import AuditService from './AuditService.js';
+import EventService from './EventService.js';
 
 const prisma = new PrismaClient();
 
@@ -65,6 +66,19 @@ export class ProofService {
     await prisma.order.update({
       where: { id: input.orderId },
       data: { fulfillmentStatus: 'proof_pending' },
+    });
+
+    await EventService.emit(input.storeId, 'proof.requested', {
+      actorType: input.requestedById ? 'USER' : 'SYSTEM',
+      actorId: input.requestedById || null,
+      entityType: 'ProofApproval',
+      entityId: approval.id,
+      properties: {
+        approvalId: approval.id,
+        orderId: input.orderId,
+        toEmail: input.recipientEmail || order.customerEmail,
+        customerEmail: order.customerEmail,
+      },
     });
 
     return approval;
@@ -171,6 +185,18 @@ export class ProofService {
         eventType: 'proof.approved',
         payload: { approvalId: approval.id, orderId: approval.orderId },
       });
+      const order = await prisma.order.findUnique({ where: { id: approval.orderId } });
+      await EventService.emit(approval.storeId, 'proof.approved', {
+        actorType: 'PUBLIC',
+        entityType: 'ProofApproval',
+        entityId: approval.id,
+        properties: {
+          approvalId: approval.id,
+          orderId: approval.orderId,
+          toEmail: order?.customerEmail || approval.recipientEmail || '',
+          customerEmail: order?.customerEmail || '',
+        },
+      });
     }
 
     await AuditService.log({
@@ -222,6 +248,19 @@ export class ProofService {
         storeId: approval.storeId,
         eventType: 'proof.approved',
         payload: { approvalId: approval.id, orderId: approval.orderId },
+      });
+      const order = await prisma.order.findUnique({ where: { id: approval.orderId } });
+      await EventService.emit(approval.storeId, 'proof.approved', {
+        actorType: actorId ? 'USER' : 'SYSTEM',
+        actorId: actorId || null,
+        entityType: 'ProofApproval',
+        entityId: approval.id,
+        properties: {
+          approvalId: approval.id,
+          orderId: approval.orderId,
+          toEmail: order?.customerEmail || approval.recipientEmail || '',
+          customerEmail: order?.customerEmail || '',
+        },
       });
     }
 

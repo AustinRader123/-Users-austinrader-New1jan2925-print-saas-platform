@@ -9,6 +9,7 @@ import DocumentService from '../services/DocumentService.js';
 import EmailService from '../services/EmailService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
 import NetworkRoutingService from '../services/NetworkRoutingService.js';
+import EventService from '../services/EventService.js';
 import logger from '../logger.js';
 
 const router = Router();
@@ -124,6 +125,20 @@ router.post('/:orderId/send-invoice', authMiddleware, roleMiddleware(['ADMIN', '
       subject: `Invoice for order ${order.orderNumber}`,
       bodyText: `Hello ${order.customerName || 'there'}, your invoice is ready: ${publicUrl}`,
       meta: { orderId: order.id, publicUrl },
+    });
+
+    await EventService.emit(order.storeId, 'invoice.sent', {
+      actorType: req.userId ? 'USER' : 'SYSTEM',
+      actorId: req.userId || null,
+      entityType: 'Order',
+      entityId: order.id,
+      properties: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        toEmail: order.customerEmail,
+        customerEmail: order.customerEmail,
+        publicUrl,
+      },
     });
 
     return res.json({ ok: true, publicUrl, emailMessageId: message.id });

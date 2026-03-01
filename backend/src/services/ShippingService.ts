@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getShippingProvider } from '../providers/shipping/index.js';
+import EventService from './EventService.js';
 
 const prisma = new PrismaClient();
 
@@ -193,6 +194,20 @@ export class ShippingService {
         });
       }
 
+      const orderWithEmail = await (tx as any).order.findUnique({ where: { id: order.id } });
+      await EventService.emit(input.storeId, 'shipment.created', {
+        actorType: 'SYSTEM',
+        entityType: 'Shipment',
+        entityId: shipment.id,
+        properties: {
+          shipmentId: shipment.id,
+          orderId: order.id,
+          trackingNumber: label.trackingNumber,
+          toEmail: orderWithEmail?.customerEmail || '',
+          customerEmail: orderWithEmail?.customerEmail || '',
+        },
+      });
+
       return updated;
     });
   }
@@ -269,12 +284,29 @@ export class ShippingService {
         where: { id: shipment.id },
         data: {
           status: tracking.status,
+          deliveredAt: tracking.status === 'delivered' ? new Date() : shipment.deliveredAt,
           metadata: {
             ...(shipment.metadata || {}),
             trackingProvider: tracking.provider,
           },
         },
       });
+
+      if (tracking.status === 'delivered') {
+        const orderWithEmail = await (tx as any).order.findUnique({ where: { id: shipment.orderId } });
+        await EventService.emit(input.storeId, 'shipment.delivered', {
+          actorType: 'SYSTEM',
+          entityType: 'Shipment',
+          entityId: shipment.id,
+          properties: {
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+            trackingNumber: shipment.trackingNumber,
+            toEmail: orderWithEmail?.customerEmail || '',
+            customerEmail: orderWithEmail?.customerEmail || '',
+          },
+        });
+      }
     });
 
     return this.getShipment(input.storeId, shipment.id);

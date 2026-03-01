@@ -48,6 +48,8 @@ import inventoryRoutes from './routes/inventory.js';
 import purchaseOrderRoutes from './routes/purchase-orders.js';
 import purchasingRoutes from './routes/purchasing.js';
 import webhooksRoutes from './routes/webhooks.js';
+import notificationsRoutes from './routes/notifications.js';
+import analyticsRoutes from './routes/analytics.js';
 import reportsRoutes from './routes/reports.js';
 import billingRoutes from './routes/billing.js';
 import orderBillingRoutes from './routes/order-billing.js';
@@ -128,6 +130,20 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Health check (Render health path)
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -160,7 +176,7 @@ app.get('/ready', async (req, res) => {
 // API Routes
 // Run optional auth + tenant resolution for all /api routes so handlers can rely on `req.storeId`.
 app.use('/api', optionalAuthMiddleware, tenantMiddleware);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', optionalAuthMiddleware, productRoutes);
 app.use('/api/variants', variantsRoutes);
 app.use('/api/images', imagesRoutes);
@@ -196,6 +212,8 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/purchasing', purchasingRoutes);
 app.use('/api/webhooks', webhooksRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/billing', authMiddleware, billingRoutes);
 app.use('/api/order-billing', authMiddleware, orderBillingRoutes);
@@ -207,8 +225,8 @@ app.use('/api/public/customizer', publicCustomizerRoutes);
 app.use('/api/network', authMiddleware, networkRoutes);
 app.use('/api/fundraising', authMiddleware, fundraisingRoutes);
 app.use('/api/production-v2', productionV2Routes);
-app.use('/api/payments', paymentsWebhookRoutes);
-app.use('/api/shipping', shippingWebhookRoutes);
+app.use('/api/payments', webhookLimiter, paymentsWebhookRoutes);
+app.use('/api/shipping', webhookLimiter, shippingWebhookRoutes);
 app.use('/api/shipping', authMiddleware, shippingRoutes);
 app.use('/api/tax', authMiddleware, taxRoutes);
 

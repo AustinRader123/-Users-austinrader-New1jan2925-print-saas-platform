@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { getPaymentsProvider } from '../providers/payments/index.js';
 import { PaymentIntentInput } from '../providers/payments/PaymentsProvider.js';
+import EventService from './EventService.js';
 
 export class PaymentsService {
   private provider = getPaymentsProvider();
@@ -100,6 +101,24 @@ export class PaymentsService {
     });
 
     const reconciliation = intent.invoiceId ? await this.reconcileInvoiceBalance(String(intent.invoiceId)) : null;
+
+    if (confirmation.status === 'succeeded') {
+      const order = await (prisma as any).order.findUnique({ where: { id: orderId } });
+      await EventService.emit(input.storeId, 'payment.receipt', {
+        actorType: 'SYSTEM',
+        entityType: 'PaymentIntent',
+        entityId: intent.id,
+        properties: {
+          paymentIntentId: intent.id,
+          invoiceId: intent.invoiceId || null,
+          orderId,
+          amountCents: Number(intent.amountCents),
+          currency: String(intent.currency || 'USD'),
+          toEmail: order?.customerEmail || '',
+          customerEmail: order?.customerEmail || '',
+        },
+      });
+    }
 
     return {
       ok: true,

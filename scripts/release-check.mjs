@@ -17,6 +17,7 @@ const steps = [
   { name: 'smoke:phase5', command: 'npm', args: ['run', 'smoke:phase5'], cwd: 'backend' },
   { name: 'smoke:phase13', command: 'npm', args: ['run', 'smoke:phase13'], cwd: 'backend' },
   { name: 'smoke:phase14', command: 'npm', args: ['run', 'smoke:phase14'], cwd: 'backend' },
+  { name: 'smoke:phase15', command: 'npm', args: ['run', 'smoke:phase15'], cwd: 'backend' },
   {
     name: 'smoke:prod_sim',
     command: 'npm',

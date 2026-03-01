@@ -15,10 +15,6 @@ router.post('/webhook/:provider', async (req, res) => {
     return res.status(404).json({ error: 'Provider not active' });
   }
 
-  if (requestedProvider === 'mock') {
-    return res.status(200).json({ ok: true, provider: 'mock' });
-  }
-
   const verification = await PaymentsService.verifyWebhook(req.body, {
     'stripe-signature': req.header('stripe-signature') || undefined,
     'x-webhook-secret': req.header('x-webhook-secret') || undefined,

@@ -1471,7 +1471,14 @@ class ApiClient {
     return data;
   }
 
-  async createWebhookEndpoint(payload: { storeId: string; url: string; secret: string; enabled?: boolean; eventTypes?: string[] }) {
+  async createWebhookEndpoint(payload: {
+    storeId: string;
+    name?: string;
+    url: string;
+    secret: string;
+    isActive?: boolean;
+    eventTypes?: string[];
+  }) {
     const { data } = await this.client.post('/webhooks/endpoints', payload);
     return data;
   }
@@ -1483,6 +1490,70 @@ class ApiClient {
 
   async listWebhookDeliveries(storeId: string) {
     const { data } = await this.client.get('/webhooks/deliveries', { params: { storeId } });
+    return data;
+  }
+
+  async processWebhookDeliveries(limit = 50) {
+    const { data } = await this.client.post('/webhooks/deliveries/process', { limit });
+    return data;
+  }
+
+  async retryWebhookDelivery(id: string) {
+    const { data } = await this.client.post(`/webhooks/deliveries/${id}/retry`);
+    return data;
+  }
+
+  async listNotificationTemplates(storeId: string) {
+    const { data } = await this.client.get('/notifications/templates', { params: { storeId } });
+    return data;
+  }
+
+  async upsertNotificationTemplate(key: string, payload: {
+    storeId: string;
+    channel: 'EMAIL' | 'SMS';
+    subject?: string;
+    body: string;
+    isActive?: boolean;
+  }) {
+    const { data } = await this.client.put(`/notifications/templates/${encodeURIComponent(key)}`, payload);
+    return data;
+  }
+
+  async listNotificationOutbox(storeId: string, take = 100) {
+    const { data } = await this.client.get('/notifications/outbox', { params: { storeId, take } });
+    return data;
+  }
+
+  async processNotificationOutbox(limit = 50) {
+    const { data } = await this.client.post('/notifications/outbox/process', { limit });
+    return data;
+  }
+
+  async retryNotificationOutbox(id: string) {
+    const { data } = await this.client.post(`/notifications/outbox/${id}/retry`);
+    return data;
+  }
+
+  async getAnalyticsSummary(storeId: string) {
+    const { data } = await this.client.get('/analytics/summary', { params: { storeId } });
+    return data;
+  }
+
+  async getAnalyticsFunnel(storeId: string) {
+    const { data } = await this.client.get('/analytics/funnel', { params: { storeId } });
+    return data;
+  }
+
+  async getAnalyticsTopProducts(storeId: string) {
+    const { data } = await this.client.get('/analytics/top-products', { params: { storeId } });
+    return data;
+  }
+
+  async exportAnalyticsCsv(storeId: string) {
+    const { data } = await this.client.get('/analytics/export.csv', {
+      params: { storeId },
+      responseType: 'text',
+    });
     return data;
   }
 

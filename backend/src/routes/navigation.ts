@@ -67,6 +67,7 @@ router.get('/menu', async (req: AuthRequest, res) => {
         items: [
           ...(hasPermission(permissions, 'comms.manage') ? [{ to: '/dashboard/settings/email', label: 'Email settings' }] : []),
           ...(hasPermission(permissions, 'comms.manage') ? [{ to: '/dashboard/communications', label: 'Message log' }] : []),
+          ...(hasPermission(permissions, 'comms.manage') ? [{ to: '/dashboard/notifications', label: 'Notifications' }] : []),
         ],
       },
       {
@@ -99,6 +100,8 @@ router.get('/menu', async (req: AuthRequest, res) => {
           { to: '/app/settings/users', label: 'Users & Roles' },
           ...(hasPermission(permissions, 'billing.manage') ? [{ to: '/app/settings/billing', label: 'Billing' }] : []),
           ...(billingEnabled && hasPermission(permissions, 'billing.view') ? [{ to: '/dashboard/billing', label: 'Order Billing' }] : []),
+          ...(hasPermission(permissions, 'webhooks.manage') ? [{ to: '/dashboard/webhooks', label: 'Webhooks' }] : []),
+          ...(hasPermission(permissions, 'reports.view') ? [{ to: '/dashboard/analytics', label: 'Analytics' }] : []),
         ],
       },
     ].filter((section) => section.items.length > 0);
