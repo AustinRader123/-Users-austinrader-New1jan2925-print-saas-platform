@@ -1506,6 +1506,76 @@ class ApiClient {
     return data;
   }
 
+  async listOrderInvoices(storeId: string) {
+    const { data } = await this.client.get('/order-billing/invoices', { params: { storeId } });
+    return data;
+  }
+
+  async getOrderInvoice(invoiceId: string, storeId: string) {
+    const { data } = await this.client.get(`/order-billing/invoices/${invoiceId}`, { params: { storeId } });
+    return data;
+  }
+
+  async createOrderInvoice(orderId: string, payload: { storeId: string; dueDate?: string; notes?: string }) {
+    const { data } = await this.client.post(`/order-billing/orders/${orderId}/invoice`, payload);
+    return data;
+  }
+
+  async recordInvoicePayment(invoiceId: string, payload: {
+    storeId: string;
+    amountCents: number;
+    currency?: string;
+    description?: string;
+    externalRef?: string;
+    metadata?: any;
+  }) {
+    const { data } = await this.client.post(`/order-billing/invoices/${invoiceId}/payments`, payload);
+    return data;
+  }
+
+  async listPaymentLedger(storeId: string, invoiceId?: string) {
+    const { data } = await this.client.get('/order-billing/ledger', { params: { storeId, ...(invoiceId ? { invoiceId } : {}) } });
+    return data;
+  }
+
+  async listShippingShipments(storeId: string) {
+    const { data } = await this.client.get('/shipping/shipments', { params: { storeId } });
+    return data;
+  }
+
+  async getShippingShipment(shipmentId: string, storeId: string) {
+    const { data } = await this.client.get(`/shipping/shipments/${shipmentId}`, { params: { storeId } });
+    return data;
+  }
+
+  async createShippingLabel(orderId: string, payload: {
+    storeId: string;
+    carrier?: string;
+    serviceLevel?: string;
+    weight?: number;
+    cost?: number;
+  }) {
+    const { data } = await this.client.post(`/shipping/orders/${orderId}/label`, payload);
+    return data;
+  }
+
+  async createShipmentEvent(shipmentId: string, payload: {
+    storeId: string;
+    eventType: string;
+    status?: string;
+    message?: string;
+    payload?: any;
+    occurredAt?: string;
+  }) {
+    const { data } = await this.client.post(`/shipping/shipments/${shipmentId}/events`, payload);
+    return data;
+  }
+
+  async syncShipmentTracking(shipmentId: string, storeId: string) {
+    const { data } = await this.client.post(`/shipping/shipments/${shipmentId}/track`, { storeId });
+    return data;
+  }
+
   async listStoreDomains(storeId?: string) {
     const { data } = await this.client.get('/domains', { params: storeId ? { storeId } : {} });
     return data;
@@ -1683,6 +1753,11 @@ class ApiClient {
 
   async getPublicInvoice(token: string) {
     const { data } = await this.client.get(`/public/invoice/${token}`);
+    return data;
+  }
+
+  async getPublicPortal(token: string) {
+    const { data } = await this.client.get(`/public/portal/${token}`);
     return data;
   }
 

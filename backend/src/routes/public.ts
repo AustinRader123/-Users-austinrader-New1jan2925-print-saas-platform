@@ -6,9 +6,25 @@ import PublicStorefrontService from '../services/PublicStorefrontService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
 import ThemeService from '../services/ThemeService.js';
 import FundraisingService from '../services/FundraisingService.js';
+import FeatureGateService from '../services/FeatureGateService.js';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+type PortalOrderPayload = {
+  id: string;
+  store: { tenantId?: string | null; name?: string | null };
+  invoices?: unknown[];
+  shipments?: unknown[];
+};
+
+type PublicOrderLookupClient = {
+  order: {
+    findFirst(args: unknown): Promise<PortalOrderPayload | null>;
+  };
+};
+
+const publicOrderLookup = prisma as unknown as PublicOrderLookupClient;
 
 const publicLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -254,6 +270,49 @@ router.get('/order/:token', publicLimiter, async (req, res) => {
   }
 });
 
+router.get('/portal/:token', publicLimiter, async (req, res) => {
+  try {
+    const order = await (publicOrderLookup.order.findFirst({
+      where: { publicToken: req.params.token },
+      include: {
+        store: true,
+        items: {
+          include: {
+            product: true,
+            productVariant: true,
+          },
+        },
+        invoices: {
+          include: {
+            lines: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        shipments: {
+          include: {
+            events: { orderBy: { occurredAt: 'desc' } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      } as any,
+    }));
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (!order.store?.tenantId) return res.status(404).json({ error: 'Portal unavailable' });
+    const portalEnabled = await FeatureGateService.can(String(order.store.tenantId), 'portal.enabled');
+    if (!portalEnabled) return res.status(404).json({ error: 'Portal unavailable' });
+
+    return res.json({
+      order,
+      invoices: order.invoices || [],
+      shipments: order.shipments || [],
+      store: order.store,
+    });
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message || 'Failed to fetch portal data' });
+  }
+});
+
 router.get('/quote/:token', publicLimiter, async (req, res) => {
   try {
     const row = await PublicLinkService.resolveQuoteByToken(req.params.token);
@@ -272,8 +331,22 @@ router.get('/invoice/:token', publicLimiter, async (req, res) => {
   try {
     const row = await PublicLinkService.resolveInvoiceByToken(req.params.token);
     if (!row) return res.status(404).json({ error: 'Invoice not found or expired' });
+    const [invoices, shipments] = await Promise.all([
+      (prisma as any).invoice.findMany({
+        where: { orderId: row.order.id },
+        include: { lines: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      (prisma as any).shipment.findMany({
+        where: { orderId: row.order.id },
+        include: { events: { orderBy: { occurredAt: 'desc' } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
     return res.json({
       order: row.order,
+      invoices,
+      shipments,
       store: row.order.store,
       expiresAt: row.expiresAt,
     });

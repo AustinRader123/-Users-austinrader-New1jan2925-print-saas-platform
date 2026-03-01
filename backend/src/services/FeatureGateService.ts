@@ -11,6 +11,9 @@ const DEFAULT_FEATURES: Record<string, boolean> = {
   'fundraising.enabled': false,
   'production_v2.enabled': false,
   'inventory.enabled': false,
+  'portal.enabled': false,
+  'billing.enabled': false,
+  'shipping.enabled': false,
 };
 
 const DEFAULT_LIMITS: Record<string, number> = {
