@@ -291,6 +291,7 @@ router.get('/suppliers/export/catalog.csv', authMiddleware, roleMiddleware(['ADM
 
     const rows = await prisma.externalVariantMap.findMany({
       where: { storeId, supplierConnectionId: connectionId },
+      distinct: ['variantId'],
       include: {
         variant: {
           include: {
@@ -298,7 +299,7 @@ router.get('/suppliers/export/catalog.csv', authMiddleware, roleMiddleware(['ADM
           },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
     const productMapRows = await prisma.externalProductMap.findMany({
@@ -350,9 +351,11 @@ router.get('/suppliers/export/catalog.csv', authMiddleware, roleMiddleware(['ADM
       );
     }
 
+    const csvBody = lines.join('\n').replace(/\r\n/g, '\n').trimEnd();
+
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="supplier-catalog-${connection.id}.csv"`);
-    res.status(200).send(lines.join('\n'));
+    res.status(200).send(csvBody);
   } catch (error) {
     logger.error('Export supplier catalog CSV failed', error);
     res.status(500).json({ error: 'Failed to export supplier catalog CSV' });

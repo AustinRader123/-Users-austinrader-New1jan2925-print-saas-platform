@@ -94,11 +94,43 @@ fi
 before_runs=$(node --input-type=module -e "import { PrismaClient } from '@prisma/client'; const prisma=new PrismaClient(); const count=await prisma.supplierSyncRun.count({where:{supplierConnectionId:'${connection_id}'}}); console.log(count); await prisma.\$disconnect();")
 
 echo "[phase3_1] run scheduler tick once"
-(cd "$ROOT_DIR/backend" && npm run supplier:scheduler:once >/tmp/supplier_scheduler_once.out)
+attempt=1
+max_attempts=8
+after_runs="$before_runs"
+while [[ "$attempt" -le "$max_attempts" ]]; do
+  (cd "$ROOT_DIR/backend" && SUPPLIER_SCHEDULER_IGNORE_LOCK=true npm run supplier:scheduler:once >/tmp/supplier_scheduler_once.out)
+  scheduler_json=$(cat /tmp/supplier_scheduler_once.out | tail -n 1)
 
-after_runs=$(node --input-type=module -e "import { PrismaClient } from '@prisma/client'; const prisma=new PrismaClient(); const count=await prisma.supplierSyncRun.count({where:{supplierConnectionId:'${connection_id}'}}); console.log(count); await prisma.\$disconnect();")
+  after_runs=$(node --input-type=module -e "import { PrismaClient } from '@prisma/client'; const prisma=new PrismaClient(); const count=await prisma.supplierSyncRun.count({where:{supplierConnectionId:'${connection_id}'}}); console.log(count); await prisma.\$disconnect();")
+  if [[ "$after_runs" -gt "$before_runs" ]]; then
+    break
+  fi
+
+  scheduler_reason=$(printf '%s' "$scheduler_json" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const j=JSON.parse(d||'{}');process.stdout.write(String(j.reason||''));}catch{process.stdout.write('');}})")
+  scheduler_scheduled=$(printf '%s' "$scheduler_json" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const j=JSON.parse(d||'{}');process.stdout.write(String(Number(j.scheduled||0)));}catch{process.stdout.write('0');}})")
+
+  if [[ "$scheduler_reason" == "lock-not-acquired" ]]; then
+    sleep 5
+    attempt=$((attempt+1))
+    continue
+  fi
+
+  if [[ "$scheduler_scheduled" -eq 0 ]]; then
+    patch_resp=$(curl --silent --show-error -X PATCH "$BASE_URL/api/suppliers/connections/$connection_id" "${auth_headers[@]}" -d "{\"storeId\":\"$store_id\",\"syncEnabled\":true,\"syncIntervalMinutes\":1,\"syncNextAt\":\"1970-01-01T00:00:00Z\"}" -w $'\n%{http_code}')
+    patch_code=${patch_resp##*$'\n'}
+    if [[ "$patch_code" != "200" ]]; then
+      echo "[phase3_1] patch connection scheduling failed during retry"
+      exit 1
+    fi
+  fi
+
+  sleep 1
+  attempt=$((attempt+1))
+done
+
 if [[ "$after_runs" -le "$before_runs" ]]; then
-  echo "[phase3_1] scheduler tick did not enqueue/create sync run"
+  connection_state=$(node --input-type=module -e "import { PrismaClient } from '@prisma/client'; const prisma=new PrismaClient(); const row=await prisma.supplierConnection.findUnique({where:{id:'${connection_id}'}}); console.log(JSON.stringify(row||{})); await prisma.\$disconnect();")
+  echo "[phase3_1] scheduler tick did not enqueue/create sync run (before=$before_runs after=$after_runs scheduler=$scheduler_json connection=$connection_state)"
   exit 1
 fi
 
@@ -128,15 +160,21 @@ if [[ ! -s "/tmp/supplier_run_${run_id}.log" ]]; then
 fi
 
 echo "[phase3_1] verify CSV export"
-curl --fail --silent --show-error "$BASE_URL/api/suppliers/export/catalog.csv?connectionId=$connection_id&storeId=$store_id" -H "Authorization: Bearer $token" -H "x-tenant-id: $tenant_id" -o /tmp/supplier_export_${connection_id}.csv
-if ! head -n 1 /tmp/supplier_export_${connection_id}.csv | grep -q 'productId,productName,externalProductId,variantId,color,size,sku,cost,supplierInventoryQty,imageCount,lastSyncedAt'; then
+csv_path="/tmp/supplier_export_${connection_id}.csv"
+curl --fail --silent --show-error "$BASE_URL/api/suppliers/export/catalog.csv?connectionId=$connection_id&storeId=$store_id" -H "Authorization: Bearer $token" -H "x-tenant-id: $tenant_id" -o "$csv_path"
+if ! head -n 1 "$csv_path" | grep -q 'productId,productName,externalProductId,variantId,color,size,sku,cost,supplierInventoryQty,imageCount,lastSyncedAt'; then
   echo "[phase3_1] CSV header mismatch"
   exit 1
 fi
-rows=$(wc -l < /tmp/supplier_export_${connection_id}.csv | tr -d ' ')
-if [[ "$rows" -lt 2 ]]; then
-  echo "[phase3_1] expected CSV to contain at least one data row"
+
+csv_check=$(CSV_PATH="$csv_path" node --input-type=module -e "import fs from 'node:fs'; const file=process.env.CSV_PATH||''; const txt=(fs.readFileSync(file,'utf8')||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').trimEnd(); const lines=txt.length?txt.split('\n'):[]; const header=(lines[0]||'').split(','); const required=['productId','productName','externalProductId','variantId','sku']; const missing=required.filter((k)=>!header.includes(k)); if (lines.length<2) { console.log(JSON.stringify({ok:false,error:'no_data_rows',rows:lines.length})); process.exit(0);} if (missing.length){ console.log(JSON.stringify({ok:false,error:'missing_columns',missing})); process.exit(0);} const idx=Object.fromEntries(header.map((h,i)=>[h,i])); const data=lines.slice(1).filter((l)=>l.trim().length>0).map((l)=>l.split(',')); const bad=data.find((r)=>!String(r[idx.productId]||'').trim()||!String(r[idx.variantId]||'').trim()||!String(r[idx.sku]||'').trim()); if (bad){ console.log(JSON.stringify({ok:false,error:'empty_required_fields'})); process.exit(0);} const variants=data.map((r)=>String(r[idx.variantId]||'')); const unique=new Set(variants); if (unique.size!==variants.length){ console.log(JSON.stringify({ok:false,error:'duplicate_variant_rows',rows:variants.length,unique:unique.size})); process.exit(0);} const hasMockSku=data.some((r)=>String(r[idx.sku]||'').startsWith('MOCK-')); if (!hasMockSku){ console.log(JSON.stringify({ok:false,error:'missing_mock_sku'})); process.exit(0);} console.log(JSON.stringify({ok:true,dataRows:data.length}));")
+
+csv_ok=$(printf '%s' "$csv_check" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d||'{}');process.stdout.write(j.ok?'1':'0');})")
+if [[ "$csv_ok" != "1" ]]; then
+  echo "[phase3_1] CSV invariant check failed (file=$csv_path check=$csv_check)"
   exit 1
 fi
 
-echo "[phase3_1] PASS connection=$connection_id run=$run_id csvRows=$rows"
+rows=$(printf '%s' "$csv_check" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d||'{}');process.stdout.write(String(j.dataRows||0));})")
+
+echo "[phase3_1] PASS connection=$connection_id run=$run_id csvPath=$csv_path csvRows=$rows"

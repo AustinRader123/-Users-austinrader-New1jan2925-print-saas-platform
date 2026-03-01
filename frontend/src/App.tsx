@@ -61,6 +61,7 @@ import StorefrontThemePage from './pages/StorefrontThemePage';
 import CommunicationsPage from './pages/CommunicationsPage';
 import PublicQuotePage from './pages/PublicQuotePage';
 import PublicInvoicePage from './pages/PublicInvoicePage';
+import PublicPortalPage from './pages/PublicPortalPage';
 import DocumentsQuotesPage from './pages/DocumentsQuotesPage';
 import DocumentsInvoicesPage from './pages/DocumentsInvoicesPage';
 import DocumentsProofsPage from './pages/DocumentsProofsPage';
@@ -72,6 +73,8 @@ import FundraisingCampaignsPage from './pages/FundraisingCampaignsPage';
 import ProductionV2BoardPage from './pages/ProductionV2BoardPage';
 import DashboardInventoryPage from './pages/DashboardInventoryPage';
 import DashboardPurchasingPage from './pages/DashboardPurchasingPage';
+import DashboardBillingPage from './pages/DashboardBillingPage';
+import DashboardShippingPage from './pages/DashboardShippingPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -133,6 +136,7 @@ function App() {
             <Route path="/proof/:token" element={<ProofApprovalPage />} />
             <Route path="/quote/:token" element={<PublicQuotePage />} />
             <Route path="/invoice/:token" element={<PublicInvoicePage />} />
+            <Route path="/portal/:token" element={<PublicPortalPage />} />
             <Route path="/products/:productId" element={<ProductPage />} />
             <Route path="/store" element={<StoreHomePage />} />
             <Route path="/store/products" element={<StoreProductsPage />} />
@@ -414,6 +418,22 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
                     <DashboardPurchasingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/billing"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DashboardBillingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/shipping"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <DashboardShippingPage />
                   </ProtectedRoute>
                 }
               />
@@ -708,6 +728,22 @@ function App() {
               element={
                 <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
                   <DashboardPurchasingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/billing"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                  <DashboardBillingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/shipping"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                  <DashboardShippingPage />
                 </ProtectedRoute>
               }
             />

@@ -101,6 +101,7 @@ model Store {
   productVariants ProductVariant[]
   productImages ProductImage[]
   orders        Order[]
+  customers     Customer[]
   quotes        Quote[]
   quoteLineItems QuoteLineItem[]
   teams         Team[]
@@ -176,6 +177,9 @@ model Store {
   inventoryLedgerEntries InventoryLedgerEntry[]
   inventoryReservations InventoryReservation[]
   productMaterialMaps ProductMaterialMap[]
+  invoiceSequences InvoiceSequence[]
+  paymentLedgerEntries PaymentLedgerEntry[]
+  shipmentEvents ShipmentEvent[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1575,6 +1579,8 @@ model FileAsset {
   artworkAssets ArtworkAsset[]
   customizationsPreview Customization[] @relation("CustomizationPreviewFile")
   printPackages PrintPackage[]
+  shipmentLabels Shipment[] @relation("ShipmentLabelAsset")
+  invoicePdfs Invoice[] @relation("InvoicePdfAsset")
 
   @@index([storeId])
   @@index([designId])
@@ -1596,6 +1602,7 @@ enum FileAssetKind {
   QR_CODE
   QUOTE_PDF
   INVOICE_PDF
+  SHIPPING_LABEL_PDF
   SUPPLIER_IMAGE
   SUPPLIER_SYNC_LOG
 }
@@ -2445,6 +2452,8 @@ model Order {
   // Customer Info
   customerEmail       String
   customerName        String
+  customerId          String?
+  customer            Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   shippingAddress     Json
   billingAddress      Json?
   
@@ -2464,6 +2473,7 @@ model Order {
   // Relations
   items               OrderItem[]
   payments            Payment[]
+  paymentLedgerEntries PaymentLedgerEntry[]
   productionJobs      ProductionJob[]
   shipments           Shipment[]
   invoices            Invoice[]
@@ -2490,6 +2500,7 @@ model Order {
   @@index([createdAt])
   @@index([publicToken])
   @@index([fulfillmentStoreId])
+  @@index([customerId])
   @@index([fundraiserCampaignId])
   @@index([fundraiserMemberId])
   @@index([fundraiserTeamStoreId])
@@ -2985,20 +2996,30 @@ model Shipment {
   id              String   @id @default(cuid())
   orderId         String
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productionJobId String
-  productionJob   ProductionJob @relation(fields: [productionJobId], references: [id])
+  productionJobId String?
+  productionJob   ProductionJob? @relation(fields: [productionJobId], references: [id])
   trackingNumber  String?  @unique
   carrier         String?
+  serviceLevel    String?
+  provider        String?
+  labelAssetId    String?
+  labelAsset      FileAsset? @relation("ShipmentLabelAsset", fields: [labelAssetId], references: [id], onDelete: SetNull)
+  trackingUrl     String?
+  labelStatus     String   @default("pending")
   weight          Float?
   cost            Float?
   status          String   @default("pending")
+  metadata        Json?
   shippedAt       DateTime?
   deliveredAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  events          ShipmentEvent[]
+
   @@index([orderId])
   @@index([productionJobId])
+  @@index([labelAssetId])
   @@index([trackingNumber])
 }
 
@@ -3011,14 +3032,128 @@ model Invoice {
   orderId         String
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   invoiceNumber   String   @unique
-  pdfUrl          String
+  status          String   @default("ISSUED")
+  currency        String   @default("USD")
+  subtotalCents   Int      @default(0)
+  taxCents        Int      @default(0)
+  shippingCents   Int      @default(0)
+  totalCents      Int      @default(0)
+  balanceDueCents Int      @default(0)
+  pdfUrl          String?
+  pdfAssetId      String?
+  pdfAsset        FileAsset? @relation("InvoicePdfAsset", fields: [pdfAssetId], references: [id], onDelete: SetNull)
   issueDate       DateTime @default(now())
   dueDate         DateTime?
   paidAt          DateTime?
+  voidedAt        DateTime?
+  notes           String?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lines           InvoiceLine[]
+  ledgerEntries   PaymentLedgerEntry[]
 
   @@index([orderId])
+  @@index([status])
+  @@index([pdfAssetId])
   @@index([invoiceNumber])
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  email           String
+  name            String?
+  phone           String?
+  shippingAddress Json?
+  billingAddress  Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orders          Order[]
+
+  @@unique([storeId, email])
+  @@index([storeId])
+}
+
+model InvoiceLine {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  lineNumber     Int
+  description    String
+  quantity       Int      @default(1)
+  unitAmountCents Int
+  totalAmountCents Int
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@unique([invoiceId, lineNumber])
+  @@index([invoiceId])
+}
+
+model InvoiceSequence {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  year        Int
+  nextNumber  Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([storeId, year])
+  @@index([storeId])
+}
+
+model PaymentLedgerEntry {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  entryType     PaymentLedgerEntryType
+  amountCents   Int
+  currency      String   @default("USD")
+  description   String?
+  externalRef   String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([storeId])
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([entryType])
+  @@index([createdAt])
+}
+
+enum PaymentLedgerEntryType {
+  INVOICE_ISSUED
+  PAYMENT_RECEIVED
+  ADJUSTMENT
+  CREDIT_NOTE
+  REFUND
+}
+
+model ShipmentEvent {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shipmentId   String
+  shipment     Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  eventType    String
+  status       String?
+  message      String?
+  payload      Json?
+  occurredAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([storeId])
+  @@index([shipmentId])
+  @@index([eventType])
+  @@index([occurredAt])
 }
 
 // ============================================================================

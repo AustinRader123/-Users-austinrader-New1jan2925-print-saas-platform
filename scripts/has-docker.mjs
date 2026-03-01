@@ -29,6 +29,10 @@ function run(cmd, args, timeoutMs = 10000) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function main() {
   const dockerVersion = await run('docker', ['--version']);
   if (!dockerVersion.ok) {
@@ -36,9 +40,21 @@ async function main() {
     process.exit(1);
   }
 
-  const dockerInfo = await run('docker', ['info'], 15000);
-  if (!dockerInfo.ok) {
-    const reason = (dockerInfo.stderr || dockerInfo.stdout || 'docker daemon is not accessible').trim();
+  let dockerInfo = null;
+  const dockerInfoAttempts = 3;
+  for (let attempt = 1; attempt <= dockerInfoAttempts; attempt += 1) {
+    dockerInfo = await run('docker', ['info'], 30000);
+    if (dockerInfo.ok) {
+      break;
+    }
+
+    if (attempt < dockerInfoAttempts) {
+      await sleep(2000 * attempt);
+    }
+  }
+
+  if (!dockerInfo?.ok) {
+    const reason = (dockerInfo?.stderr || dockerInfo?.stdout || 'docker daemon is not accessible').trim();
     console.log(`Docker unavailable: ${reason}`);
     process.exit(1);
   }

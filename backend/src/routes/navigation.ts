@@ -22,6 +22,8 @@ router.get('/menu', async (req: AuthRequest, res) => {
     const permissions = await getUserPermissions({ tenantId, userId, userRole });
     const productionV2Enabled = await FeatureGateService.can(tenantId, 'production_v2.enabled');
     const inventoryEnabled = await FeatureGateService.can(tenantId, 'inventory.enabled');
+    const billingEnabled = await FeatureGateService.can(tenantId, 'billing.enabled');
+    const shippingEnabled = await FeatureGateService.can(tenantId, 'shipping.enabled');
 
     const sections: NavSection[] = [
       {
@@ -46,6 +48,9 @@ router.get('/menu', async (req: AuthRequest, res) => {
             : []),
           ...(inventoryEnabled && hasPermission(permissions, 'production.view')
             ? [{ to: '/dashboard/purchasing', label: 'Purchasing' }]
+            : []),
+          ...(shippingEnabled && hasPermission(permissions, 'shipping.view')
+            ? [{ to: '/dashboard/shipping', label: 'Shipping' }]
             : []),
         ],
       },
@@ -93,6 +98,7 @@ router.get('/menu', async (req: AuthRequest, res) => {
           ...(hasPermission(permissions, 'domains.manage') ? [{ to: '/app/settings/stores', label: 'Stores & Branding' }] : []),
           { to: '/app/settings/users', label: 'Users & Roles' },
           ...(hasPermission(permissions, 'billing.manage') ? [{ to: '/app/settings/billing', label: 'Billing' }] : []),
+          ...(billingEnabled && hasPermission(permissions, 'billing.view') ? [{ to: '/dashboard/billing', label: 'Order Billing' }] : []),
         ],
       },
     ].filter((section) => section.items.length > 0);

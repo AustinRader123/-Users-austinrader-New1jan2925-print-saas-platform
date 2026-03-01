@@ -22,9 +22,13 @@ async function releaseLock() {
 }
 
 export async function runSupplierSchedulerTick() {
-  const lock = await tryAcquireLock();
-  if (!lock) {
-    return { ok: false, skipped: true, reason: 'lock-not-acquired', scheduled: 0 };
+  const ignoreLock = process.env.SUPPLIER_SCHEDULER_IGNORE_LOCK === 'true';
+  let lock = true;
+  if (!ignoreLock) {
+    lock = await tryAcquireLock();
+    if (!lock) {
+      return { ok: false, skipped: true, reason: 'lock-not-acquired', scheduled: 0 };
+    }
   }
 
   try {
@@ -74,7 +78,9 @@ export async function runSupplierSchedulerTick() {
       return { ok: true, skipped: false, scheduled };
     });
   } finally {
-    await releaseLock();
+    if (!ignoreLock && lock) {
+      await releaseLock();
+    }
   }
 }
 

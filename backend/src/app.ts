@@ -50,6 +50,7 @@ import purchasingRoutes from './routes/purchasing.js';
 import webhooksRoutes from './routes/webhooks.js';
 import reportsRoutes from './routes/reports.js';
 import billingRoutes from './routes/billing.js';
+import orderBillingRoutes from './routes/order-billing.js';
 import domainsRoutes from './routes/domains.js';
 import rbacRoutes from './routes/rbac.js';
 import navigationRoutes from './routes/navigation.js';
@@ -58,6 +59,7 @@ import publicCustomizerRoutes from './routes/public-customizer.js';
 import networkRoutes from './routes/network.js';
 import fundraisingRoutes from './routes/fundraising.js';
 import productionV2Routes from './routes/production-v2.js';
+import shippingRoutes from './routes/shipping.js';
 
 const app: Express = express();
 app.disable('x-powered-by');
@@ -193,6 +195,7 @@ app.use('/api/purchasing', purchasingRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/billing', authMiddleware, billingRoutes);
+app.use('/api/order-billing', authMiddleware, orderBillingRoutes);
 app.use('/api/domains', authMiddleware, domainsRoutes);
 app.use('/api/rbac', authMiddleware, rbacRoutes);
 app.use('/api/navigation', authMiddleware, navigationRoutes);
@@ -201,6 +204,7 @@ app.use('/api/public/customizer', publicCustomizerRoutes);
 app.use('/api/network', authMiddleware, networkRoutes);
 app.use('/api/fundraising', authMiddleware, fundraisingRoutes);
 app.use('/api/production-v2', productionV2Routes);
+app.use('/api/shipping', authMiddleware, shippingRoutes);
 
 // Error handling
 app.use(errorHandler);
