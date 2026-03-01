@@ -8,6 +8,7 @@ import AuditService from './AuditService.js';
 import ProofService from './ProofService.js';
 import EmailService from './EmailService.js';
 import NetworkRoutingService from './NetworkRoutingService.js';
+import FundraisingService from './FundraisingService.js';
 
 const prisma: any = new PrismaClient();
 
@@ -136,7 +137,16 @@ export class PublicStorefrontService {
     });
   }
 
-  async createCart(storeSlug: string, storeId?: string, host?: string) {
+  async createCart(
+    storeSlug: string,
+    storeId?: string,
+    host?: string,
+    fundraiser?: {
+      fundraiserCampaignId?: string;
+      fundraiserMemberId?: string;
+      fundraiserTeamStoreId?: string;
+    }
+  ) {
     const store = await this.resolveStore({ storeSlug, storeId, host });
     return prisma.cart.create({
       data: {
@@ -144,6 +154,9 @@ export class PublicStorefrontService {
         token: randomToken(),
         status: 'ACTIVE',
         total: 0,
+        fundraiserCampaignId: fundraiser?.fundraiserCampaignId || undefined,
+        fundraiserMemberId: fundraiser?.fundraiserMemberId || undefined,
+        fundraiserTeamStoreId: fundraiser?.fundraiserTeamStoreId || undefined,
       },
       include: { items: true },
     });
@@ -195,6 +208,27 @@ export class PublicStorefrontService {
       locations: payload.decorationLocations,
     });
 
+    let pricingWithFundraising = pricing as any;
+    if ((cart as any).fundraiserCampaignId) {
+      const override = await (prisma as any).fundraiserCampaignProduct.findFirst({
+        where: {
+          campaignId: (cart as any).fundraiserCampaignId,
+          productId: product.id,
+          active: true,
+        },
+      });
+      if (override?.overridePrice != null) {
+        const lineTotal = Number(override.overridePrice) * quantity;
+        pricingWithFundraising = {
+          ...(pricing || {}),
+          total: lineTotal,
+          subtotal: lineTotal,
+          fundraiserOverridePrice: Number(override.overridePrice),
+          fundraiserOverrideSource: 'campaign_product_override',
+        };
+      }
+    }
+
     await prisma.cartItem.create({
       data: {
         storeId: cart.storeId,
@@ -207,7 +241,9 @@ export class PublicStorefrontService {
         decorationMethod: payload.decorationMethod,
         decorationLocations: payload.decorationLocations || [],
         designId: payload.designId,
-        pricingSnapshotData: pricing,
+        pricingSnapshotData: pricingWithFundraising,
+        fundraiserCampaignId: (cart as any).fundraiserCampaignId || null,
+        fundraiserMemberId: (cart as any).fundraiserMemberId || null,
       } as any,
     });
 
@@ -305,6 +341,37 @@ export class PublicStorefrontService {
       totalAmount: Number(cart.total || 0),
     };
 
+    let fundraiserAmountCents = 0;
+    let fundraiserMeta: any = null;
+    if ((cart as any).fundraiserCampaignId) {
+      const campaign = await (prisma as any).fundraiserCampaign.findFirst({
+        where: { id: (cart as any).fundraiserCampaignId },
+        include: {
+          members: {
+            where: {
+              id: (cart as any).fundraiserMemberId || undefined,
+            },
+            take: 1,
+          },
+        },
+      });
+
+      if (campaign) {
+        const member = campaign.members?.[0] || null;
+        const pct = Number(campaign.defaultFundraiserPercent || 0);
+        fundraiserAmountCents = Math.max(0, Math.round(Number(totals.subtotal || 0) * (pct / 100) * 100));
+        fundraiserMeta = {
+          campaignId: campaign.id,
+          memberId: member?.id || null,
+          teamStoreId: (cart as any).fundraiserTeamStoreId || null,
+          shippingMode: campaign.shippingMode,
+          allowSplitShip: campaign.allowSplitShip,
+          fundraiserPercent: pct,
+          contributionCents: fundraiserAmountCents,
+        };
+      }
+    }
+
     const checkoutSession = await (prisma as any).checkoutSession.create({
       data: {
         storeId: cart.storeId,
@@ -320,6 +387,9 @@ export class PublicStorefrontService {
     });
 
     const needsProof = cart.items.some((item: any) => Boolean(item.designId || item.decorationMethod || item.customizationId));
+    const shouldHoldForConsolidation = Boolean(
+      fundraiserMeta?.shippingMode === 'CONSOLIDATED' && fundraiserMeta?.allowSplitShip === false
+    );
 
     const order = await prisma.order.create({
       data: {
@@ -327,7 +397,7 @@ export class PublicStorefrontService {
         userId: user.id,
         orderNumber: createOrderNumber(),
         status: needsProof ? 'PENDING' : 'CONFIRMED',
-        fulfillmentStatus: needsProof ? 'proof_needed' : 'new',
+        fulfillmentStatus: shouldHoldForConsolidation ? 'hold_consolidation' : (needsProof ? 'proof_needed' : 'new'),
         paymentStatus: 'PAID',
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
@@ -338,6 +408,11 @@ export class PublicStorefrontService {
         shippingAddress: payload.shippingAddress,
         billingAddress: payload.billingAddress,
         publicToken: randomToken(),
+        fundraiserCampaignId: (cart as any).fundraiserCampaignId || null,
+        fundraiserMemberId: (cart as any).fundraiserMemberId || null,
+        fundraiserTeamStoreId: (cart as any).fundraiserTeamStoreId || null,
+        fundraiserAmountCents,
+        metadata: fundraiserMeta ? { fundraiser: fundraiserMeta } : undefined,
       },
     });
 
@@ -386,6 +461,15 @@ export class PublicStorefrontService {
     });
 
     await prisma.cart.update({ where: { id: cart.id }, data: { status: 'CONVERTED' } });
+
+    if ((cart as any).fundraiserCampaignId && fundraiserAmountCents > 0) {
+      await FundraisingService.createContributionLedgerEntryFromOrder(
+        order.id,
+        String((cart as any).fundraiserCampaignId),
+        (cart as any).fundraiserMemberId || null,
+        fundraiserAmountCents
+      );
+    }
 
     const customizedItem = createdOrderItems.find((item) => Boolean(item.customizationId));
     if (customizedItem) {

@@ -42,6 +42,7 @@ model User {
   artworkAssets ArtworkAsset[]
   customizationsCreated Customization[]
   networkUserRoles NetworkUserRole[]
+  fundraiserConsolidationRunsCreated FundraiserConsolidationRun[]
 
   @@index([email])
   @@index([role])
@@ -161,6 +162,10 @@ model Store {
   fulfilledOrders Order[] @relation("OrderFulfillmentStore")
   royaltyLedgerFrom RoyaltyLedgerEntry[] @relation("RoyaltyFromStore")
   royaltyLedgerTo RoyaltyLedgerEntry[] @relation("RoyaltyToStore")
+  fundraiserCampaigns FundraiserCampaign[]
+  fundraiserMembers FundraiserCampaignMember[]
+  fundraiserConsolidationRuns FundraiserConsolidationRun[]
+  fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -196,6 +201,7 @@ model Tenant {
   quotePublicTokens QuotePublicToken[]
   invoicePublicTokens InvoicePublicToken[]
   networks Network[]
+  fundraiserCampaigns FundraiserCampaign[]
 
   @@index([slug])
 }
@@ -346,6 +352,7 @@ model Network {
   routedOrders      RoutedOrder[]
   royaltyRules      RoyaltyRule[]
   royaltyLedger     RoyaltyLedgerEntry[]
+  fundraiserCampaigns FundraiserCampaign[]
 
   @@index([tenantId])
   @@index([enabled])
@@ -515,6 +522,212 @@ enum RoyaltyLedgerStatus {
   ACCRUED
   INVOICED
   PAID
+}
+
+enum FundraiserCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum CampaignShippingMode {
+  DIRECT
+  CONSOLIDATED
+}
+
+enum FundraiserConsolidationStatus {
+  CREATED
+  LOCKED
+  RELEASED
+  COMPLETED
+  CANCELED
+}
+
+enum FundraiserPayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  VOID
+}
+
+enum FundraiserPayoutDirection {
+  CREDIT
+  DEBIT
+}
+
+model FundraiserCampaign {
+  id                      String                   @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  storeId                 String
+  store                   Store                    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  networkId               String?
+  network                 Network?                 @relation(fields: [networkId], references: [id], onDelete: SetNull)
+  slug                    String
+  name                    String
+  description             String?
+  status                  FundraiserCampaignStatus @default(DRAFT)
+  startsAt                DateTime?
+  endsAt                  DateTime?
+  fundraisingGoalCents    Int?
+  defaultFundraiserPercent Float?
+  shippingMode            CampaignShippingMode     @default(DIRECT)
+  allowSplitShip          Boolean                  @default(true)
+  metadata                Json?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  productOverrides        FundraiserCampaignProduct[]
+  teamStoreLinks          FundraiserCampaignTeamStore[]
+  members                 FundraiserCampaignMember[]
+  carts                   Cart[]                   @relation("CartFundraiserCampaign")
+  orderItems              CartItem[]
+  orders                  Order[]                  @relation("OrderFundraiserCampaign")
+  consolidationRuns       FundraiserConsolidationRun[]
+  payoutLedgerEntries     FundraiserPayoutLedgerEntry[]
+
+  @@unique([storeId, slug])
+  @@index([tenantId])
+  @@index([storeId])
+  @@index([networkId])
+  @@index([status])
+}
+
+model FundraiserCampaignProduct {
+  id                       String             @id @default(cuid())
+  campaignId               String
+  campaign                 FundraiserCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  productId                String
+  product                  Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  overridePrice            Float?
+  overrideFundraiserPercent Float?
+  active                   Boolean            @default(true)
+  metadata                 Json?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  @@unique([campaignId, productId])
+  @@index([campaignId])
+  @@index([productId])
+}
+
+model FundraiserCampaignTeamStore {
+  id         String             @id @default(cuid())
+  campaignId String
+  campaign   FundraiserCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  teamStoreId String
+  teamStore  TeamStore          @relation(fields: [teamStoreId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+
+  @@unique([campaignId, teamStoreId])
+  @@index([campaignId])
+  @@index([teamStoreId])
+}
+
+model FundraiserCampaignMember {
+  id            String             @id @default(cuid())
+  campaignId    String
+  campaign      FundraiserCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  storeId       String
+  store         Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  teamStoreId   String?
+  teamStore     TeamStore?         @relation(fields: [teamStoreId], references: [id], onDelete: SetNull)
+  rosterEntryId String?
+  rosterEntry   Roster?            @relation(fields: [rosterEntryId], references: [id], onDelete: SetNull)
+  displayName   String
+  publicCode    String?
+  isActive      Boolean            @default(true)
+  goalCents     Int?
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  carts         Cart[]
+  cartItems     CartItem[]
+  orders        Order[]
+  payoutLedgerEntries FundraiserPayoutLedgerEntry[]
+
+  @@unique([campaignId, publicCode])
+  @@unique([campaignId, rosterEntryId])
+  @@index([campaignId])
+  @@index([storeId])
+  @@index([teamStoreId])
+  @@index([rosterEntryId])
+  @@index([isActive])
+}
+
+model FundraiserConsolidationRun {
+  id             String                        @id @default(cuid())
+  campaignId     String
+  campaign       FundraiserCampaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  storeId        String
+  store          Store                         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  status         FundraiserConsolidationStatus @default(CREATED)
+  idempotencyKey String?                       @unique
+  createdById    String?
+  createdBy      User?                         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  metadata       Json?
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  lines          FundraiserConsolidationOrderLine[]
+
+  @@index([campaignId])
+  @@index([storeId])
+  @@index([status])
+}
+
+model FundraiserConsolidationOrderLine {
+  id             String                   @id @default(cuid())
+  runId          String
+  run            FundraiserConsolidationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shippingMode   CampaignShippingMode
+  splitGroup     String?
+  status         String                   @default("PENDING")
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@unique([runId, orderId])
+  @@unique([orderId])
+  @@index([runId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model FundraiserPayoutLedgerEntry {
+  id             String                   @id @default(cuid())
+  campaignId     String
+  campaign       FundraiserCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  storeId        String
+  store          Store                    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId        String?
+  order          Order?                   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  memberId       String?
+  member         FundraiserCampaignMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  direction      FundraiserPayoutDirection @default(CREDIT)
+  amountCents    Int
+  currency       String                   @default("USD")
+  kind           String
+  status         FundraiserPayoutStatus   @default(PENDING)
+  idempotencyKey String?                  @unique
+  notes          String?
+  metadata       Json?
+  approvedAt     DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([campaignId])
+  @@index([storeId])
+  @@index([orderId])
+  @@index([memberId])
+  @@index([status])
+  @@index([kind])
 }
 
 model RoyaltyLedgerEntry {
@@ -727,6 +940,7 @@ model Product {
   personalizationSchemas PersonalizationSchema[]
   customizations Customization[]
   externalProductMaps ExternalProductMap[]
+  fundraiserCampaignProducts FundraiserCampaignProduct[]
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
 
@@ -1770,6 +1984,12 @@ model Cart {
   token     String?    @unique
   status    CartStatus @default(ACTIVE)
   total     Float      @default(0)
+  fundraiserCampaignId String?
+  fundraiserCampaign   FundraiserCampaign? @relation("CartFundraiserCampaign", fields: [fundraiserCampaignId], references: [id], onDelete: SetNull)
+  fundraiserMemberId   String?
+  fundraiserMember     FundraiserCampaignMember? @relation(fields: [fundraiserMemberId], references: [id], onDelete: SetNull)
+  fundraiserTeamStoreId String?
+  fundraiserTeamStore  TeamStore?  @relation(fields: [fundraiserTeamStoreId], references: [id], onDelete: SetNull)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -1780,6 +2000,9 @@ model Cart {
   @@index([userId])
   @@index([sessionId])
   @@index([storeId])
+  @@index([fundraiserCampaignId])
+  @@index([fundraiserMemberId])
+  @@index([fundraiserTeamStoreId])
 }
 
 enum CartStatus {
@@ -1814,6 +2037,10 @@ model CartItem {
   customizationId       String?          @unique
   customizationJson     Json?
   previewFileId         String?
+  fundraiserCampaignId  String?
+  fundraiserCampaign    FundraiserCampaign? @relation(fields: [fundraiserCampaignId], references: [id], onDelete: SetNull)
+  fundraiserMemberId    String?
+  fundraiserMember      FundraiserCampaignMember? @relation(fields: [fundraiserMemberId], references: [id], onDelete: SetNull)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
@@ -1823,6 +2050,8 @@ model CartItem {
   @@index([productVariantId])
   @@index([designId])
   @@index([customizationId])
+  @@index([fundraiserCampaignId])
+  @@index([fundraiserMemberId])
 }
 
 model CheckoutSession {
@@ -1892,6 +2121,13 @@ model Order {
   // Metadata
   metadata            Json?
   publicToken         String?        @unique
+  fundraiserCampaignId String?
+  fundraiserCampaign   FundraiserCampaign? @relation("OrderFundraiserCampaign", fields: [fundraiserCampaignId], references: [id], onDelete: SetNull)
+  fundraiserMemberId   String?
+  fundraiserMember     FundraiserCampaignMember? @relation(fields: [fundraiserMemberId], references: [id], onDelete: SetNull)
+  fundraiserTeamStoreId String?
+  fundraiserTeamStore  TeamStore?     @relation(fields: [fundraiserTeamStoreId], references: [id], onDelete: SetNull)
+  fundraiserAmountCents Int            @default(0)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -1909,6 +2145,8 @@ model Order {
   printPackages       PrintPackage[]
   routedOrder         RoutedOrder?
   royaltyLedgerEntries RoyaltyLedgerEntry[]
+  fundraiserConsolidationLines FundraiserConsolidationOrderLine[]
+  fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
   // DecoNetwork mapping
   dnOrderMaps DnOrderMap[]
 
@@ -1920,6 +2158,9 @@ model Order {
   @@index([createdAt])
   @@index([publicToken])
   @@index([fulfillmentStoreId])
+  @@index([fundraiserCampaignId])
+  @@index([fundraiserMemberId])
+  @@index([fundraiserTeamStoreId])
 
   @@unique([connectionId, externalId])
 
@@ -2014,6 +2255,10 @@ model TeamStore {
   rosterEntries     Roster[]
   personalizationFields PersonalizationField[]
   orderMeta         TeamStoreOrderMeta[]
+  fundraiserCampaignLinks FundraiserCampaignTeamStore[]
+  fundraiserCampaignMembers FundraiserCampaignMember[]
+  fundraiserCarts Cart[]
+  fundraiserOrders Order[]
 
   @@unique([storeId, slug])
   @@index([storeId])
@@ -2032,6 +2277,7 @@ model Roster {
   createdAt   DateTime @default(now())
 
   orderMeta   TeamStoreOrderMeta[]
+  fundraiserCampaignMembers FundraiserCampaignMember[]
 
   @@index([storeId])
   @@index([teamStoreId])

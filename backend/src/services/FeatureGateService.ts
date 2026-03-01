@@ -8,6 +8,7 @@ const DEFAULT_FEATURES: Record<string, boolean> = {
   'webhooks.enabled': false,
   'customizer.enabled': false,
   'network.enabled': false,
+  'fundraising.enabled': false,
 };
 
 const DEFAULT_LIMITS: Record<string, number> = {

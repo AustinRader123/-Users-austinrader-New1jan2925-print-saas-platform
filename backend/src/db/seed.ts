@@ -111,6 +111,8 @@ async function main() {
       'network.publish',
       'network.route',
       'network.reports.view',
+      'fundraising.manage',
+      'fundraising.reports.view',
     ];
     for (const permissionName of perms) {
       const permission = await tenancyClient.permission.upsert({
@@ -152,6 +154,7 @@ async function main() {
             'webhooks.enabled': false,
             'customizer.enabled': false,
             'network.enabled': false,
+            'fundraising.enabled': false,
           },
           limits: { maxStores: 1, maxUsers: 2, maxMonthlyOrders: 50 },
         },
@@ -167,6 +170,7 @@ async function main() {
             'webhooks.enabled': false,
             'customizer.enabled': false,
             'network.enabled': false,
+            'fundraising.enabled': false,
           },
           limits: { maxStores: 2, maxUsers: 5, maxMonthlyOrders: 500 },
         },
@@ -182,6 +186,7 @@ async function main() {
             'webhooks.enabled': true,
             'customizer.enabled': true,
             'network.enabled': true,
+            'fundraising.enabled': true,
           },
           limits: { maxStores: 10, maxUsers: 50, maxMonthlyOrders: 5000 },
         },
@@ -197,6 +202,7 @@ async function main() {
             'webhooks.enabled': true,
             'customizer.enabled': true,
             'network.enabled': true,
+            'fundraising.enabled': true,
           },
           limits: { maxStores: 9999, maxUsers: 9999, maxMonthlyOrders: 999999 },
         },

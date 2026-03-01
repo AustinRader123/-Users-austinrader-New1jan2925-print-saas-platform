@@ -62,6 +62,13 @@ router.get('/menu', async (req: AuthRequest, res) => {
         ],
       },
       {
+        label: 'Fundraising',
+        items: [
+          ...(hasPermission(permissions, 'fundraising.manage') ? [{ to: '/app/fundraising', label: 'Campaigns' }] : []),
+          ...(hasPermission(permissions, 'fundraising.reports.view') ? [{ to: '/app/fundraising', label: 'Payout Ledger' }] : []),
+        ],
+      },
+      {
         label: 'Settings',
         items: [
           ...(hasPermission(permissions, 'domains.manage') ? [{ to: '/app/settings/stores', label: 'Stores & Branding' }] : []),
