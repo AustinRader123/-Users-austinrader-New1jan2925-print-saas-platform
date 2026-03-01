@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthRequest, authMiddleware, roleMiddleware } from '../middleware/auth.js';
 import { requireFeature, requirePermission } from '../middleware/permissions.js';
 import ShippingService from '../services/ShippingService.js';
+import { getShippingProvider } from '../providers/shipping/index.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -15,6 +16,49 @@ const createLabelSchema = z.object({
   serviceLevel: z.string().optional(),
   weight: z.number().optional(),
   cost: z.number().optional(),
+});
+
+const ratesSchema = z.object({
+  storeId: z.string().min(1),
+  orderId: z.string().min(1),
+  destination: z.record(z.any()).optional(),
+  weightOz: z.number().optional(),
+});
+
+const providerLabelSchema = z.object({
+  storeId: z.string().min(1),
+  orderId: z.string().min(1),
+  rate: z.object({
+    provider: z.string().min(1),
+    carrier: z.string().min(1),
+    serviceLevel: z.string().min(1),
+    amountCents: z.number().int().nonnegative(),
+    currency: z.string().min(3),
+    etaDays: z.number().optional(),
+  }),
+  metadata: z.record(z.any()).optional(),
+});
+
+router.post('/rates', requirePermission('shipping.view'), async (req: AuthRequest, res) => {
+  const parsed = ratesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
+  }
+
+  const provider = getShippingProvider();
+  const rates = await provider.getRates(parsed.data);
+  return res.json(rates);
+});
+
+router.post('/label', requirePermission('shipping.manage'), async (req: AuthRequest, res) => {
+  const parsed = providerLabelSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
+  }
+
+  const provider = getShippingProvider();
+  const shipment = await provider.createShipment(parsed.data);
+  return res.status(201).json(shipment);
 });
 
 const eventSchema = z.object({

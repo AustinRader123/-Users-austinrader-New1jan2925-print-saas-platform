@@ -1,6 +1,9 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import CheckoutService from '../services/CheckoutService.js';
+import { requireFeature, requirePermission } from '../middleware/permissions.js';
+import { roleMiddleware } from '../middleware/auth.js';
+import PaymentsService from '../services/PaymentsService.js';
 import logger from '../logger.js';
 
 const router = Router();
@@ -24,6 +27,54 @@ router.post('/checkout', authMiddleware, async (req: AuthRequest, res: Response)
   } catch (error) {
     logger.error('Checkout error:', error);
     res.status(500).json({ error: 'Failed to start checkout' });
+  }
+});
+
+router.post(
+  '/payments/intent',
+  authMiddleware,
+  roleMiddleware(['ADMIN', 'STORE_OWNER', 'ACCOUNTING']),
+  requireFeature('payments.enabled'),
+  requirePermission('billing.manage'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { storeId, amountCents, currency, invoiceId, orderId, metadata } = req.body || {};
+      if (!storeId || !amountCents) {
+        return res.status(400).json({ error: 'storeId and amountCents are required' });
+      }
+
+      const intent = await PaymentsService.createIntent({
+        storeId: String(storeId),
+        amountCents: Number(amountCents),
+        currency: String(currency || 'USD').toUpperCase(),
+        invoiceId: invoiceId ? String(invoiceId) : undefined,
+        orderId: orderId ? String(orderId) : undefined,
+        metadata: metadata || {},
+      });
+
+      return res.status(201).json(intent);
+    } catch (error: any) {
+      logger.error('Create payment intent error:', error);
+      return res.status(500).json({ error: error?.message || 'Failed to create payment intent' });
+    }
+  }
+);
+
+router.post('/payments/webhook/stripe', async (req, res) => {
+  try {
+    const verification = await PaymentsService.verifyWebhook(req.body, {
+      'stripe-signature': req.header('stripe-signature') || undefined,
+      'x-webhook-secret': req.header('x-webhook-secret') || undefined,
+    });
+
+    if (!verification.accepted) {
+      return res.status(400).json({ error: verification.reason || 'Webhook rejected' });
+    }
+
+    return res.status(202).json({ accepted: true, eventType: verification.eventType });
+  } catch (error: any) {
+    logger.error('Stripe webhook error:', error);
+    return res.status(500).json({ error: error?.message || 'Webhook processing failed' });
   }
 });
 
