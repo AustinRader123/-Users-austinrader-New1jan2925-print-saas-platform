@@ -8,6 +8,7 @@ $doctorProfile = if ($env:DOCTOR_PROFILE) { $env:DOCTOR_PROFILE } else { 'develo
 $logDir = Join-Path $root 'artifacts/logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $fail = $false
+$strictDbMode = ($env:CI -eq 'true' -or $env:REQUIRE_DOCKER -eq '1' -or $env:NODE_ENV -eq 'production')
 
 Write-Host "[doctor] BACKEND_PORT=$backendPort FRONTEND_PORT=$frontendPort BASE_URL=$baseUrl"
 
@@ -25,7 +26,15 @@ if ($allowBusy -ne '1') {
 }
 
 if (-not $env:DATABASE_URL) {
-  Write-Host '[doctor] WARN DATABASE_URL not found in shell env (backend/.env may still satisfy runtime).'
+  if ($strictDbMode) {
+    Write-Host '[doctor] FAIL DATABASE_URL missing in CI; set it to postgres service host (postgres).'
+    $fail = $true
+  } else {
+    Write-Host '[doctor] WARN DATABASE_URL not found in shell env (backend/.env may still satisfy runtime).'
+  }
+} elseif ($strictDbMode -and ($env:DATABASE_URL -match '@localhost:' -or $env:DATABASE_URL -match '@127\.0\.0\.1:')) {
+  Write-Host '[doctor] FAIL CI/compose DATABASE_URL must not use localhost. Use postgres service host.'
+  $fail = $true
 }
 if (-not $env:JWT_SECRET) {
   Write-Host '[doctor] WARN JWT_SECRET not found in shell env (backend/.env may still satisfy runtime).'
@@ -49,6 +58,11 @@ if ($doctorProfile -eq 'production') {
 $dbLog = Join-Path $logDir 'doctor-db.log'
 Push-Location (Join-Path $root 'backend')
 try {
+  if ($env:DATABASE_URL) {
+    $dbUri = [uri]$env:DATABASE_URL
+    $dbPort = if ($dbUri.Port -gt 0) { $dbUri.Port } else { 5432 }
+    Write-Host ('[doctor] DB_TARGET=' + $dbUri.Host + ':' + $dbPort)
+  }
   $out = npm run db:migrate 2>&1 | Tee-Object -FilePath $dbLog
   if ($LASTEXITCODE -ne 0) {
     if ($out -match 'P1001') {

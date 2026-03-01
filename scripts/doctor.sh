@@ -40,6 +40,16 @@ get_env_or_dotenv() {
   printf ''
 }
 
+get_env_only() {
+  local key="$1"
+  local val="${!key:-}"
+  if [[ -n "$val" ]]; then
+    printf '%s' "$val"
+    return 0
+  fi
+  printf ''
+}
+
 echo "[doctor] BACKEND_PORT=$BACKEND_PORT FRONTEND_PORT=$FRONTEND_PORT BASE_URL=$BASE_URL"
 
 if [[ "$ALLOW_BUSY_PORTS" != "1" ]]; then
@@ -52,6 +62,9 @@ if [[ "$ALLOW_BUSY_PORTS" != "1" ]]; then
     fail=1
   fi
 fi
+
+ci_mode="$(get_env_only CI)"
+require_docker_mode="$(get_env_only REQUIRE_DOCKER)"
 
 database_url="$(get_env_or_dotenv DATABASE_URL)"
 jwt_secret="$(get_env_or_dotenv JWT_SECRET)"
@@ -66,10 +79,41 @@ cors_origin="$(get_env_or_dotenv CORS_ORIGIN)"
 node_env="$(get_env_or_dotenv NODE_ENV)"
 billing_provider_lower="$(printf '%s' "$billing_provider" | tr '[:upper:]' '[:lower:]')"
 
+strict_db_mode=0
+if [[ "$ci_mode" == "true" || "$require_docker_mode" == "1" || "$node_env" == "production" ]]; then
+  strict_db_mode=1
+fi
+
+if [[ "$strict_db_mode" == "1" ]]; then
+  database_url="$(get_env_only DATABASE_URL)"
+fi
+
+database_url="${database_url%\"}"
+database_url="${database_url#\"}"
+database_url="${database_url%\'}"
+database_url="${database_url#\'}"
+
 if [[ -z "$database_url" ]]; then
-  echo "[doctor] FAIL missing DATABASE_URL"
+  if [[ "$strict_db_mode" == "1" ]]; then
+    echo "[doctor] FAIL DATABASE_URL missing in CI; set it to postgres service host (postgres)."
+  else
+    echo "[doctor] FAIL missing DATABASE_URL"
+  fi
   fail=1
 fi
+
+if [[ "$strict_db_mode" == "1" && "$database_url" =~ @localhost:|@127\.0\.0\.1: ]]; then
+  echo "[doctor] FAIL CI/compose DATABASE_URL must not use localhost. Use postgres service host."
+  fail=1
+fi
+
+if [[ -n "$database_url" ]]; then
+  db_target="$(node -e "try{const u=new URL(process.argv[1]);console.log(u.hostname+':' +(u.port||'5432'));}catch{process.exit(1)}" "$database_url" 2>/dev/null || true)"
+  if [[ -n "$db_target" ]]; then
+    echo "[doctor] DB_TARGET=$db_target"
+  fi
+fi
+
 if [[ -z "$jwt_secret" ]]; then
   echo "[doctor] FAIL missing JWT_SECRET"
   fail=1
@@ -107,13 +151,24 @@ if [[ "$DOCTOR_PROFILE" == "production" ]]; then
 fi
 
 DB_LOG="$LOG_DIR/doctor-db.log"
-if ! (cd "$ROOT_DIR/backend" && npm run db:migrate >"$DB_LOG" 2>&1); then
-  if grep -q "P1001" "$DB_LOG"; then
-    echo "[doctor] FAIL database unreachable (Prisma P1001). Check DATABASE_URL and Postgres status."
-  else
-    echo "[doctor] FAIL database migration check failed. See artifacts/logs/doctor-db.log"
+if [[ "$strict_db_mode" == "1" ]]; then
+  if ! (cd "$ROOT_DIR/backend" && DATABASE_URL="$database_url" npm run db:migrate >"$DB_LOG" 2>&1); then
+    if grep -q "P1001" "$DB_LOG"; then
+      echo "[doctor] FAIL database unreachable (Prisma P1001). Check DATABASE_URL and Postgres status."
+    else
+      echo "[doctor] FAIL database migration check failed. See artifacts/logs/doctor-db.log"
+    fi
+    fail=1
   fi
-  fail=1
+else
+  if ! (cd "$ROOT_DIR/backend" && npm run db:migrate >"$DB_LOG" 2>&1); then
+    if grep -q "P1001" "$DB_LOG"; then
+      echo "[doctor] FAIL database unreachable (Prisma P1001). Check DATABASE_URL and Postgres status."
+    else
+      echo "[doctor] FAIL database migration check failed. See artifacts/logs/doctor-db.log"
+    fi
+    fail=1
+  fi
 fi
 
 if [[ "$fail" -ne 0 ]]; then

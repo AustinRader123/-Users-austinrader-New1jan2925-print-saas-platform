@@ -1,39 +1,37 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { DATABASE_URL, get } from './env.js';
 
 export const config = {
   // Server
-  NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: parseInt(process.env.PORT || process.env.BACKEND_PORT || '3100'),
-  API_URL: process.env.API_URL || `http://localhost:${process.env.PORT || process.env.BACKEND_PORT || '3100'}`,
+  NODE_ENV: get('NODE_ENV', 'development'),
+  PORT: parseInt(get('PORT', get('BACKEND_PORT', '3100'))),
+  API_URL: get('API_URL', `http://localhost:${get('PORT', get('BACKEND_PORT', '3100'))}`),
 
   // Database
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/deco_network',
+  DATABASE_URL,
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-  JWT_EXPIRY: process.env.JWT_EXPIRY || '7d',
+  JWT_SECRET: get('JWT_SECRET', 'your-secret-key-change-in-production'),
+  JWT_EXPIRY: get('JWT_EXPIRY', '7d'),
 
   // Stripe
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
-  STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || '',
-  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
+  STRIPE_SECRET_KEY: get('STRIPE_SECRET_KEY', ''),
+  STRIPE_PUBLISHABLE_KEY: get('STRIPE_PUBLISHABLE_KEY', ''),
+  STRIPE_WEBHOOK_SECRET: get('STRIPE_WEBHOOK_SECRET', ''),
 
   // AWS S3
-  AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || '',
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
-  S3_BUCKET: process.env.S3_BUCKET || 'skuflow',
+  AWS_REGION: get('AWS_REGION', 'us-east-1'),
+  AWS_ACCESS_KEY_ID: get('AWS_ACCESS_KEY_ID', ''),
+  AWS_SECRET_ACCESS_KEY: get('AWS_SECRET_ACCESS_KEY', ''),
+  S3_BUCKET: get('S3_BUCKET', 'skuflow'),
   S3_MOCKUP_FOLDER: 'mockups',
   S3_DESIGN_FOLDER: 'designs',
 
   // Redis (for queues)
-  REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+  REDIS_URL: get('REDIS_URL', 'redis://localhost:6379'),
 
   // SendGrid Email
-  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
-  SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'noreply@skuflow.ai',
+  SENDGRID_API_KEY: get('SENDGRID_API_KEY', ''),
+  SENDGRID_FROM_EMAIL: get('SENDGRID_FROM_EMAIL', 'noreply@skuflow.ai'),
 
   // File Upload
   MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
@@ -45,7 +43,7 @@ export const config = {
   MOCKUP_TIMEOUT: 60000, // 60 seconds
 
   // Features
-  ENABLE_VENDOR_SYNC: process.env.ENABLE_VENDOR_SYNC === 'true',
-  ENABLE_MOCKUP_GENERATION: process.env.ENABLE_MOCKUP_GENERATION !== 'false',
-  ENABLE_EMAIL_NOTIFICATIONS: process.env.ENABLE_EMAIL_NOTIFICATIONS !== 'false',
+  ENABLE_VENDOR_SYNC: get('ENABLE_VENDOR_SYNC', 'false') === 'true',
+  ENABLE_MOCKUP_GENERATION: get('ENABLE_MOCKUP_GENERATION', 'true') !== 'false',
+  ENABLE_EMAIL_NOTIFICATIONS: get('ENABLE_EMAIL_NOTIFICATIONS', 'true') !== 'false',
 };

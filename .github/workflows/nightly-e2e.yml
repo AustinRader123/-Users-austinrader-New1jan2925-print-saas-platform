@@ -30,7 +30,7 @@ jobs:
           --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
     env:
       ACTIONS_STEP_DEBUG: "true"
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/deco_network?schema=public
       JWT_SECRET: ci-secret
       ADMIN_EMAIL: admin@local.test
       ADMIN_PASSWORD: Admin123!

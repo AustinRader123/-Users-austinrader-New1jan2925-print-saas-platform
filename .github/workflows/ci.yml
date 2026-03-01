@@ -11,7 +11,7 @@ concurrency:
 
 env:
   NODE_VERSION: 20.x
-  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/deco_network?schema=public
   JWT_SECRET: ci-phase6-secret-please-change-in-prod-123456
   JWT_EXPIRY: 7d
   BILLING_PROVIDER: mock
@@ -85,6 +85,19 @@ jobs:
     name: Smoke checks (phase2a + phase6)
     runs-on: ubuntu-latest
     needs: [backend-build-test, frontend-build]
+    services:
+      postgres:
+        image: postgres:15
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: deco_network
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,6 +108,11 @@ jobs:
             backend/package-lock.json
       - name: Install backend dependencies
         run: npm ci
+        working-directory: backend
+      - name: Validate DATABASE_URL connectivity
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL"
+          npx prisma migrate status
         working-directory: backend
       - name: Run smoke phase2a
         run: npm run smoke:phase2a
@@ -118,6 +136,7 @@ jobs:
     env:
       CI: 'true'
       REQUIRE_DOCKER: '1'
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/deco_network?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

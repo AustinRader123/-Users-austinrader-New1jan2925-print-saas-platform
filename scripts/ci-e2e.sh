@@ -14,8 +14,15 @@ mkdir -p "$ARTIFACTS_DIR"
 BACKEND_LOG="$ARTIFACTS_DIR/backend.log"
 FRONTEND_LOG="$ARTIFACTS_DIR/frontend.log"
 
-# Environment defaults for local run; CI sets these explicitly
-export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/appdb}"
+# Environment defaults for local run; CI must set DATABASE_URL explicitly
+if [[ "${CI:-}" == "true" ]]; then
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "[ci-e2e] ERROR: DATABASE_URL missing in CI; set it to postgres service host (postgres)."
+    exit 1
+  fi
+else
+  export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/appdb}"
+fi
 export JWT_SECRET="${JWT_SECRET:-test-secret}"
 export PORT="${PORT:-3000}"
 export API_URL="http://localhost:$PORT"
