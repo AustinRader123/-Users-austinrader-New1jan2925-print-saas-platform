@@ -25,7 +25,11 @@ const resolvedVersion =
   packageVersion ||
   '0.0.0';
 
-const resolvedCommitRaw = (process.env.GIT_SHA || process.env.COMMIT_SHA || '').trim();
+const resolvedCommitRaw =
+  (process.env.GIT_SHA || '').trim() ||
+  (process.env.COMMIT_SHA || '').trim() ||
+  (process.env.RENDER_GIT_COMMIT || '').trim() ||
+  (process.env.VERCEL_GIT_COMMIT_SHA || '').trim();
 const resolvedCommit = resolvedCommitRaw ? resolvedCommitRaw.slice(0, 7) : 'unknown';
 
 const resolvedEnv =

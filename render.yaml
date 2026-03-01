@@ -7,11 +7,17 @@ services:
     branch: main
     rootDir: backend
     buildCommand: >-
+      APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || node -p "require('./package.json').version") &&
+      echo "$APP_VERSION" > .app_version &&
       npm ci &&
       ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) &&
       ( npm run build || true )
     startCommand: >-
-      bash -lc '([ -f prisma/schema.prisma ] && npx prisma migrate deploy || true);
+      bash -lc 'export APP_VERSION="${APP_VERSION:-$(cat .app_version 2>/dev/null || echo v0.0.0)}";
+      export GIT_SHA="${GIT_SHA:-${RENDER_GIT_COMMIT:-unknown}}";
+      export BUILD_TIME="${BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}";
+      export APP_ENV="${APP_ENV:-production}";
+      ([ -f prisma/schema.prisma ] && npx prisma migrate deploy || true);
       ( npm start || node dist/index.js )'
     autoDeploy: true
     healthCheckPath: /health
