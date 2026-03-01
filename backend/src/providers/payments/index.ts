@@ -4,7 +4,11 @@ import StripePaymentsProvider from './stripe/StripePaymentsProvider.js';
 
 export function getPaymentsProvider(): PaymentsProvider {
   const provider = String(process.env.PAYMENTS_PROVIDER || 'mock').toLowerCase();
-  if (provider === 'stripe') {
+  const resolvedProvider = provider === 'real'
+    ? String(process.env.PAYMENTS_REAL_PROVIDER || 'stripe').toLowerCase()
+    : provider;
+
+  if (resolvedProvider === 'stripe') {
     return new StripePaymentsProvider();
   }
   return new MockPaymentsProvider();

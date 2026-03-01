@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { assertProdDatabaseUrlGuards, isProductionRuntime } from './config/prod.js';
 
 dotenv.config();
 
@@ -20,3 +21,7 @@ export function mustGet(name: string): string {
 }
 
 export const DATABASE_URL = isStrictRuntime ? mustGet('DATABASE_URL') : get('DATABASE_URL', LOCAL_DEV_DATABASE_URL);
+
+if (isProductionRuntime()) {
+  assertProdDatabaseUrlGuards(DATABASE_URL);
+}

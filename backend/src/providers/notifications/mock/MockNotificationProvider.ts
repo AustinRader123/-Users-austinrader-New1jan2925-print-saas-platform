@@ -1,16 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-
-type SendEmailInput = {
-  to: string;
-  subject: string;
-  body: string;
-};
-
-type SendSmsInput = {
-  to: string;
-  body: string;
-};
+import { NotificationProvider, SendEmailInput, SendSmsInput } from '../NotificationProvider.js';
 
 function logsDir() {
   return path.join(process.cwd(), 'backend', 'uploads', 'logs');
@@ -23,7 +13,7 @@ async function writeLogFile(prefix: string, payload: Record<string, unknown>) {
   return filePath;
 }
 
-export class MockNotificationProvider {
+export class MockNotificationProvider implements NotificationProvider {
   async sendEmail(input: SendEmailInput) {
     const logPath = await writeLogFile('mock-email', {
       channel: 'email',
@@ -33,7 +23,13 @@ export class MockNotificationProvider {
       sentAt: new Date().toISOString(),
     });
 
-    return { ok: true, channel: 'email', providerRef: `mock_email_${Date.now()}`, logPath };
+    return {
+      accepted: true,
+      provider: 'mock-email',
+      messageId: `mock_email_${Date.now()}`,
+      channel: 'email',
+      logPath,
+    };
   }
 
   async sendSms(input: SendSmsInput) {
@@ -44,7 +40,13 @@ export class MockNotificationProvider {
       sentAt: new Date().toISOString(),
     });
 
-    return { ok: true, channel: 'sms', providerRef: `mock_sms_${Date.now()}`, logPath };
+    return {
+      accepted: true,
+      provider: 'mock-sms',
+      messageId: `mock_sms_${Date.now()}`,
+      channel: 'sms',
+      logPath,
+    };
   }
 }
 
