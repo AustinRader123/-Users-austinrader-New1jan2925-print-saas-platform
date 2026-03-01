@@ -118,6 +118,9 @@ jobs:
           echo "DATABASE_URL=$DATABASE_URL"
           npm run db:deploy
         working-directory: backend
+      - name: Seed database
+        run: npm run db:seed
+        working-directory: backend
       - name: Run smoke phase2a
         run: npm run smoke:phase2a
         working-directory: backend
