@@ -15,7 +15,15 @@ const steps = [
   { name: 'smoke:phase3_1', command: 'npm', args: ['run', 'smoke:phase3_1'], cwd: 'backend' },
   { name: 'smoke:phase4', command: 'npm', args: ['run', 'smoke:phase4'], cwd: 'backend' },
   { name: 'smoke:phase5', command: 'npm', args: ['run', 'smoke:phase5'], cwd: 'backend' },
-  { name: 'smoke:prod_sim', command: 'npm', args: ['run', 'smoke:prod_sim'] },
+  {
+    name: 'smoke:prod_sim',
+    command: 'npm',
+    args: ['run', 'smoke:prod_sim'],
+    env: {
+      DATABASE_URL: process.env.DATABASE_URL,
+      DOCTOR_ALLOW_LOCALHOST_DB: process.env.DOCTOR_ALLOW_LOCALHOST_DB,
+    },
+  },
   { name: 'smoke:phase6', command: 'npm', args: ['run', 'smoke:phase6'] },
 ];
 
@@ -23,7 +31,10 @@ function runStep(step) {
   return new Promise((resolve) => {
     const child = spawn(step.command, step.args, {
       cwd: step.cwd ? path.join(root, step.cwd) : root,
-      env: process.env,
+      env: {
+        ...process.env,
+        ...(step.env || {}),
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 

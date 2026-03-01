@@ -56,6 +56,7 @@ import customizerRoutes from './routes/customizer.js';
 import publicCustomizerRoutes from './routes/public-customizer.js';
 import networkRoutes from './routes/network.js';
 import fundraisingRoutes from './routes/fundraising.js';
+import productionV2Routes from './routes/production-v2.js';
 
 const app: Express = express();
 app.disable('x-powered-by');
@@ -197,6 +198,7 @@ app.use('/api/customizer', authMiddleware, customizerRoutes);
 app.use('/api/public/customizer', publicCustomizerRoutes);
 app.use('/api/network', authMiddleware, networkRoutes);
 app.use('/api/fundraising', authMiddleware, fundraisingRoutes);
+app.use('/api/production-v2', productionV2Routes);
 
 // Error handling
 app.use(errorHandler);

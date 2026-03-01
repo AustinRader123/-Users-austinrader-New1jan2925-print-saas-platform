@@ -9,6 +9,7 @@ const DEFAULT_FEATURES: Record<string, boolean> = {
   'customizer.enabled': false,
   'network.enabled': false,
   'fundraising.enabled': false,
+  'production_v2.enabled': false,
 };
 
 const DEFAULT_LIMITS: Record<string, number> = {

@@ -397,6 +397,69 @@ class ApiClient {
     return data;
   }
 
+  async listProductionV2Batches(params: {
+    tenantId: string;
+    stage?: string;
+    method?: string;
+    storeId?: string;
+    campaignId?: string;
+    q?: string;
+  }) {
+    const { data } = await this.client.get('/production-v2/batches', { params });
+    return data;
+  }
+
+  async getProductionV2Batch(batchId: string, tenantId: string) {
+    const { data } = await this.client.get(`/production-v2/batches/${batchId}`, { params: { tenantId } });
+    return data;
+  }
+
+  async createProductionV2FromOrder(orderId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/from-order/${orderId}`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async createProductionV2FromBulkOrder(bulkOrderId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/from-bulk-order/${bulkOrderId}`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async assignProductionV2Batch(batchId: string, userId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/${batchId}/assign`, { userId }, { params: { tenantId } });
+    return data;
+  }
+
+  async unassignProductionV2Batch(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/${batchId}/unassign`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async updateProductionV2BatchStage(batchId: string, tenantId: string, toStage: string, note?: string) {
+    const { data } = await this.client.post(`/production-v2/batches/${batchId}/stage`, { toStage, note }, { params: { tenantId } });
+    return data;
+  }
+
+  async getProductionV2TicketHtml(batchId: string, tenantId: string) {
+    const { data } = await this.client.get(`/production-v2/batches/${batchId}/ticket`, {
+      params: { tenantId },
+      responseType: 'text',
+    });
+    return data as string;
+  }
+
+  async downloadProductionV2BatchZip(batchId: string, tenantId: string) {
+    const { data } = await this.client.get(`/production-v2/batches/${batchId}/export.zip`, {
+      params: { tenantId },
+      responseType: 'blob',
+    });
+    return data as Blob;
+  }
+
+  async scanProductionV2Token(token: string, action: 'advance' | 'hold' | 'cancel' | 'ship' | 'complete', note?: string) {
+    const { data } = await this.client.post(`/production-v2/scan/${token}`, { action, note });
+    return data;
+  }
+
   // Admin - Production
   async adminListProductionJobs(params: { status?: string; priority?: string; skip?: number; take?: number } = {}) {
     const { data } = await this.client.get('/admin/production-jobs', { params });

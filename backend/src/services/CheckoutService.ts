@@ -3,6 +3,8 @@ import MockPaymentService from './MockPaymentService.js';
 import { CheckoutPayload, PaymentService } from './PaymentService.js';
 import OrderService from './OrderService.js';
 import ProductionService from './ProductionService.js';
+import ProductionV2Service from './ProductionV2Service.js';
+import FeatureGateService from './FeatureGateService.js';
 
 const prisma = new PrismaClient();
 
@@ -48,8 +50,13 @@ export class CheckoutService {
       if (!order) {
         throw new Error('Order creation failed');
       }
-      // Auto-create production job post-payment
-      await ProductionService.createProductionJob(order.id);
+      const tenantId = String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
+      const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
+      if (useProductionV2) {
+        await ProductionV2Service.createBatchesFromOrder(order.id, userId || null);
+      } else {
+        await ProductionService.createProductionJob(order.id);
+      }
       // Mark payment as recorded in DB
       await prisma.payment.create({
         data: {
