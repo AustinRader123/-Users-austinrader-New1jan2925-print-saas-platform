@@ -33,7 +33,7 @@ router.post('/checkout', authMiddleware, async (req: AuthRequest, res: Response)
 router.post(
   '/payments/intent',
   authMiddleware,
-  roleMiddleware(['ADMIN', 'STORE_OWNER', 'ACCOUNTING']),
+  roleMiddleware(['ADMIN', 'STORE_OWNER']),
   requireFeature('payments.enabled'),
   requirePermission('billing.manage'),
   async (req: AuthRequest, res: Response) => {
@@ -60,23 +60,30 @@ router.post(
   }
 );
 
-router.post('/payments/webhook/stripe', async (req, res) => {
-  try {
-    const verification = await PaymentsService.verifyWebhook(req.body, {
-      'stripe-signature': req.header('stripe-signature') || undefined,
-      'x-webhook-secret': req.header('x-webhook-secret') || undefined,
-    });
+router.post(
+  '/payments/confirm',
+  authMiddleware,
+  roleMiddleware(['ADMIN', 'STORE_OWNER']),
+  requireFeature('payments.enabled'),
+  requirePermission('billing.manage'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { storeId, paymentIntentId } = req.body || {};
+      if (!storeId || !paymentIntentId) {
+        return res.status(400).json({ error: 'storeId and paymentIntentId are required' });
+      }
 
-    if (!verification.accepted) {
-      return res.status(400).json({ error: verification.reason || 'Webhook rejected' });
+      const out = await PaymentsService.confirmIntent({
+        storeId: String(storeId),
+        paymentIntentId: String(paymentIntentId),
+      });
+      return res.status(200).json(out);
+    } catch (error: any) {
+      logger.error('Confirm payment intent error:', error);
+      return res.status(500).json({ error: error?.message || 'Failed to confirm payment intent' });
     }
-
-    return res.status(202).json({ accepted: true, eventType: verification.eventType });
-  } catch (error: any) {
-    logger.error('Stripe webhook error:', error);
-    return res.status(500).json({ error: error?.message || 'Webhook processing failed' });
   }
-});
+);
 
 // Generic webhook endpoint (mock-friendly)
 router.post('/payments/webhook', async (req, res) => {

@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import {
+  ConfirmPaymentIntentResult,
   PaymentIntentInput,
   PaymentIntentResult,
   PaymentsProvider,
@@ -74,6 +75,17 @@ export class StripePaymentsProvider implements PaymentsProvider {
       provider: 'stripe',
       providerRef: refund.payment_intent as string,
       status: refund.status === 'failed' ? 'failed' : 'succeeded',
+    };
+  }
+
+  async confirmPaymentIntent(providerRef: string): Promise<ConfirmPaymentIntentResult> {
+    this.assertReady();
+    const intent = await this.stripe!.paymentIntents.confirm(providerRef);
+    return {
+      provider: 'stripe',
+      providerRef: intent.id,
+      status: intent.status === 'succeeded' ? 'succeeded' : 'failed',
+      amountCents: Number(intent.amount || 0),
     };
   }
 

@@ -15,6 +15,13 @@ export type PaymentIntentResult = {
   clientSecret?: string;
 };
 
+export type ConfirmPaymentIntentResult = {
+  provider: string;
+  providerRef: string;
+  status: 'succeeded' | 'failed';
+  amountCents?: number;
+};
+
 export type RefundInput = {
   providerRef: string;
   amountCents?: number;
@@ -38,6 +45,7 @@ export type ProviderHealthcheck = {
 export interface PaymentsProvider {
   healthcheck(): Promise<ProviderHealthcheck>;
   createPaymentIntent(input: PaymentIntentInput): Promise<PaymentIntentResult>;
+  confirmPaymentIntent(providerRef: string): Promise<ConfirmPaymentIntentResult>;
   refundPayment(input: RefundInput): Promise<RefundResult>;
   parseWebhookEvent(payload: unknown, headers: Record<string, string | undefined>): Promise<{
     accepted: boolean;

@@ -1,9 +1,10 @@
 import {
-  CreateShipmentInput,
-  CreateShipmentResult,
+  CreateLabelInput,
+  CreateLabelResult,
   ShippingProvider,
   ShippingRate,
   ShippingRateInput,
+  TrackingResult,
 } from '../ShippingProvider.js';
 
 export class MockShippingProvider implements ShippingProvider {
@@ -14,6 +15,7 @@ export class MockShippingProvider implements ShippingProvider {
   async getRates(_input: ShippingRateInput): Promise<ShippingRate[]> {
     return [
       {
+        id: 'mock_rate_ground',
         provider: 'mock',
         carrier: 'MOCK_CARRIER',
         serviceLevel: 'GROUND',
@@ -22,6 +24,7 @@ export class MockShippingProvider implements ShippingProvider {
         etaDays: 4,
       },
       {
+        id: 'mock_rate_express',
         provider: 'mock',
         carrier: 'MOCK_CARRIER',
         serviceLevel: 'EXPRESS',
@@ -32,16 +35,44 @@ export class MockShippingProvider implements ShippingProvider {
     ];
   }
 
-  async createShipment(input: CreateShipmentInput): Promise<CreateShipmentResult> {
-    const suffix = input.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-10).toUpperCase();
-    const trackingNumber = `MOCKTRK${suffix}`;
+  async createLabel(input: CreateLabelInput): Promise<CreateLabelResult> {
+    const rateId = String(input.rateId || 'mock_rate_ground');
+    const suffix = input.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase().padEnd(8, '0');
+    const trackingNumber = `MOCKTRACK${suffix}`;
     return {
       provider: 'mock',
-      providerRef: `mock_shp_${Date.now()}`,
+      providerRef: `mock_shp_${rateId}_${suffix}`,
       trackingNumber,
       trackingUrl: `https://tracking.mock.local/${trackingNumber}`,
-      labelUrl: `https://labels.mock.local/${trackingNumber}.pdf`,
+      labelAsset: {
+        fileName: `${trackingNumber}.pdf`,
+        mimeType: 'application/pdf',
+        url: `https://labels.mock.local/${trackingNumber}.pdf`,
+      },
       status: 'label_created',
+      events: [
+        {
+          eventType: 'LABEL_CREATED',
+          status: 'label_created',
+          message: `Mock label created with ${rateId}`,
+        },
+      ],
+    };
+  }
+
+  async track(trackingNumber: string): Promise<TrackingResult> {
+    return {
+      provider: 'mock',
+      trackingNumber,
+      status: 'in_transit',
+      events: [
+        {
+          eventType: 'TRACKING_UPDATE',
+          status: 'in_transit',
+          message: 'Mock package scanned at origin facility',
+          occurredAt: new Date(),
+        },
+      ],
     };
   }
 

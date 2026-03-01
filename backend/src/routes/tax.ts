@@ -31,7 +31,7 @@ router.post('/quote', async (req: AuthRequest, res) => {
     return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
   }
 
-  const quote = await TaxService.quote(parsed.data);
+  const quote = await TaxService.quoteTax(parsed.data);
   return res.status(201).json(quote);
 });
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ConfirmPaymentIntentResult,
   PaymentIntentInput,
   PaymentIntentResult,
   PaymentsProvider,
@@ -14,14 +15,23 @@ export class MockPaymentsProvider implements PaymentsProvider {
   }
 
   async createPaymentIntent(input: PaymentIntentInput): Promise<PaymentIntentResult> {
-    const prefix = input.invoiceId || input.orderId || input.storeId;
-    const providerRef = `mock_pi_${String(prefix).slice(0, 12)}_${Date.now()}`;
+    const prefix = String(input.invoiceId || input.orderId || input.storeId).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) || 'store';
+    const amountPart = Math.max(0, Number(input.amountCents || 0));
+    const providerRef = `mock_pi_${prefix}_${amountPart}`;
     return {
       id: randomUUID(),
       provider: 'mock',
       providerRef,
       status: 'requires_confirmation',
-      clientSecret: `mock_secret_${providerRef}`,
+      clientSecret: 'mock_secret',
+    };
+  }
+
+  async confirmPaymentIntent(providerRef: string): Promise<ConfirmPaymentIntentResult> {
+    return {
+      provider: 'mock',
+      providerRef,
+      status: 'succeeded',
     };
   }
 

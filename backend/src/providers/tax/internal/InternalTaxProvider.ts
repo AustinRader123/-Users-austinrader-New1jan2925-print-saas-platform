@@ -1,6 +1,6 @@
 import { TaxProvider, TaxQuoteInput, TaxQuoteResult } from '../TaxProvider.js';
 
-const DEFAULT_TAX_RATE = Number(process.env.INTERNAL_TAX_RATE || '0.0825');
+const DEFAULT_TAX_RATE = Number(process.env.INTERNAL_TAX_RATE || '0.07');
 
 export class InternalTaxProvider implements TaxProvider {
   async healthcheck() {
@@ -24,6 +24,10 @@ export class InternalTaxProvider implements TaxProvider {
         taxableBase,
       },
     };
+  }
+
+  async calculate(input: TaxQuoteInput): Promise<TaxQuoteResult> {
+    return this.calculateTax(input);
   }
 }
 

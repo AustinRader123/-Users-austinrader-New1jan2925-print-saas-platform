@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { AuthRequest, authMiddleware, roleMiddleware } from '../middleware/auth.js';
 import { requireFeature, requirePermission } from '../middleware/permissions.js';
 import ShippingService from '../services/ShippingService.js';
-import { getShippingProvider } from '../providers/shipping/index.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -28,14 +27,7 @@ const ratesSchema = z.object({
 const providerLabelSchema = z.object({
   storeId: z.string().min(1),
   orderId: z.string().min(1),
-  rate: z.object({
-    provider: z.string().min(1),
-    carrier: z.string().min(1),
-    serviceLevel: z.string().min(1),
-    amountCents: z.number().int().nonnegative(),
-    currency: z.string().min(3),
-    etaDays: z.number().optional(),
-  }),
+  rateId: z.string().min(1).optional(),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -45,8 +37,10 @@ router.post('/rates', requirePermission('shipping.view'), async (req: AuthReques
     return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
   }
 
-  const provider = getShippingProvider();
-  const rates = await provider.getRates(parsed.data);
+  const rates = await ShippingService.getRates({
+    storeId: parsed.data.storeId,
+    orderId: parsed.data.orderId,
+  });
   return res.json(rates);
 });
 
@@ -56,8 +50,11 @@ router.post('/label', requirePermission('shipping.manage'), async (req: AuthRequ
     return res.status(400).json({ error: 'Invalid payload', details: parsed.error.flatten() });
   }
 
-  const provider = getShippingProvider();
-  const shipment = await provider.createShipment(parsed.data);
+  const shipment = await ShippingService.createLabel({
+    storeId: parsed.data.storeId,
+    orderId: parsed.data.orderId,
+    rateId: parsed.data.rateId,
+  });
   return res.status(201).json(shipment);
 });
 
