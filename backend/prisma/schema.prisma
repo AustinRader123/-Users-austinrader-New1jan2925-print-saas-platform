@@ -170,6 +170,12 @@ model Store {
   fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
   productionBatches ProductionBatch[] @relation("ProductionBatchStore")
   productionBatchesAsFulfillment ProductionBatch[] @relation("ProductionBatchFulfillmentStore")
+  inventoryLocations InventoryLocation[]
+  inventorySkus InventorySku[]
+  inventoryStocks InventoryStock[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
+  inventoryReservations InventoryReservation[]
+  productMaterialMaps ProductMaterialMap[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -593,6 +599,13 @@ enum ProductionBatchPriority {
   RUSH
 }
 
+enum ProductionInventoryStatus {
+  NOT_CHECKED
+  OK
+  LOW_STOCK
+  NOT_MAPPED
+}
+
 enum ProductionBatchEventType {
   CREATED
   STAGE_CHANGED
@@ -625,6 +638,7 @@ model ProductionBatch {
   method             ProductionBatchMethod   @default(DTF)
   stage              ProductionBatchStage    @default(ART)
   priority           ProductionBatchPriority @default(NORMAL)
+  inventoryStatus    ProductionInventoryStatus @default(NOT_CHECKED)
   dueAt              DateTime?
   notes              String?
   createdAt          DateTime                @default(now())
@@ -634,6 +648,7 @@ model ProductionBatch {
   events             ProductionBatchEvent[]
   assignments        ProductionAssignment[]
   scanTokens         ProductionScanToken[]
+  inventoryReservations InventoryReservation[]
 
   @@index([storeId])
   @@index([networkId])
@@ -642,6 +657,157 @@ model ProductionBatch {
   @@index([stage])
   @@index([method])
   @@index([dueAt])
+}
+
+enum InventoryLocationType {
+  WAREHOUSE
+  SHELF
+  BIN
+  EXTERNAL
+}
+
+enum InventoryLedgerType {
+  ADJUSTMENT
+  RECEIPT
+  ISSUE
+  RESERVE
+  RELEASE
+  CONSUME
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum InventoryRefType {
+  PO
+  BATCH
+  ORDER
+  MANUAL
+}
+
+enum InventoryReservationStatus {
+  HELD
+  FULFILLED
+  RELEASED
+}
+
+model InventoryLocation {
+  id        String               @id @default(cuid())
+  storeId   String
+  store     Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  code      String
+  type      InventoryLocationType @default(WAREHOUSE)
+  address   Json?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  stocks       InventoryStock[]
+  ledgerEntries InventoryLedgerEntry[]
+  reservations InventoryReservation[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+}
+
+model InventorySku {
+  id                  String   @id @default(cuid())
+  storeId             String
+  store               Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  skuCode             String
+  name                String
+  unit                String   @default("each")
+  supplierSku         String?
+  defaultReorderPoint Int?
+  defaultReorderQty   Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  stocks         InventoryStock[]
+  ledgerEntries  InventoryLedgerEntry[]
+  reservations   InventoryReservation[]
+  materialMaps   ProductMaterialMap[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@unique([storeId, skuCode])
+  @@index([storeId])
+}
+
+model InventoryStock {
+  id         String            @id @default(cuid())
+  storeId    String
+  store      Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  locationId String
+  location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  skuId      String
+  sku        InventorySku      @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  onHand     Int               @default(0)
+  reserved   Int               @default(0)
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([locationId, skuId])
+  @@index([storeId, skuId])
+  @@index([storeId, locationId])
+}
+
+model InventoryLedgerEntry {
+  id         String            @id @default(cuid())
+  storeId    String
+  store      Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  locationId String?
+  location   InventoryLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  skuId      String
+  sku        InventorySku      @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  type       InventoryLedgerType
+  qty        Int
+  refType    InventoryRefType
+  refId      String?
+  meta       Json?
+  createdAt  DateTime          @default(now())
+
+  @@index([storeId, skuId, createdAt])
+  @@index([refType, refId])
+}
+
+model InventoryReservation {
+  id          String                     @id @default(cuid())
+  storeId     String
+  store       Store                      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  skuId       String
+  sku         InventorySku               @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  locationId  String?
+  location    InventoryLocation?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  batchId     String?
+  batch       ProductionBatch?           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?                     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  qty         Int
+  status      InventoryReservationStatus @default(HELD)
+  createdAt   DateTime                   @default(now())
+  fulfilledAt DateTime?
+
+  @@unique([batchId, skuId])
+  @@index([storeId, skuId])
+  @@index([batchId])
+  @@index([status])
+}
+
+model ProductMaterialMap {
+  id         String         @id @default(cuid())
+  storeId    String
+  store      Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  skuId      String
+  sku        InventorySku   @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  qtyPerUnit Int
+  createdAt  DateTime       @default(now())
+
+  @@index([storeId, productId])
+  @@index([variantId])
+  @@index([skuId])
+  @@unique([storeId, productId, variantId, skuId])
 }
 
 model ProductionBatchItem {
@@ -1101,6 +1267,7 @@ model Product {
   externalProductMaps ExternalProductMap[]
   fundraiserCampaignProducts FundraiserCampaignProduct[]
   productionBatchItems ProductionBatchItem[]
+  materialMaps    ProductMaterialMap[]
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
 
@@ -1164,6 +1331,7 @@ model ProductVariant {
   externalVariantMaps ExternalVariantMap[]
   customizations Customization[]
   productionBatchItems ProductionBatchItem[]
+  materialMaps   ProductMaterialMap[]
 
   @@unique([productId, sku])
   @@index([storeId])
@@ -2310,6 +2478,7 @@ model Order {
   fundraiserConsolidationLines FundraiserConsolidationOrderLine[]
   fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
   productionBatchItems ProductionBatchItem[]
+  inventoryReservations InventoryReservation[]
   // DecoNetwork mapping
   dnOrderMaps DnOrderMap[]
 
@@ -3188,6 +3357,8 @@ model PurchaseOrder {
   expectedAt DateTime?
   total     Float?   @default(0)
   rawJson   Json?
+  sentAt    DateTime?
+  receivedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -3208,16 +3379,21 @@ model PurchaseOrderLine {
   store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  variantId       String
-  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId       String?
+  variant         ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   qtyOrdered      Int
   qtyReceived     Int      @default(0)
+  skuId           String?
+  sku             InventorySku? @relation(fields: [skuId], references: [id], onDelete: SetNull)
   costEach        Decimal? @db.Decimal(10, 2)
+  unitCostCents   Int?
+  expectedAt      DateTime?
   createdAt       DateTime @default(now())
 
   @@index([storeId])
   @@index([purchaseOrderId])
   @@index([variantId])
+  @@index([skuId])
 }
 
 

@@ -9,6 +9,7 @@ type BatchRow = {
   sourceId: string;
   stage: string;
   method: string;
+  inventoryStatus?: string;
   dueAt?: string | null;
   storeId: string;
   _count?: { items?: number };
@@ -30,6 +31,7 @@ export default function ProductionV2BoardPage() {
   const [rows, setRows] = React.useState<BatchRow[]>([]);
   const [selectedId, setSelectedId] = React.useState('');
   const [detail, setDetail] = React.useState<any>(null);
+  const [inventoryRows, setInventoryRows] = React.useState<any[]>([]);
   const [assignUserId, setAssignUserId] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [error, setError] = React.useState('');
@@ -53,10 +55,17 @@ export default function ProductionV2BoardPage() {
   const loadDetail = React.useCallback(async () => {
     if (!canQuery || !selectedId) {
       setDetail(null);
+      setInventoryRows([]);
       return;
     }
     const data = await apiClient.getProductionV2Batch(selectedId, tenantId.trim());
     setDetail(data);
+    try {
+      const reservations = await apiClient.listProductionV2BatchInventory(selectedId, tenantId.trim());
+      setInventoryRows(Array.isArray(reservations) ? reservations : []);
+    } catch {
+      setInventoryRows([]);
+    }
   }, [canQuery, selectedId, tenantId]);
 
   React.useEffect(() => {
@@ -123,6 +132,20 @@ export default function ProductionV2BoardPage() {
     await doRefresh();
   };
 
+  const reserveBatchInventory = async () => {
+    if (!detail?.id) return;
+    await apiClient.reserveProductionV2BatchInventory(detail.id, tenantId.trim());
+    setMessage('Inventory reserved');
+    await doRefresh();
+  };
+
+  const releaseBatchInventory = async () => {
+    if (!detail?.id) return;
+    await apiClient.releaseProductionV2BatchInventory(detail.id, tenantId.trim());
+    setMessage('Inventory released');
+    await doRefresh();
+  };
+
   const byStage = React.useMemo(() => {
     const grouped: Record<string, BatchRow[]> = {};
     for (const value of STAGES) grouped[value] = [];
@@ -173,6 +196,7 @@ export default function ProductionV2BoardPage() {
                     <button className="text-left w-full" onClick={() => setSelectedId(batch.id)}>
                       <div className="font-medium truncate">{batch.id}</div>
                       <div className="text-slate-600">{batch.method} • qty {(batch._count?.items || 0)}</div>
+                      <div className="text-slate-500">inventory: {batch.inventoryStatus || 'NOT_CHECKED'}</div>
                       <div className="text-slate-500 truncate">{batch.sourceType}:{batch.sourceId}</div>
                     </button>
                     <div className="flex flex-wrap gap-1">
@@ -197,6 +221,7 @@ export default function ProductionV2BoardPage() {
                 <div><span className="font-medium">Batch:</span> {detail.id}</div>
                 <div><span className="font-medium">Stage:</span> {detail.stage}</div>
                 <div><span className="font-medium">Method:</span> {detail.method}</div>
+                <div><span className="font-medium">Inventory:</span> {detail.inventoryStatus || 'NOT_CHECKED'}</div>
                 <div><span className="font-medium">Source:</span> {detail.sourceType}:{detail.sourceId}</div>
                 <div><span className="font-medium">Scan token:</span> {detail.scanTokens?.[0]?.token || 'n/a'}</div>
               </div>
@@ -207,6 +232,21 @@ export default function ProductionV2BoardPage() {
                 <div className="flex items-center gap-2">
                   <button className="btn btn-secondary" onClick={assignBatch}>Assign</button>
                   <button className="btn btn-secondary" onClick={unassignBatch}>Unassign</button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-medium">Inventory Controls</div>
+                <div className="flex items-center gap-2">
+                  <button className="btn btn-secondary" onClick={reserveBatchInventory}>Reserve</button>
+                  <button className="btn btn-secondary" onClick={releaseBatchInventory}>Release</button>
+                </div>
+                <div className="max-h-28 overflow-auto space-y-1">
+                  {(inventoryRows || []).map((row: any) => (
+                    <div key={row.id} className="rounded border p-1 text-[11px]">
+                      {row.sku?.skuCode || row.skuId} • qty {row.qty} • {row.status}
+                    </div>
+                  ))}
                 </div>
               </div>
 
