@@ -10,6 +10,7 @@ cd "$ROOT/backend"
 export NODE_ENV="${NODE_ENV:-production}"
 export BACKEND_PORT
 export PORT="${PORT:-$BACKEND_PORT}"
+export CORS_ORIGINS="${CORS_ORIGINS:-${BASE_URL},http://localhost:3000,http://127.0.0.1:3000}"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "ERROR: DATABASE_URL is required for smoke:phase16 (production-like)." >&2
