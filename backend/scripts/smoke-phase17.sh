@@ -13,6 +13,8 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   exit 1
 fi
 
+export CORS_ORIGINS="${CORS_ORIGINS:-${BASE_URL},http://localhost:3000,http://127.0.0.1:3000}"
+
 npm run stop >/dev/null 2>&1 || true
 npm run clean >/dev/null 2>&1 || true
 npm run db:deploy
