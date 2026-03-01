@@ -88,6 +88,7 @@ jobs:
     needs: [backend-build-test, frontend-build]
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network?schema=public
+      DOCTOR_ALLOW_LOCALHOST_DB: '1'
     services:
       postgres:
         image: postgres:15

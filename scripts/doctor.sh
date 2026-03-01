@@ -65,6 +65,7 @@ fi
 
 ci_mode="$(get_env_only CI)"
 require_docker_mode="$(get_env_only REQUIRE_DOCKER)"
+allow_localhost_db_mode="$(get_env_only DOCTOR_ALLOW_LOCALHOST_DB)"
 
 database_url="$(get_env_or_dotenv DATABASE_URL)"
 jwt_secret="$(get_env_or_dotenv JWT_SECRET)"
@@ -102,7 +103,7 @@ if [[ -z "$database_url" ]]; then
   fail=1
 fi
 
-if [[ "$strict_db_mode" == "1" && "$database_url" =~ @localhost:|@127\.0\.0\.1: ]]; then
+if [[ "$strict_db_mode" == "1" && "$allow_localhost_db_mode" != "1" && "$database_url" =~ @localhost:|@127\.0\.0\.1: ]]; then
   echo "[doctor] FAIL CI/compose DATABASE_URL must not use localhost. Use postgres service host."
   fail=1
 fi
