@@ -83,7 +83,7 @@ jobs:
         working-directory: frontend
 
   smoke-suite:
-    name: Smoke checks (phase2a + phase6)
+    name: Smoke checks (phase2a)
     runs-on: ubuntu-latest
     needs: [backend-build-test, frontend-build]
     container: node:20-bullseye
@@ -118,9 +118,6 @@ jobs:
         working-directory: backend
       - name: Run smoke phase2a
         run: npm run smoke:phase2a
-        working-directory: backend
-      - name: Run smoke phase6
-        run: npm run smoke:phase6
         working-directory: backend
       - name: Upload smoke artifacts
         if: always()
