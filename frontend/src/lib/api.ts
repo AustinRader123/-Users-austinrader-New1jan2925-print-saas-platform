@@ -994,6 +994,33 @@ class ApiClient {
     return data;
   }
 
+  async publicCreateFundraiserCart(payload: {
+    storeSlug?: string;
+    storeId?: string;
+    fundraiser: {
+      campaignId?: string;
+      campaignSlug?: string;
+      memberId?: string;
+      memberCode?: string;
+      teamStoreId?: string;
+    };
+  }) {
+    const { data } = await this.client.post('/public/cart', payload);
+    return data;
+  }
+
+  async publicGetCampaign(slug: string, storeSlug?: string) {
+    const { data } = await this.client.get(`/public/campaigns/${slug}`, {
+      params: storeSlug ? { storeSlug } : {},
+    });
+    return data;
+  }
+
+  async publicGetCampaignLeaderboard(campaignId: string) {
+    const { data } = await this.client.get(`/public/campaigns/${campaignId}/leaderboard`);
+    return data;
+  }
+
   async publicGetCart(token: string) {
     const { data } = await this.client.get(`/public/cart/${token}`);
     return data;
@@ -1060,6 +1087,142 @@ class ApiClient {
     theme?: any;
   }) {
     const { data } = await this.client.post('/team-stores', payload);
+    return data;
+  }
+
+  async listFundraisingCampaigns(params: { tenantId: string; storeId?: string }) {
+    const { data } = await this.client.get('/fundraising/campaigns', { params });
+    return data;
+  }
+
+  async createFundraisingCampaign(payload: {
+    tenantId: string;
+    storeId: string;
+    networkId?: string;
+    slug: string;
+    name: string;
+    description?: string;
+    status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CLOSED' | 'ARCHIVED';
+    startsAt?: string;
+    endsAt?: string;
+    fundraisingGoalCents?: number;
+    defaultFundraiserPercent?: number;
+    shippingMode?: 'DIRECT' | 'CONSOLIDATED';
+    allowSplitShip?: boolean;
+    metadata?: any;
+  }) {
+    const { data } = await this.client.post('/fundraising/campaigns', payload, {
+      params: { tenantId: payload.tenantId },
+    });
+    return data;
+  }
+
+  async getFundraisingCampaign(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}`, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async updateFundraisingCampaign(campaignId: string, tenantId: string, patch: any) {
+    const { data } = await this.client.put(`/fundraising/campaigns/${campaignId}`, patch, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async saveFundraisingCatalogOverride(campaignId: string, tenantId: string, payload: {
+    productId: string;
+    overridePrice?: number;
+    overrideFundraiserPercent?: number;
+    active?: boolean;
+    metadata?: any;
+  }) {
+    const { data } = await this.client.post(`/fundraising/campaigns/${campaignId}/catalog-overrides`, payload, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async linkFundraisingTeamStore(campaignId: string, tenantId: string, teamStoreId: string) {
+    const { data } = await this.client.post(`/fundraising/campaigns/${campaignId}/team-stores`, { teamStoreId }, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async saveFundraisingMember(campaignId: string, tenantId: string, payload: {
+    id?: string;
+    teamStoreId?: string;
+    rosterEntryId?: string;
+    displayName: string;
+    publicCode?: string;
+    isActive?: boolean;
+    goalCents?: number;
+    metadata?: any;
+  }) {
+    const { data } = await this.client.post(`/fundraising/campaigns/${campaignId}/members`, payload, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async getFundraisingSummary(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}/summary`, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async getFundraisingLeaderboard(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}/leaderboard`, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async createFundraisingConsolidationRun(campaignId: string, tenantId: string, idempotencyKey?: string) {
+    const { data } = await this.client.post(
+      `/fundraising/campaigns/${campaignId}/consolidate`,
+      idempotencyKey ? { idempotencyKey } : {},
+      { params: { tenantId } }
+    );
+    return data;
+  }
+
+  async listFundraisingConsolidationRuns(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}/consolidation-runs`, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async listFundraisingLedger(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}/ledger`, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async downloadFundraisingLedgerCsv(campaignId: string, tenantId: string) {
+    const { data } = await this.client.get(`/fundraising/campaigns/${campaignId}/ledger.csv`, {
+      params: { tenantId },
+      responseType: 'blob',
+    });
+    return data as Blob;
+  }
+
+  async approveFundraisingLedgerEntry(entryId: string, tenantId: string, notes?: string) {
+    const { data } = await this.client.post(`/fundraising/ledger/${entryId}/approve`, notes ? { notes } : {}, {
+      params: { tenantId },
+    });
+    return data;
+  }
+
+  async payFundraisingLedgerEntry(entryId: string, tenantId: string, notes?: string) {
+    const { data } = await this.client.post(`/fundraising/ledger/${entryId}/pay`, notes ? { notes } : {}, {
+      params: { tenantId },
+    });
     return data;
   }
 

@@ -32,6 +32,7 @@
     "smoke:phase7_1": "bash scripts/smoke-phase7_1.sh",
     "smoke:phase8": "bash scripts/smoke-phase8.sh",
     "smoke:phase9": "bash scripts/smoke-phase9.sh",
+    "smoke:phase10": "bash scripts/smoke-phase10.sh",
     "supplier:scheduler": "tsx src/scripts/supplier-scheduler.ts",
     "supplier:scheduler:once": "tsx src/scripts/supplier-scheduler.ts --once",
     "clean": "node ../scripts/run-platform.mjs clean",

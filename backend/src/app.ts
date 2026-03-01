@@ -55,6 +55,7 @@ import navigationRoutes from './routes/navigation.js';
 import customizerRoutes from './routes/customizer.js';
 import publicCustomizerRoutes from './routes/public-customizer.js';
 import networkRoutes from './routes/network.js';
+import fundraisingRoutes from './routes/fundraising.js';
 
 const app: Express = express();
 app.disable('x-powered-by');
@@ -195,6 +196,7 @@ app.use('/api/navigation', authMiddleware, navigationRoutes);
 app.use('/api/customizer', authMiddleware, customizerRoutes);
 app.use('/api/public/customizer', publicCustomizerRoutes);
 app.use('/api/network', authMiddleware, networkRoutes);
+app.use('/api/fundraising', authMiddleware, fundraisingRoutes);
 
 // Error handling
 app.use(errorHandler);

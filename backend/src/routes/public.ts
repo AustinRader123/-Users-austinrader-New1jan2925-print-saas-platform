@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import PublicStorefrontService from '../services/PublicStorefrontService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
 import ThemeService from '../services/ThemeService.js';
+import FundraisingService from '../services/FundraisingService.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -26,6 +27,13 @@ const checkoutLimiter = rateLimit({
 const createCartSchema = z.object({
   storeSlug: z.string().min(1).optional(),
   storeId: z.string().min(1).optional(),
+  fundraiser: z.object({
+    campaignId: z.string().optional(),
+    campaignSlug: z.string().optional(),
+    memberId: z.string().optional(),
+    memberCode: z.string().optional(),
+    teamStoreId: z.string().optional(),
+  }).optional(),
 });
 const addCartItemSchema = z.object({
   productId: z.string().min(1),
@@ -56,6 +64,41 @@ router.get('/storefront/:storeSlug', publicLimiter, async (req, res) => {
     return res.json(data);
   } catch (error) {
     return res.status(404).json({ error: (error as Error).message || 'Storefront not found' });
+  }
+});
+
+router.get('/campaigns/:slug', publicLimiter, async (req, res) => {
+  try {
+    const storeSlug = req.query.storeSlug ? String(req.query.storeSlug) : undefined;
+    const campaign = await FundraisingService.resolvePublicCampaign({ slug: req.params.slug, storeSlug });
+    const leaderboard = await FundraisingService.getLeaderboard(campaign.id);
+
+    return res.json({
+      id: campaign.id,
+      slug: campaign.slug,
+      name: campaign.name,
+      description: campaign.description,
+      status: campaign.status,
+      startsAt: campaign.startsAt,
+      endsAt: campaign.endsAt,
+      fundraisingGoalCents: campaign.fundraisingGoalCents,
+      shippingMode: campaign.shippingMode,
+      allowSplitShip: campaign.allowSplitShip,
+      store: campaign.store,
+      leaderboard: leaderboard.slice(0, 20),
+    });
+  } catch (error) {
+    return res.status(404).json({ error: (error as Error).message || 'Campaign not found' });
+  }
+});
+
+router.get('/campaigns/:campaignId/leaderboard', publicLimiter, async (req, res) => {
+  try {
+    const campaign = await FundraisingService.resolvePublicCampaign({ campaignId: req.params.campaignId });
+    const leaderboard = await FundraisingService.getLeaderboard(campaign.id);
+    return res.json(leaderboard);
+  } catch (error) {
+    return res.status(404).json({ error: (error as Error).message || 'Campaign not found' });
   }
 });
 
@@ -92,10 +135,52 @@ router.post('/cart', publicLimiter, async (req, res) => {
     return res.status(400).json({ error: 'storeSlug or storeId is required' });
   }
   try {
+    let fundraiserCampaignId: string | undefined;
+    let fundraiserMemberId: string | undefined;
+    let fundraiserTeamStoreId: string | undefined;
+
+    const fundraiser = parsed.data.fundraiser;
+    if (fundraiser?.campaignId || fundraiser?.campaignSlug) {
+      const campaign = await FundraisingService.resolvePublicCampaign({
+        campaignId: fundraiser.campaignId,
+        slug: fundraiser.campaignSlug,
+        storeSlug: parsed.data.storeSlug,
+      });
+      fundraiserCampaignId = campaign.id;
+
+      if (fundraiser.memberId || fundraiser.memberCode) {
+        const member = await (prisma as any).fundraiserCampaignMember.findFirst({
+          where: {
+            campaignId: campaign.id,
+            isActive: true,
+            ...(fundraiser.memberId
+              ? { id: fundraiser.memberId }
+              : { publicCode: fundraiser.memberCode }),
+          },
+        });
+        if (member) fundraiserMemberId = member.id;
+      }
+
+      if (fundraiser.teamStoreId) {
+        const linked = await (prisma as any).fundraiserCampaignTeamStore.findFirst({
+          where: {
+            campaignId: campaign.id,
+            teamStoreId: fundraiser.teamStoreId,
+          },
+        });
+        if (linked) fundraiserTeamStoreId = fundraiser.teamStoreId;
+      }
+    }
+
     const cart = await PublicStorefrontService.createCart(
       parsed.data.storeSlug || '',
       parsed.data.storeId,
-      req.headers.host as string | undefined
+      req.headers.host as string | undefined,
+      {
+        fundraiserCampaignId,
+        fundraiserMemberId,
+        fundraiserTeamStoreId,
+      }
     );
     return res.status(201).json(cart);
   } catch (error) {
@@ -202,7 +287,7 @@ router.get('/theme-preview', publicLimiter, async (req, res) => {
     const token = String(req.query.token || '');
     if (!token) return res.status(400).json({ error: 'token is required' });
     const result = await ThemeService.getDraftForPreviewToken(token);
-    const storefront = await prisma.storefront.findFirst({ where: { storeId: result.storeId }, orderBy: { updatedAt: 'desc' } });
+    const storefront = await (prisma as any).storefront.findFirst({ where: { storeId: result.storeId }, orderBy: { updatedAt: 'desc' } });
     return res.json({
       storeId: result.storeId,
       draft: result.draft,

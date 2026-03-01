@@ -68,6 +68,7 @@ import DashboardProductBuilderPage from './pages/DashboardProductBuilderPage';
 import NetworkAdminPage from './pages/NetworkAdminPage';
 import NetworkRoutingPage from './pages/NetworkRoutingPage';
 import NetworkReportsPage from './pages/NetworkReportsPage';
+import FundraisingCampaignsPage from './pages/FundraisingCampaignsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -378,6 +379,14 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
                     <NetworkReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="fundraising"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <FundraisingCampaignsPage />
                   </ProtectedRoute>
                 }
               />
