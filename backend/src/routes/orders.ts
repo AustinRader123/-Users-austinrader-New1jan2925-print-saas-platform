@@ -30,9 +30,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
       if (useProductionV2) {
         await ProductionV2Service.createBatchesFromOrder(order.id, req.userId);
-      } else {
-        await ProductionService.createProductionJob(order.id);
       }
+      await ProductionService.ensureCompatJobForOrder(order.id);
     }
 
     res.status(201).json(order);

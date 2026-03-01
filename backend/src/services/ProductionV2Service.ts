@@ -3,6 +3,8 @@ import path from 'path';
 import QRCode from 'qrcode';
 import prisma from '../lib/prisma.js';
 import StorageProvider from './StorageProvider.js';
+import FeatureGateService from './FeatureGateService.js';
+import InventoryV2Service from './InventoryV2Service.js';
 
 const STAGE_SEQUENCE = [
   'ART',
@@ -163,6 +165,19 @@ function stableStringify(value: any): string {
 }
 
 export class ProductionV2Service {
+  private async inventoryEnabledForBatch(batchId: string, tenantId?: string) {
+    if (tenantId) {
+      return FeatureGateService.can(tenantId, 'inventory.enabled');
+    }
+
+    const row = await (prisma as any).productionBatch.findUnique({
+      where: { id: batchId },
+      include: { store: { select: { tenantId: true } } },
+    });
+    if (!row?.store?.tenantId) return false;
+    return FeatureGateService.can(String(row.store.tenantId), 'inventory.enabled');
+  }
+
   async listBatches(input: {
     tenantId: string;
     stage?: string;
@@ -403,6 +418,7 @@ export class ProductionV2Service {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        store: { select: { tenantId: true } },
         routedOrder: true,
         items: {
           include: {
@@ -434,7 +450,7 @@ export class ProductionV2Service {
     });
 
     const networkId = (order as any).routedOrder?.networkId || null;
-    return this.createBatchesFromItems({
+    const created = await this.createBatchesFromItems({
       storeId: order.storeId,
       networkId,
       fulfillmentStoreId: order.fulfillmentStoreId || null,
@@ -443,12 +459,22 @@ export class ProductionV2Service {
       items: seeds,
       actorUserId,
     });
+
+    const tenantId = String((order as any).store?.tenantId || '').trim();
+    if (tenantId && await FeatureGateService.can(tenantId, 'inventory.enabled')) {
+      for (const batch of created as any[]) {
+        await InventoryV2Service.reserveForBatch(batch.id, actorUserId || null);
+      }
+    }
+
+    return created;
   }
 
   async createBatchesFromCampaignBulkOrder(bulkOrderId: string, actorUserId?: string | null) {
     const run = await (prisma as any).fundraiserConsolidationRun.findUnique({
       where: { id: bulkOrderId },
       include: {
+        store: { select: { tenantId: true } },
         campaign: true,
         lines: {
           include: {
@@ -493,7 +519,7 @@ export class ProductionV2Service {
       }
     }
 
-    return this.createBatchesFromItems({
+    const created = await this.createBatchesFromItems({
       storeId: run.storeId,
       networkId: run.campaign?.networkId || null,
       fulfillmentStoreId: null,
@@ -502,6 +528,15 @@ export class ProductionV2Service {
       items: seeds,
       actorUserId,
     });
+
+    const tenantId = String((run as any).store?.tenantId || '').trim();
+    if (tenantId && await FeatureGateService.can(tenantId, 'inventory.enabled')) {
+      for (const batch of created as any[]) {
+        await InventoryV2Service.reserveForBatch(batch.id, actorUserId || null);
+      }
+    }
+
+    return created;
   }
 
   async assignBatch(tenantId: string, batchId: string, userId: string, actorUserId?: string | null) {
@@ -599,6 +634,14 @@ export class ProductionV2Service {
     const toStage = input.toStage;
     this.assertTransition(fromStage, toStage);
 
+    const inventoryEnabled = await this.inventoryEnabledForBatch(batch.id, input.tenantId);
+    if (inventoryEnabled && toStage === 'PRINT') {
+      if (batch.inventoryStatus === 'NOT_CHECKED') {
+        await InventoryV2Service.reserveForBatch(batch.id, input.actorUserId || null);
+      }
+      await InventoryV2Service.assertBatchCanPrint(batch.id);
+    }
+
     const updated = await (prisma as any).productionBatch.update({
       where: { id: batch.id },
       data: {
@@ -618,6 +661,14 @@ export class ProductionV2Service {
         meta: input.note ? { note: input.note } : null,
       },
     });
+
+    if (inventoryEnabled && toStage === 'CURE') {
+      await InventoryV2Service.consumeBatchReservations(batch.id, input.actorUserId || null);
+    }
+
+    if (inventoryEnabled && toStage === 'CANCELLED') {
+      await InventoryV2Service.releaseBatchReservations(batch.id, input.actorUserId || null);
+    }
 
     return updated;
   }

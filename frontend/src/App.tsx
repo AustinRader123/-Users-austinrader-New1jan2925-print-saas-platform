@@ -70,6 +70,8 @@ import NetworkRoutingPage from './pages/NetworkRoutingPage';
 import NetworkReportsPage from './pages/NetworkReportsPage';
 import FundraisingCampaignsPage from './pages/FundraisingCampaignsPage';
 import ProductionV2BoardPage from './pages/ProductionV2BoardPage';
+import DashboardInventoryPage from './pages/DashboardInventoryPage';
+import DashboardPurchasingPage from './pages/DashboardPurchasingPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -399,6 +401,22 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="dashboard/inventory"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <DashboardInventoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/purchasing"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <DashboardPurchasingPage />
+                  </ProtectedRoute>
+                }
+              />
                 <Route
                   path="admin/reports"
                   element={
@@ -674,6 +692,22 @@ function App() {
               element={
                 <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
                   <ProductionV2BoardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/inventory"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                  <DashboardInventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/purchasing"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                  <DashboardPurchasingPage />
                 </ProtectedRoute>
               }
             />

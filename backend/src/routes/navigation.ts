@@ -20,7 +20,8 @@ router.get('/menu', async (req: AuthRequest, res) => {
     }
 
     const permissions = await getUserPermissions({ tenantId, userId, userRole });
-  const productionV2Enabled = await FeatureGateService.can(tenantId, 'production_v2.enabled');
+    const productionV2Enabled = await FeatureGateService.can(tenantId, 'production_v2.enabled');
+    const inventoryEnabled = await FeatureGateService.can(tenantId, 'inventory.enabled');
 
     const sections: NavSection[] = [
       {
@@ -39,6 +40,12 @@ router.get('/menu', async (req: AuthRequest, res) => {
           { to: '/app/production', label: 'Production Queue' },
           ...(productionV2Enabled && hasPermission(permissions, 'production.view')
             ? [{ to: '/dashboard/production-v2', label: 'Production WIP V2' }]
+            : []),
+          ...(inventoryEnabled && hasPermission(permissions, 'production.view')
+            ? [{ to: '/dashboard/inventory', label: 'Inventory' }]
+            : []),
+          ...(inventoryEnabled && hasPermission(permissions, 'production.view')
+            ? [{ to: '/dashboard/purchasing', label: 'Purchasing' }]
             : []),
         ],
       },

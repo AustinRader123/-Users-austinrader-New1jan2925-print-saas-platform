@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthRequest, authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 import { requireFeature, requirePermission } from '../middleware/permissions.js';
 import ProductionV2Service from '../services/ProductionV2Service.js';
+import InventoryV2Service from '../services/InventoryV2Service.js';
 
 const router = Router();
 
@@ -135,6 +136,33 @@ router.post('/batches/:id/stage', requirePermission('production.manage'), async 
     return res.json(row);
   } catch (error) {
     return res.status(400).json({ error: (error as Error).message || 'Failed to update batch stage' });
+  }
+});
+
+router.get('/batches/:id/inventory', requireFeature('inventory.enabled'), requirePermission('production.view'), async (req: AuthRequest, res) => {
+  try {
+    const rows = await InventoryV2Service.listBatchReservations(req.params.id);
+    return res.json(rows);
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message || 'Failed to load batch inventory' });
+  }
+});
+
+router.post('/batches/:id/inventory/reserve', requireFeature('inventory.enabled'), requirePermission('production.manage'), async (req: AuthRequest, res) => {
+  try {
+    const out = await InventoryV2Service.reserveForBatch(req.params.id, req.userId);
+    return res.json(out);
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message || 'Failed to reserve inventory' });
+  }
+});
+
+router.post('/batches/:id/inventory/release', requireFeature('inventory.enabled'), requirePermission('production.manage'), async (req: AuthRequest, res) => {
+  try {
+    const out = await InventoryV2Service.releaseBatchReservations(req.params.id, req.userId);
+    return res.json(out);
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message || 'Failed to release inventory' });
   }
 });
 

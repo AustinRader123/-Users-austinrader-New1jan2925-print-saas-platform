@@ -54,9 +54,8 @@ export class CheckoutService {
       const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
       if (useProductionV2) {
         await ProductionV2Service.createBatchesFromOrder(order.id, userId || null);
-      } else {
-        await ProductionService.createProductionJob(order.id);
       }
+      await ProductionService.ensureCompatJobForOrder(order.id);
       // Mark payment as recorded in DB
       await prisma.payment.create({
         data: {

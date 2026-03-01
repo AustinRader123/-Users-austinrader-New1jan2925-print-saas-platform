@@ -1334,6 +1334,138 @@ class ApiClient {
     return data;
   }
 
+  async listInventoryLocations(storeId: string, tenantId: string) {
+    const { data } = await this.client.get('/inventory/locations', { params: { storeId, tenantId } });
+    return data;
+  }
+
+  async createInventoryLocation(payload: { storeId: string; tenantId: string; name: string; code: string; type?: string }) {
+    const { data } = await this.client.post('/inventory/locations', payload);
+    return data;
+  }
+
+  async listInventorySkus(storeId: string, tenantId: string) {
+    const { data } = await this.client.get('/inventory/skus', { params: { storeId, tenantId } });
+    return data;
+  }
+
+  async upsertInventorySku(payload: {
+    storeId: string;
+    tenantId: string;
+    skuCode: string;
+    name: string;
+    unit?: string;
+    defaultReorderPoint?: number;
+    defaultReorderQty?: number;
+  }) {
+    const { data } = await this.client.post('/inventory/skus', payload);
+    return data;
+  }
+
+  async listInventoryStockSnapshot(storeId: string, tenantId: string, skuId?: string) {
+    const { data } = await this.client.get('/inventory/stocks', { params: { storeId, tenantId, ...(skuId ? { skuId } : {}) } });
+    return data;
+  }
+
+  async adjustInventoryStock(payload: {
+    storeId: string;
+    tenantId: string;
+    locationId: string;
+    skuId: string;
+    deltaOnHand?: number;
+    deltaReserved?: number;
+    type: 'ADJUSTMENT' | 'RECEIPT' | 'ISSUE' | 'RESERVE' | 'RELEASE' | 'CONSUME';
+  }) {
+    const { data } = await this.client.post('/inventory/stocks/adjust', payload);
+    return data;
+  }
+
+  async listInventoryMaterialMaps(storeId: string, tenantId: string) {
+    const { data } = await this.client.get('/inventory/materials', { params: { storeId, tenantId } });
+    return data;
+  }
+
+  async upsertInventoryMaterialMap(payload: {
+    storeId: string;
+    tenantId: string;
+    productId: string;
+    variantId?: string;
+    skuId: string;
+    qtyPerUnit: number;
+  }) {
+    const { data } = await this.client.post('/inventory/materials', payload);
+    return data;
+  }
+
+  async reserveProductionV2BatchInventory(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/${batchId}/inventory/reserve`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async releaseProductionV2BatchInventory(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/production-v2/batches/${batchId}/inventory/release`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async listProductionV2BatchInventory(batchId: string, tenantId: string) {
+    const { data } = await this.client.get(`/production-v2/batches/${batchId}/inventory`, { params: { tenantId } });
+    return data;
+  }
+
+  async listPurchasingPos(storeId: string, tenantId: string) {
+    const { data } = await this.client.get('/purchasing/pos', { params: { storeId, tenantId } });
+    return data;
+  }
+
+  async getPurchasingPo(id: string, storeId: string, tenantId: string) {
+    const { data } = await this.client.get(`/purchasing/pos/${id}`, { params: { storeId, tenantId } });
+    return data;
+  }
+
+  async createPurchasingPo(payload: {
+    storeId: string;
+    tenantId: string;
+    supplierName: string;
+    expectedAt?: string;
+    lines?: Array<{ skuId?: string; variantId?: string; qtyOrdered: number; unitCostCents?: number; expectedAt?: string }>;
+  }) {
+    const { data } = await this.client.post('/purchasing/pos', payload);
+    return data;
+  }
+
+  async addPurchasingPoLine(id: string, payload: {
+    storeId: string;
+    tenantId: string;
+    skuId?: string;
+    variantId?: string;
+    qtyOrdered: number;
+    unitCostCents?: number;
+    expectedAt?: string;
+  }) {
+    const { data } = await this.client.post(`/purchasing/pos/${id}/lines`, payload);
+    return data;
+  }
+
+  async sendPurchasingPo(id: string, payload: { storeId: string; tenantId: string }) {
+    const { data } = await this.client.post(`/purchasing/pos/${id}/send`, payload);
+    return data;
+  }
+
+  async receivePurchasingPo(id: string, payload: {
+    storeId: string;
+    tenantId: string;
+    locationId: string;
+    lines: Array<{ lineId: string; qtyReceived: number }>;
+  }) {
+    const { data } = await this.client.post(`/purchasing/pos/${id}/receive`, payload);
+    return data;
+  }
+
+  async closePurchasingPo(id: string, payload: { storeId: string; tenantId: string }) {
+    const { data } = await this.client.post(`/purchasing/pos/${id}/close`, payload);
+    return data;
+  }
+
   async listWebhookEndpoints(storeId: string) {
     const { data } = await this.client.get('/webhooks/endpoints', { params: { storeId } });
     return data;

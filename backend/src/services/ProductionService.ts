@@ -97,6 +97,15 @@ export class ProductionService {
     return job;
   }
 
+  async ensureCompatJobForOrder(orderId: string) {
+    const existing = await prisma.productionJob.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) return existing;
+    return this.createProductionJob(orderId);
+  }
+
   async getProductionJob(jobId: string) {
     return prisma.productionJob.findUnique({
       where: { id: jobId },

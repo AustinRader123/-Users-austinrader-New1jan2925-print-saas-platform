@@ -525,9 +525,8 @@ export class PublicStorefrontService {
     const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
     if (useProductionV2) {
       await ProductionV2Service.createBatchesFromOrder(order.id, user.id);
-    } else {
-      await ProductionService.createProductionJob(order.id);
     }
+    await ProductionService.ensureCompatJobForOrder(order.id);
     await NetworkRoutingService.routeOrder(order.id);
 
     await WebhookService.publish({
