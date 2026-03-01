@@ -20,4 +20,4 @@ COPY --from=build /app/backend backend
 COPY --from=build /app/scripts scripts
 RUN mkdir -p artifacts/logs artifacts/pids backend/uploads backend/logs artifacts/backups
 EXPOSE 3100
-CMD ["sh", "-c", "npm --prefix backend run db:deploy && npm --prefix backend run db:seed && node backend/dist/index.js"]
+CMD ["sh", "-c", "n=0; until npm --prefix backend run db:deploy; do n=$((n+1)); if [ \"$n\" -ge 5 ]; then echo \"db:deploy failed after retries\"; exit 1; fi; sleep 3; done; n=0; until npm --prefix backend run db:seed; do n=$((n+1)); if [ \"$n\" -ge 3 ]; then echo \"db:seed failed after retries\"; exit 1; fi; sleep 3; done; node backend/dist/index.js"]

@@ -38,6 +38,11 @@ wait_http_ok() {
   return 1
 }
 
+dump_compose_logs() {
+  echo "[phase6] compose logs (backend/postgres/redis, tail=200)"
+  compose logs --tail=200 backend postgres redis || true
+}
+
 cleanup() {
   compose --profile prod down -v --remove-orphans || true
 }
@@ -49,11 +54,15 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 echo "[phase6] docker compose up (prod profile)"
-compose --profile prod up -d --build postgres redis backend frontend
+if ! compose --profile prod up -d --build postgres redis backend frontend; then
+  echo "[phase6] compose up failed"
+  dump_compose_logs
+  exit 1
+fi
 
 echo "[phase6] waiting for backend health + readiness"
-wait_http_ok "$BASE_URL/health" 120 || { echo "[phase6] backend /health failed"; exit 1; }
-wait_http_ok "$BASE_URL/ready" 120 || { echo "[phase6] backend /ready failed"; exit 1; }
+wait_http_ok "$BASE_URL/health" 120 || { echo "[phase6] backend /health failed"; dump_compose_logs; exit 1; }
+wait_http_ok "$BASE_URL/ready" 120 || { echo "[phase6] backend /ready failed"; dump_compose_logs; exit 1; }
 
 echo "[phase6] waiting for frontend health"
 wait_http_ok "http://localhost:${FRONTEND_PORT}/health" 120 || { echo "[phase6] frontend /health failed"; exit 1; }
