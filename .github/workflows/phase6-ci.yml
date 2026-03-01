@@ -114,7 +114,7 @@ jobs:
       - name: Validate DATABASE_URL connectivity
         run: |
           echo "DATABASE_URL=$DATABASE_URL"
-          npx prisma migrate status
+          npm run db:deploy
         working-directory: backend
       - name: Run smoke phase2a
         run: npm run smoke:phase2a
