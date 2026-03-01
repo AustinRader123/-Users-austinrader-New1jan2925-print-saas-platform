@@ -1,7 +1,10 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware, roleMiddleware } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 import QuoteService from '../services/QuoteService.js';
 import ProductionService from '../services/ProductionService.js';
+import ProductionV2Service from '../services/ProductionV2Service.js';
+import FeatureGateService from '../services/FeatureGateService.js';
 import DocumentService from '../services/DocumentService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
 import EmailService from '../services/EmailService.js';
@@ -149,7 +152,13 @@ router.post('/:quoteId/convert', roleMiddleware(['ADMIN', 'STORE_OWNER']), async
     if (!body) return;
 
     const order = await QuoteService.convertToOrder(body.storeId, req.params.quoteId, req.userId!);
-    await ProductionService.createProductionJob(order.id);
+    const tenantId = String((req as any).tenantId || '').trim() || String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
+    const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
+    if (useProductionV2) {
+      await ProductionV2Service.createBatchesFromOrder(order.id, req.userId);
+    } else {
+      await ProductionService.createProductionJob(order.id);
+    }
 
     res.status(201).json(order);
   } catch (error) {

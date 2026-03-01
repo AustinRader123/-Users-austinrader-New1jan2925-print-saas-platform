@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import { getUserPermissions, hasPermission } from '../lib/rbac.js';
+import FeatureGateService from '../services/FeatureGateService.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -19,6 +20,7 @@ router.get('/menu', async (req: AuthRequest, res) => {
     }
 
     const permissions = await getUserPermissions({ tenantId, userId, userRole });
+  const productionV2Enabled = await FeatureGateService.can(tenantId, 'production_v2.enabled');
 
     const sections: NavSection[] = [
       {
@@ -29,7 +31,17 @@ router.get('/menu', async (req: AuthRequest, res) => {
           ...(hasPermission(permissions, 'customizer.manage') ? [{ to: '/dashboard/products', label: 'Product Builder' }] : []),
         ],
       },
-      { label: 'Orders', items: [{ to: '/app/orders', label: 'Orders' }, { to: '/app/artwork', label: 'Artwork Approvals' }, { to: '/app/production', label: 'Production Queue' }] },
+      {
+        label: 'Orders',
+        items: [
+          { to: '/app/orders', label: 'Orders' },
+          { to: '/app/artwork', label: 'Artwork Approvals' },
+          { to: '/app/production', label: 'Production Queue' },
+          ...(productionV2Enabled && hasPermission(permissions, 'production.view')
+            ? [{ to: '/dashboard/production-v2', label: 'Production WIP V2' }]
+            : []),
+        ],
+      },
       {
         label: 'Storefront',
         items: [

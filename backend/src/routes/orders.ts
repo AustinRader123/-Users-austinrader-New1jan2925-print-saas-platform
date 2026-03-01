@@ -1,7 +1,10 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware, roleMiddleware } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 import OrderService from '../services/OrderService.js';
 import ProductionService from '../services/ProductionService.js';
+import ProductionV2Service from '../services/ProductionV2Service.js';
+import FeatureGateService from '../services/FeatureGateService.js';
 import DocumentService from '../services/DocumentService.js';
 import EmailService from '../services/EmailService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
@@ -21,9 +24,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     const order = await OrderService.createOrder(storeId, req.userId!, cartId, shippingData);
 
-    // Auto-create production job
+    // Auto-create production work (legacy queue or production v2)
     if (order) {
-      await ProductionService.createProductionJob(order.id);
+      const tenantId = String((req as any).tenantId || '').trim() || String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
+      const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
+      if (useProductionV2) {
+        await ProductionV2Service.createBatchesFromOrder(order.id, req.userId);
+      } else {
+        await ProductionService.createProductionJob(order.id);
+      }
     }
 
     res.status(201).json(order);

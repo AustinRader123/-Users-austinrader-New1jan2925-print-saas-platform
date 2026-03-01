@@ -3,12 +3,14 @@ import crypto from 'crypto';
 import PricingRuleService from './PricingRuleService.js';
 import InventoryService from './InventoryService.js';
 import ProductionService from './ProductionService.js';
+import ProductionV2Service from './ProductionV2Service.js';
 import WebhookService from './WebhookService.js';
 import AuditService from './AuditService.js';
 import ProofService from './ProofService.js';
 import EmailService from './EmailService.js';
 import NetworkRoutingService from './NetworkRoutingService.js';
 import FundraisingService from './FundraisingService.js';
+import FeatureGateService from './FeatureGateService.js';
 
 const prisma: any = new PrismaClient();
 
@@ -519,7 +521,13 @@ export class PublicStorefrontService {
     }
 
     await InventoryService.reserveForOrder(order.id);
-    await ProductionService.createProductionJob(order.id);
+    const tenantId = String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
+    const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
+    if (useProductionV2) {
+      await ProductionV2Service.createBatchesFromOrder(order.id, user.id);
+    } else {
+      await ProductionService.createProductionJob(order.id);
+    }
     await NetworkRoutingService.routeOrder(order.id);
 
     await WebhookService.publish({

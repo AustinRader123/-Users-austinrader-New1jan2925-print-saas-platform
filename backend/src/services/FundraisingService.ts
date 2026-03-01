@@ -1,4 +1,6 @@
 import prisma from '../lib/prisma.js';
+import FeatureGateService from './FeatureGateService.js';
+import ProductionV2Service from './ProductionV2Service.js';
 
 function toCents(amount: number) {
   return Math.max(0, Math.round(Number(amount || 0)));
@@ -366,10 +368,19 @@ export class FundraisingService {
       }
     }
 
-    return (prisma as any).fundraiserConsolidationRun.findUnique({
+    const createdRun = await (prisma as any).fundraiserConsolidationRun.findUnique({
       where: { id: run.id },
       include: { lines: true },
     });
+
+    if (createdRun) {
+      const useProductionV2 = await FeatureGateService.can(input.tenantId, 'production_v2.enabled');
+      if (useProductionV2) {
+        await ProductionV2Service.createBatchesFromCampaignBulkOrder(createdRun.id, input.actorUserId || null);
+      }
+    }
+
+    return createdRun;
   }
 
   async listConsolidationRuns(tenantId: string, campaignId: string) {

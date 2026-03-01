@@ -69,6 +69,7 @@ import NetworkAdminPage from './pages/NetworkAdminPage';
 import NetworkRoutingPage from './pages/NetworkRoutingPage';
 import NetworkReportsPage from './pages/NetworkReportsPage';
 import FundraisingCampaignsPage from './pages/FundraisingCampaignsPage';
+import ProductionV2BoardPage from './pages/ProductionV2BoardPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -390,6 +391,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="dashboard/production-v2"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <ProductionV2BoardPage />
+                  </ProtectedRoute>
+                }
+              />
                 <Route
                   path="admin/reports"
                   element={
@@ -657,6 +666,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DesignEditorPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/production-v2"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                  <ProductionV2BoardPage />
                 </ProtectedRoute>
               }
             />

@@ -43,6 +43,8 @@ model User {
   customizationsCreated Customization[]
   networkUserRoles NetworkUserRole[]
   fundraiserConsolidationRunsCreated FundraiserConsolidationRun[]
+  productionBatchEventsActor ProductionBatchEvent[]
+  productionAssignments ProductionAssignment[]
 
   @@index([email])
   @@index([role])
@@ -166,6 +168,8 @@ model Store {
   fundraiserMembers FundraiserCampaignMember[]
   fundraiserConsolidationRuns FundraiserConsolidationRun[]
   fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
+  productionBatches ProductionBatch[] @relation("ProductionBatchStore")
+  productionBatchesAsFulfillment ProductionBatch[] @relation("ProductionBatchFulfillmentStore")
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -353,6 +357,7 @@ model Network {
   royaltyRules      RoyaltyRule[]
   royaltyLedger     RoyaltyLedgerEntry[]
   fundraiserCampaigns FundraiserCampaign[]
+  productionBatches ProductionBatch[]
 
   @@index([tenantId])
   @@index([enabled])
@@ -557,6 +562,159 @@ enum FundraiserPayoutDirection {
   DEBIT
 }
 
+enum ProductionBatchSourceType {
+  ORDER
+  BULK_ORDER
+}
+
+enum ProductionBatchMethod {
+  DTF
+  EMBROIDERY
+  SCREEN
+  OTHER
+}
+
+enum ProductionBatchStage {
+  ART
+  APPROVED
+  PRINT
+  CURE
+  PACK
+  SHIP
+  COMPLETE
+  HOLD
+  CANCELLED
+}
+
+enum ProductionBatchPriority {
+  LOW
+  NORMAL
+  HIGH
+  RUSH
+}
+
+enum ProductionBatchEventType {
+  CREATED
+  STAGE_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  NOTE
+  EXPORT
+  TICKET_PRINTED
+  SHIPPED
+  COMPLETED
+  HOLD
+  CANCELLED
+}
+
+enum ProductionAssignmentRole {
+  OPERATOR
+  LEAD
+}
+
+model ProductionBatch {
+  id                 String                  @id @default(cuid())
+  storeId            String
+  store              Store                   @relation("ProductionBatchStore", fields: [storeId], references: [id], onDelete: Cascade)
+  networkId          String?
+  network            Network?                @relation(fields: [networkId], references: [id], onDelete: SetNull)
+  fulfillmentStoreId String?
+  fulfillmentStore   Store?                  @relation("ProductionBatchFulfillmentStore", fields: [fulfillmentStoreId], references: [id], onDelete: SetNull)
+  sourceType         ProductionBatchSourceType
+  sourceId           String
+  method             ProductionBatchMethod   @default(DTF)
+  stage              ProductionBatchStage    @default(ART)
+  priority           ProductionBatchPriority @default(NORMAL)
+  dueAt              DateTime?
+  notes              String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  items              ProductionBatchItem[]
+  events             ProductionBatchEvent[]
+  assignments        ProductionAssignment[]
+  scanTokens         ProductionScanToken[]
+
+  @@index([storeId])
+  @@index([networkId])
+  @@index([fulfillmentStoreId])
+  @@index([sourceType, sourceId])
+  @@index([stage])
+  @@index([method])
+  @@index([dueAt])
+}
+
+model ProductionBatchItem {
+  id                     String                      @id @default(cuid())
+  batchId                String
+  batch                  ProductionBatch             @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  orderId                String?
+  order                  Order?                      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  bulkOrderId            String?
+  bulkOrder              FundraiserConsolidationRun? @relation(fields: [bulkOrderId], references: [id], onDelete: SetNull)
+  productId              String
+  product                Product                     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variantId              String
+  variant                ProductVariant              @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  designId               String?
+  design                 Design?                     @relation(fields: [designId], references: [id], onDelete: SetNull)
+  location               String
+  qty                    Int
+  personalizationSummary Json?
+  assetRef               Json?
+  createdAt              DateTime                    @default(now())
+
+  @@index([batchId])
+  @@index([orderId])
+  @@index([bulkOrderId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([designId])
+}
+
+model ProductionBatchEvent {
+  id          String                   @id @default(cuid())
+  batchId     String
+  batch       ProductionBatch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  type        ProductionBatchEventType
+  fromStage   ProductionBatchStage?
+  toStage     ProductionBatchStage?
+  actorUserId String?
+  actorUser   User?                    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  meta        Json?
+  createdAt   DateTime                 @default(now())
+
+  @@index([batchId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ProductionAssignment {
+  id         String                   @id @default(cuid())
+  batchId    String
+  batch      ProductionBatch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       ProductionAssignmentRole @default(OPERATOR)
+  assignedAt DateTime                 @default(now())
+  releasedAt DateTime?
+
+  @@index([batchId])
+  @@index([userId])
+  @@index([releasedAt])
+}
+
+model ProductionScanToken {
+  id        String          @id @default(cuid())
+  batchId   String
+  batch     ProductionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  token     String          @unique
+  expiresAt DateTime?
+  createdAt DateTime        @default(now())
+
+  @@index([batchId])
+}
+
 model FundraiserCampaign {
   id                      String                   @id @default(cuid())
   tenantId                String
@@ -673,6 +831,7 @@ model FundraiserConsolidationRun {
   updatedAt      DateTime                      @updatedAt
 
   lines          FundraiserConsolidationOrderLine[]
+  productionBatchItems ProductionBatchItem[]
 
   @@index([campaignId])
   @@index([storeId])
@@ -941,6 +1100,7 @@ model Product {
   customizations Customization[]
   externalProductMaps ExternalProductMap[]
   fundraiserCampaignProducts FundraiserCampaignProduct[]
+  productionBatchItems ProductionBatchItem[]
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
 
@@ -1003,6 +1163,7 @@ model ProductVariant {
   purchaseOrderLines PurchaseOrderLine[]
   externalVariantMaps ExternalVariantMap[]
   customizations Customization[]
+  productionBatchItems ProductionBatchItem[]
 
   @@unique([productId, sku])
   @@index([storeId])
@@ -1195,6 +1356,7 @@ model Design {
   cartItems           CartItem[]
   orderItems          OrderItem[]
   customizations      Customization[]
+  productionBatchItems ProductionBatchItem[]
 
   @@index([userId])
   @@index([status])
@@ -2147,6 +2309,7 @@ model Order {
   royaltyLedgerEntries RoyaltyLedgerEntry[]
   fundraiserConsolidationLines FundraiserConsolidationOrderLine[]
   fundraiserPayoutLedgerEntries FundraiserPayoutLedgerEntry[]
+  productionBatchItems ProductionBatchItem[]
   // DecoNetwork mapping
   dnOrderMaps DnOrderMap[]
 

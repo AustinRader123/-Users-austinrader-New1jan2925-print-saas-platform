@@ -1,11 +1,51 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
+
+const LOCAL_FALLBACK_DB_URL = 'postgresql://postgres:postgres@localhost:5432/deco_network?schema=public';
+
+function parseDotenvValue(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function readDatabaseUrlFromBackendEnv() {
+  const envPath = path.join(root, 'backend', '.env');
+  if (!fs.existsSync(envPath)) return '';
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (!trimmed.startsWith('DATABASE_URL=')) continue;
+    return parseDotenvValue(trimmed.slice('DATABASE_URL='.length));
+  }
+  return '';
+}
+
+function resolveDatabaseUrl() {
+  const fromEnv = String(process.env.DATABASE_URL || '').trim();
+  if (fromEnv) return fromEnv;
+
+  if (String(process.env.DOCTOR_ALLOW_LOCALHOST_DB || '') === '1') {
+    const fromBackendEnv = readDatabaseUrlFromBackendEnv();
+    if (fromBackendEnv) return fromBackendEnv;
+    return LOCAL_FALLBACK_DB_URL;
+  }
+
+  throw new Error('smoke:prod_sim requires DATABASE_URL (or set DOCTOR_ALLOW_LOCALHOST_DB=1 to use local db).');
+}
 
 function run(command, args, options = {}) {
   const timeoutMs = options.timeoutMs ?? 120000;
@@ -150,10 +190,12 @@ async function assertPortClosed(port, timeoutMs = 15000) {
 }
 
 async function main() {
+  const resolvedDatabaseUrl = resolveDatabaseUrl();
   const backendPort = process.env.BACKEND_PORT || '3100';
   const baseUrl = process.env.BASE_URL || `http://127.0.0.1:${backendPort}`;
   const env = {
     ...process.env,
+    DATABASE_URL: resolvedDatabaseUrl,
     NODE_ENV: 'production',
     DOCTOR_PROFILE: 'production',
     FRONTEND_PORT: process.env.FRONTEND_PORT || '3999',
