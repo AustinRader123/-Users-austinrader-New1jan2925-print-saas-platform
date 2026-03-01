@@ -18,6 +18,12 @@ function normalizeBuildTime(value: string | undefined): string {
   return parsed.toISOString();
 }
 
+function normalizeVersion(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'v0.0.0';
+  return trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
+}
+
 const packageVersion = readPackageVersion();
 const resolvedVersion =
   (process.env.APP_VERSION || '').trim() ||
@@ -40,7 +46,7 @@ const resolvedEnv =
 const resolvedBuildTime = normalizeBuildTime(process.env.BUILD_TIME);
 
 export const appVersionMeta = {
-  version: resolvedVersion,
+  version: normalizeVersion(resolvedVersion),
   commit: resolvedCommit,
   buildTime: resolvedBuildTime,
   env: resolvedEnv,
