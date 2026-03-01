@@ -40,11 +40,13 @@
     "smoke:phase14": "bash scripts/smoke-phase14.sh",
     "smoke:phase15": "bash scripts/smoke-phase15.sh",
     "smoke:phase16": "bash scripts/smoke-phase16.sh",
+    "smoke:phase17": "bash scripts/smoke-phase17.sh",
     "supplier:scheduler": "tsx src/scripts/supplier-scheduler.ts",
     "supplier:scheduler:once": "tsx src/scripts/supplier-scheduler.ts --once",
     "clean": "node ../scripts/run-platform.mjs clean",
     "stop": "node ../scripts/run-platform.mjs stop",
     "doctor": "node ../scripts/run-platform.mjs doctor",
+    "doctor:prod": "node ../scripts/run-platform.mjs doctor --prod",
     "db:studio": "prisma studio",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
