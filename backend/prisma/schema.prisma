@@ -66,14 +66,22 @@ enum UserStatus {
 
 model ApiKey {
   id        String   @id @default(cuid())
-  userId    String
-  key       String   @unique
+  userId    String?
+  storeId   String?
+  key       String?  @unique
   name      String
+  prefix    String?
+  hash      String?
+  scopes    Json?
   lastUsed  DateTime?
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revokedAt DateTime?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([storeId])
+  @@index([prefix])
 }
 
 // ============================================================================
@@ -131,6 +139,10 @@ model Store {
   purchaseOrderLines PurchaseOrderLine[]
   webhookEndpoints WebhookEndpoint[]
   webhookDeliveries WebhookDelivery[]
+  notificationTemplates NotificationTemplate[]
+  notificationOutbox NotificationOutbox[]
+  eventLogs EventLog[]
+  apiKeys ApiKey[]
   // DecoNetwork connections
   decoConnections DecoNetworkConnection[]
   inventoryEvents InventoryEvent[]
@@ -3233,6 +3245,89 @@ model Notification {
   @@index([read])
 }
 
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationOutboxType {
+  PROOF_REQUESTED
+  PROOF_APPROVED
+  INVOICE_SENT
+  PAYMENT_RECEIPT
+  SHIPMENT_CREATED
+  SHIPMENT_DELIVERED
+  PASSWORD_RESET
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model NotificationTemplate {
+  id        String              @id @default(cuid())
+  storeId   String
+  store     Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  key       String
+  channel   NotificationChannel
+  subject   String?
+  body      String              @db.Text
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([storeId, key])
+  @@index([storeId])
+  @@index([channel])
+  @@index([isActive])
+}
+
+model NotificationOutbox {
+  id          String               @id @default(cuid())
+  storeId     String
+  store       Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type        NotificationOutboxType
+  channel     NotificationChannel
+  to          String
+  payloadJson Json?
+  status      OutboxStatus         @default(PENDING)
+  attempts    Int                  @default(0)
+  lastError   String?
+  createdAt   DateTime             @default(now())
+  sentAt      DateTime?
+  updatedAt   DateTime             @updatedAt
+
+  @@index([storeId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum EventActorType {
+  PUBLIC
+  USER
+  SYSTEM
+}
+
+model EventLog {
+  id             String         @id @default(cuid())
+  storeId        String
+  store          Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  actorType      EventActorType
+  actorId        String?
+  eventType      String
+  entityType     String?
+  entityId       String?
+  propertiesJson Json?
+  createdAt      DateTime       @default(now())
+
+  @@index([storeId, eventType, createdAt])
+  @@index([storeId])
+  @@index([eventType])
+}
+
 model WebhookLog {
   id        String   @id @default(cuid())
   event     String
@@ -3248,9 +3343,11 @@ model WebhookEndpoint {
   id         String   @id @default(cuid())
   storeId    String
   store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name       String   @default("Webhook Endpoint")
   url        String
   secret     String
   enabled    Boolean  @default(true)
+  isActive   Boolean  @default(true)
   eventTypes Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -3272,6 +3369,7 @@ model WebhookDelivery {
   status            String   @default("QUEUED")
   attempts          Int      @default(0)
   lastError         String?
+  deliveredAt       DateTime?
   nextAttemptAt     DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

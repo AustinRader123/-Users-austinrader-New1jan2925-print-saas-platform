@@ -1,97 +1,114 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import axios from 'axios';
-import QueueManager from './QueueManager.js';
+import MockWebhookClient from '../providers/webhooks/mock/MockWebhookClient.js';
 
 const prisma = new PrismaClient();
 
 export class WebhookService {
-  private initialized = false;
+  private client = new MockWebhookClient();
 
-  ensureProcessor() {
-    if (this.initialized) return;
-    this.initialized = true;
-
-    QueueManager.processQueue('webhook-delivery', async (job) => {
-      const deliveryId = job.data.deliveryId as string;
-      const delivery = await (prisma as any).webhookDelivery.findUnique({
-        where: { id: deliveryId },
-        include: { webhookEndpoint: true },
-      });
-      if (!delivery) return;
-      if (!delivery.webhookEndpoint?.enabled) return;
-
-      try {
-        const body = JSON.stringify(delivery.payload || {});
-        const signature = crypto
-          .createHmac('sha256', delivery.webhookEndpoint.secret)
-          .update(body)
-          .digest('hex');
-
-        await axios.post(delivery.webhookEndpoint.url, delivery.payload, {
-          timeout: 5000,
-          headers: {
-            'x-webhook-event': delivery.eventType,
-            'x-webhook-signature': signature,
-            'content-type': 'application/json',
-          },
-        });
-
-        await (prisma as any).webhookDelivery.update({
-          where: { id: delivery.id },
-          data: { status: 'SENT', attempts: delivery.attempts + 1, lastError: null, nextAttemptAt: null },
-        });
-      } catch (error: any) {
-        const attempts = delivery.attempts + 1;
-        const delayMinutes = Math.min(60, Math.pow(2, attempts));
-        const nextAttemptAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-
-        await (prisma as any).webhookDelivery.update({
-          where: { id: delivery.id },
-          data: {
-            status: attempts >= 5 ? 'FAILED' : 'QUEUED',
-            attempts,
-            lastError: error?.message || 'delivery failed',
-            nextAttemptAt: attempts >= 5 ? null : nextAttemptAt,
-          },
-        });
-
-        if (attempts < 5) {
-          await QueueManager.enqueueJob('webhook-delivery', { deliveryId: delivery.id }, { delay: delayMinutes * 60 * 1000 });
-        }
-      }
-    });
-  }
-
-  async publish(input: { storeId: string; eventType: string; payload: any }) {
-    this.ensureProcessor();
-
+  async enqueueDeliveries(storeId: string, eventType: string, payload: any) {
     const endpoints = await (prisma as any).webhookEndpoint.findMany({
       where: {
-        storeId: input.storeId,
-        enabled: true,
+        storeId,
+        OR: [
+          { enabled: true },
+          { isActive: true },
+        ],
       },
     });
 
     const deliveries: any[] = [];
     for (const endpoint of endpoints) {
       const eventTypes = Array.isArray(endpoint.eventTypes) ? endpoint.eventTypes : [];
-      if (eventTypes.length > 0 && !eventTypes.includes(input.eventType)) continue;
+      if (eventTypes.length > 0 && !eventTypes.includes(eventType)) continue;
 
       const delivery = await (prisma as any).webhookDelivery.create({
         data: {
-          storeId: input.storeId,
+          storeId,
           webhookEndpointId: endpoint.id,
-          eventType: input.eventType,
-          payload: input.payload,
-          status: 'QUEUED',
+          eventType,
+          payload,
+          status: 'PENDING',
           attempts: 0,
         },
       });
       deliveries.push(delivery);
-      await QueueManager.enqueueJob('webhook-delivery', { deliveryId: delivery.id }, { attempts: 1 });
     }
 
+    return deliveries;
+  }
+
+  async processPending(input: { limit?: number } = {}) {
+    const take = Math.max(1, Math.min(200, Number(input.limit || 50)));
+    const rows = await (prisma as any).webhookDelivery.findMany({
+      where: { status: { in: ['PENDING', 'QUEUED'] } },
+      include: { webhookEndpoint: true },
+      orderBy: { createdAt: 'asc' },
+      take,
+    });
+
+    const results: Array<{ id: string; status: 'SENT' | 'FAILED' }> = [];
+
+    for (const row of rows) {
+      try {
+        const endpoint = row.webhookEndpoint;
+        if (!endpoint || (!endpoint.enabled && !endpoint.isActive)) {
+          await (prisma as any).webhookDelivery.update({
+            where: { id: row.id },
+            data: { status: 'FAILED', attempts: Number(row.attempts || 0) + 1, lastError: 'endpoint inactive' },
+          });
+          results.push({ id: row.id, status: 'FAILED' });
+          continue;
+        }
+
+        const payloadJson = JSON.stringify(row.payload || {});
+        const signature = crypto.createHmac('sha256', endpoint.secret).update(payloadJson).digest('hex');
+        await this.client.post(endpoint.url, {
+          'content-type': 'application/json',
+          'x-webhook-event': row.eventType,
+          'x-webhook-signature': signature,
+        }, row.payload || {});
+
+        await (prisma as any).webhookDelivery.update({
+          where: { id: row.id },
+          data: {
+            status: 'SENT',
+            attempts: Number(row.attempts || 0) + 1,
+            lastError: null,
+            deliveredAt: new Date(),
+            nextAttemptAt: null,
+          },
+        });
+        results.push({ id: row.id, status: 'SENT' });
+      } catch (error: any) {
+        await (prisma as any).webhookDelivery.update({
+          where: { id: row.id },
+          data: {
+            status: 'FAILED',
+            attempts: Number(row.attempts || 0) + 1,
+            lastError: error?.message || 'delivery failed',
+          },
+        });
+        results.push({ id: row.id, status: 'FAILED' });
+      }
+    }
+
+    return { processed: rows.length, results };
+  }
+
+  async retryDelivery(deliveryId: string) {
+    await (prisma as any).webhookDelivery.update({
+      where: { id: deliveryId },
+      data: { status: 'PENDING', nextAttemptAt: null },
+    });
+
+    return this.processPending({ limit: 1 });
+  }
+
+  async publish(input: { storeId: string; eventType: string; payload: any }) {
+    const deliveries = await this.enqueueDeliveries(input.storeId, input.eventType, input.payload);
+    await this.processPending({ limit: deliveries.length || 1 });
     return deliveries;
   }
 

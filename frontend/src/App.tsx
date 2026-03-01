@@ -75,6 +75,9 @@ import DashboardInventoryPage from './pages/DashboardInventoryPage';
 import DashboardPurchasingPage from './pages/DashboardPurchasingPage';
 import DashboardBillingPage from './pages/DashboardBillingPage';
 import DashboardShippingPage from './pages/DashboardShippingPage';
+import DashboardNotificationsPage from './pages/DashboardNotificationsPage';
+import DashboardWebhooksPage from './pages/DashboardWebhooksPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -437,6 +440,30 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="dashboard/notifications"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DashboardNotificationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/webhooks"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DashboardWebhooksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/analytics"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
                 <Route
                   path="admin/reports"
                   element={
@@ -744,6 +771,30 @@ function App() {
               element={
                 <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
                   <DashboardShippingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/notifications"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                  <DashboardNotificationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/webhooks"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                  <DashboardWebhooksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/analytics"
+              element={
+                <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                  <AnalyticsPage />
                 </ProtectedRoute>
               }
             />

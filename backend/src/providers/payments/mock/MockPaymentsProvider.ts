@@ -44,7 +44,19 @@ export class MockPaymentsProvider implements PaymentsProvider {
     };
   }
 
-  async parseWebhookEvent(payload: unknown, _headers: Record<string, string | undefined>) {
+  async parseWebhookEvent(payload: unknown, headers: Record<string, string | undefined>) {
+    const expectedSecret = process.env.PAYMENTS_WEBHOOK_SECRET || '';
+    if (expectedSecret) {
+      const provided = headers['x-webhook-secret'];
+      if (!provided || provided !== expectedSecret) {
+        return {
+          accepted: false,
+          reason: 'Invalid webhook secret',
+          raw: payload,
+        };
+      }
+    }
+
     const body = (payload || {}) as any;
     if (body?.event === 'payment_succeeded' && body?.providerRef) {
       return {

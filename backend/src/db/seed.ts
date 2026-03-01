@@ -58,6 +58,8 @@ async function main() {
   const hasPricingRuleSet = await tableExists('PricingRuleSet');
   const hasPricingRule = await tableExists('PricingRule');
   const hasSupplierConnection = await tableExists('SupplierConnection');
+  const hasWebhookEndpoint = await tableExists('WebhookEndpoint');
+  const hasNotificationTemplate = await tableExists('NotificationTemplate');
   const hasPlan = await tableExists('Plan');
   const hasTenantSubscription = await tableExists('TenantSubscription');
   const hasBillingEvent = await tableExists('BillingEvent');
@@ -372,6 +374,71 @@ async function main() {
       });
     }
     console.log('  supplierConnection:', { supplier: 'MOCK', mode: 'seeded' });
+  }
+
+  if (seededStore && hasWebhookEndpoint) {
+    const existingEndpoint = await (prisma as any).webhookEndpoint.findFirst({
+      where: { storeId: seededStore.id, url: 'https://example.invalid/webhooks/seed' },
+      select: { id: true },
+    });
+
+    if (!existingEndpoint) {
+      await (prisma as any).webhookEndpoint.create({
+        data: {
+          storeId: seededStore.id,
+          name: 'Seed Webhook Endpoint',
+          url: 'https://example.invalid/webhooks/seed',
+          secret: 'seed-webhook-secret',
+          eventTypes: ['invoice.sent', 'payment.receipt', 'shipment.created'],
+          isActive: false,
+        },
+      });
+    }
+    console.log('  webhookEndpoint:', { seeded: true, isActive: false });
+  }
+
+  if (seededStore && hasNotificationTemplate) {
+    const templates = [
+      {
+        key: 'invoice.sent',
+        channel: 'EMAIL',
+        subject: 'Invoice {{invoiceId}} is ready',
+        body: 'Hi {{customerName}}, your invoice {{invoiceId}} total is {{totalAmount}}.',
+      },
+      {
+        key: 'payment.receipt',
+        channel: 'EMAIL',
+        subject: 'Payment received for {{invoiceId}}',
+        body: 'We received your payment for invoice {{invoiceId}}. Amount: {{totalAmount}}.',
+      },
+      {
+        key: 'shipment.created',
+        channel: 'EMAIL',
+        subject: 'Shipment created for order {{orderId}}',
+        body: 'Your shipment is on the way. Order {{orderId}}, tracking {{trackingNumber}}.',
+      },
+    ] as const;
+
+    for (const tpl of templates) {
+      await (prisma as any).notificationTemplate.upsert({
+        where: { storeId_key: { storeId: seededStore.id, key: tpl.key } },
+        update: {
+          channel: tpl.channel,
+          subject: tpl.subject,
+          body: tpl.body,
+          isActive: true,
+        },
+        create: {
+          storeId: seededStore.id,
+          key: tpl.key,
+          channel: tpl.channel,
+          subject: tpl.subject,
+          body: tpl.body,
+          isActive: true,
+        },
+      });
+    }
+    console.log('  notificationTemplates:', templates.map((tpl) => tpl.key));
   }
 
   let starterRuleSet: { id: string; name: string } | null = null;

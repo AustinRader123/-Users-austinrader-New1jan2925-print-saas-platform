@@ -10,9 +10,10 @@ const router = Router();
 
 const createSchema = z.object({
   storeId: z.string().min(1),
+  name: z.string().min(1).optional(),
   url: z.string().url(),
   secret: z.string().min(8),
-  enabled: z.boolean().optional(),
+  isActive: z.boolean().optional(),
   eventTypes: z.array(z.string()).optional(),
 });
 
@@ -35,9 +36,10 @@ router.post('/endpoints', async (req, res) => {
   const endpoint = await (prisma as any).webhookEndpoint.create({
     data: {
       storeId: parsed.data.storeId,
+      name: parsed.data.name,
       url: parsed.data.url,
       secret: parsed.data.secret,
-      enabled: parsed.data.enabled ?? true,
+      isActive: parsed.data.isActive ?? true,
       eventTypes: parsed.data.eventTypes || [],
     },
   });
@@ -51,9 +53,10 @@ router.put('/endpoints/:id', async (req, res) => {
   const endpoint = await (prisma as any).webhookEndpoint.updateMany({
     where: { id: req.params.id, storeId },
     data: {
+      ...(req.body?.name !== undefined ? { name: String(req.body.name || '').trim() || null } : {}),
       ...(req.body?.url !== undefined ? { url: req.body.url } : {}),
       ...(req.body?.secret !== undefined ? { secret: req.body.secret } : {}),
-      ...(req.body?.enabled !== undefined ? { enabled: Boolean(req.body.enabled) } : {}),
+      ...(req.body?.isActive !== undefined ? { isActive: Boolean(req.body.isActive) } : {}),
       ...(req.body?.eventTypes !== undefined ? { eventTypes: req.body.eventTypes } : {}),
     },
   });
@@ -84,6 +87,20 @@ router.get('/deliveries', async (req: AuthRequest, res) => {
     take: req.query.take ? Number(req.query.take) : 100,
   });
   return res.json(deliveries);
+});
+
+router.post('/deliveries/process', async (_req, res) => {
+  const limit = Number(_req.body?.limit || 50);
+  const out = await WebhookService.processPending({ limit });
+  return res.json(out);
+});
+
+router.post('/deliveries/:id/retry', async (req, res) => {
+  const delivery = await WebhookService.retryDelivery(req.params.id);
+  if (!delivery) {
+    return res.status(404).json({ error: 'Delivery not found' });
+  }
+  return res.json(delivery);
 });
 
 export default router;
