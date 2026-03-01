@@ -1,57 +1,42 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useUIStore } from '../stores/uiStore';
+import { apiClient } from '../lib/api';
 
 type Group = {
   label: string;
   items: { to: string; label: string }[];
 };
 
-const GROUPS: Group[] = [
-  {
-    label: 'Dashboard',
-    items: [
-      { to: '/app', label: 'Overview' },
-    ],
-  },
-  {
-    label: 'Orders',
-    items: [
-      { to: '/app/orders', label: 'Orders' },
-      { to: '/app/artwork', label: 'Artwork Approvals' },
-      { to: '/app/production', label: 'Production Queue' },
-    ],
-  },
-  {
-    label: 'Catalog',
-    items: [
-      { to: '/app/products', label: 'Products' },
-      { to: '/app/customers', label: 'Customers' },
-    ],
-  },
-  {
-    label: 'Reports',
-    items: [
-      { to: '/app/reports', label: 'Sales' },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { to: '/app/settings/stores', label: 'Stores & Branding' },
-      { to: '/app/settings/users', label: 'Users & Roles' },
-      { to: '/app/settings/integrations', label: 'Integrations' },
-      { to: '/app/settings/billing', label: 'Billing' },
-      { to: '/app/settings/api', label: 'API Keys' },
-    ],
-  },
-];
-
 export default function SideNav() {
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
+  const [groups, setGroups] = React.useState<Group[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const menu = await apiClient.getNavigationMenu();
+        if (!mounted) return;
+        setGroups(Array.isArray(menu?.sections) ? menu.sections : []);
+      } catch {
+        if (!mounted) return;
+        setGroups([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    GROUPS.forEach((g) => (init[g.label] = true));
+    ['Dashboard', 'Orders', 'Storefront', 'Communications', 'Documents', 'Settings'].forEach((g) => (init[g] = true));
     return init;
   });
 
@@ -64,7 +49,17 @@ export default function SideNav() {
         </button>
       </div>
       <nav className="px-2 py-2 space-y-2">
-        {GROUPS.map((group) => (
+        {loading && (
+          <div className="space-y-2 px-2 py-2" aria-label="sidebar-loading">
+            <div className="h-3 w-24 animate-pulse rounded bg-slate-200" />
+            <div className="h-7 w-full animate-pulse rounded bg-slate-100" />
+            <div className="h-7 w-full animate-pulse rounded bg-slate-100" />
+          </div>
+        )}
+        {!loading && groups.length === 0 && (
+          <div className="px-2 py-3 text-xs text-slate-500">No navigation items available for this role.</div>
+        )}
+        {groups.map((group) => (
           <div key={group.label}>
             <button
               className="flex w-full items-center justify-between px-2 py-1 text-xs font-medium"

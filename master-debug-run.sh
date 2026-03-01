@@ -130,7 +130,8 @@ fi
 
 log "=== START MOCK DN ==="
 if [[ -f "$MOCK_DN_ENTRY" ]]; then
-  bg_start mock-dn node "$MOCK_DN_ENTRY"
+  # ensure mock respects MOCK_PORT env
+  bg_start mock-dn bash -lc "MOCK_PORT=$MOCK_PORT node \"$MOCK_DN_ENTRY\""
   register_pidfile mock-dn
 else
   log "ERROR: mock DN entry not found at: $MOCK_DN_ENTRY"

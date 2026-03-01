@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton';
 import ErrorState from '../components/ErrorState';
 import { getOrder } from '../services/orders.service';
 import { DropdownMenu } from '../ui/DropdownMenu';
+import { apiClient } from '../lib/api';
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
@@ -16,6 +17,12 @@ export default function OrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState('overview');
   const [notesOpen, setNotesOpen] = useState(false);
+
+  const repriceOrder = async () => {
+    if (!order?.id || !order?.storeId) return;
+    const data = await apiClient.repriceOrder(order.id, order.storeId);
+    setOrder(data);
+  };
 
   useEffect(() => {
     (async () => {
@@ -58,6 +65,7 @@ export default function OrderDetailPage() {
             trigger={<span>Actions</span>}
             items={[
               { label: 'Production Notes', onSelect: () => setNotesOpen(true) },
+              { label: 'Reprice Order', onSelect: repriceOrder },
               { label: 'Export', onSelect: () => {} },
               { label: 'Packing Slip', onSelect: () => {} },
             ]}
@@ -87,6 +95,11 @@ export default function OrderDetailPage() {
                   <div className="text-sm">
                     <div>{it.product?.name || it.productId}</div>
                     <div className="text-xs text-slate-600">Qty {it.quantity} • {it.variantId || '—'}</div>
+                    {it.pricingSnapshot && (
+                      <div className="text-xs text-slate-700">
+                        Cost ${Number(it.pricingSnapshot?.total || it.totalPrice || 0).toFixed(2)} • Margin {Number(it.pricingSnapshot?.effectiveMarginPct || 0).toFixed(2)}% • Profit ${Number(it.pricingSnapshot?.projectedProfit || 0).toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -4,7 +4,7 @@
   "description": "SkuFlow - Custom Product Commerce Platform",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node ../scripts/run-frontend-dev.mjs",
     "build": "vite build",
     "build:safe": "vite build",
     "preview": "vite preview",

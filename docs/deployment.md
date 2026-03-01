@@ -5,6 +5,7 @@
 - Node.js 18+ LTS
 - PostgreSQL 15+
 - Redis 6+
+- Docker + Docker Compose v2 (for local/prod-like orchestration)
 - AWS Account (for S3, optional for dev)
 - Stripe Account (optional)
 - SendGrid Account (optional)
@@ -13,45 +14,26 @@
 
 ### 1. Create Environment Files
 
-**Backend - `/backend/.env`:**
+Start from the committed templates and fill in production values:
+
 ```bash
-NODE_ENV=production
-PORT=3000
-API_URL=https://api.yourdomain.com
-
-DATABASE_URL=postgresql://user:password@db-host:5432/deco_network
-REDIS_URL=redis://redis-host:6379
-
-JWT_SECRET=your-very-long-random-secret-key
-JWT_EXPIRY=7d
-
-STRIPE_SECRET_KEY=sk_...
-STRIPE_PUBLISHABLE_KEY=pk_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-S3_BUCKET=skuflow-prod
-
-SENDGRID_API_KEY=...
-SENDGRID_FROM_EMAIL=noreply@skuflow.ai
-
-ENABLE_VENDOR_SYNC=true
-ENABLE_MOCKUP_GENERATION=true
-ENABLE_EMAIL_NOTIFICATIONS=true
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-**Frontend - `/frontend/.env.production`:**
-```
-VITE_API_URL=https://api.yourdomain.com/api
-```
+Production-critical keys:
+- `JWT_SECRET` (32+ characters)
+- `CORS_ORIGIN` (explicit allowlist, no `*`)
+- `DATABASE_URL`
+- `DN_ENC_KEY`
+- `BILLING_PROVIDER` and Stripe keys/webhook (if using Stripe)
 
 ### 2. Database Setup
 
 ```bash
-# Apply all migrations
-npm run db:migrate
+# Apply all migrations (CI/prod)
+npm run db:deploy
 
 # Seed initial data (optional)
 npm run db:seed
@@ -61,54 +43,24 @@ npm run db:seed
 
 ### Option A: Docker Compose (Recommended for Dev/Small)
 
-Create `/docker-compose.yml`:
+The repository now includes:
+- `backend/Dockerfile`
+- `frontend/Dockerfile`
+- root `docker-compose.yml`
 
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: deco_network
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  backend:
-    build: ./backend
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/deco_network
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ./backend/logs:/app/logs
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "5173:5173"
-    environment:
-      VITE_API_URL: http://localhost:3000/api
-
-volumes:
-  postgres_data:
+Run prod-like stack:
+```bash
+docker compose --profile prod up -d --build postgres redis backend frontend
 ```
 
-Run with:
+Run dev frontend profile:
 ```bash
-docker-compose up
+docker compose --profile dev up -d --build postgres redis backend frontend-dev
+```
+
+Optional worker:
+```bash
+docker compose --profile worker up -d worker
 ```
 
 ### Option B: AWS Deployment
@@ -241,15 +193,17 @@ Use CloudWatch, DataDog, or ELK stack:
 
 ### Database Backups
 
+Use the committed operational scripts:
+
 ```bash
-# Automated backups (recommended: daily)
-# AWS RDS handles automatically
+# backup to artifacts/backups/db-<timestamp>.sql.gz
+DATABASE_URL=postgresql://... npm run backup:db
 
-# Manual backup
-pg_dump postgresql://user:pass@host:5432/deco_network > backup.sql
+# restore (requires explicit --yes)
+DATABASE_URL=postgresql://... npm run restore:db -- --yes artifacts/backups/db-YYYYMMDD-HHMMSS.sql.gz
 
-# Restore
-psql postgresql://user:pass@host:5432/deco_network < backup.sql
+# rollback code and/or database
+DATABASE_URL=postgresql://... npm run rollback -- --yes --ref HEAD~1 --backup artifacts/backups/db-YYYYMMDD-HHMMSS.sql.gz
 ```
 
 ### S3 Bucket Versioning
@@ -264,35 +218,11 @@ aws s3api put-bucket-versioning \
 
 ### GitHub Actions Workflow
 
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: cd backend && npm ci
-      - run: cd backend && npm run build
-      - run: cd backend && npm test
-
-  frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: cd frontend && npm ci
-      - run: cd frontend && npm run build
-```
+Use `.github/workflows/phase6-ci.yml` for production-hardening CI:
+- backend install/build/test
+- frontend install/build
+- smoke suite (`smoke:phase2a` and `smoke:phase6`)
+- mock provider defaults for non-interactive runs
 
 ## Performance Optimization
 
@@ -330,6 +260,7 @@ CREATE INDEX idx_cart_userId ON "Cart"("userId");
 - [ ] Use strong database password
 - [ ] Enable HTTPS/SSL
 - [ ] Configure CORS for production domain
+- [ ] Run `DOCTOR_PROFILE=production npm run doctor` before release
 - [ ] Rotate API keys regularly
 - [ ] Enable database encryption
 - [ ] Set up AWS IAM roles

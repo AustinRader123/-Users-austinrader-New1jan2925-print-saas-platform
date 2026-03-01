@@ -24,9 +24,9 @@ cat <<'OUT'
 - Type: Web Service
 - Root Directory: backend
 - Build Command:
-    npm ci && ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) && ( npm run build || true )
+  npm ci && ( npm run build || true )
 - Start Command:
-    bash -lc '([ -f prisma/schema.prisma ] && npx prisma migrate deploy || true); ( npm start || node dist/index.js )'
+  bash -lc '( npm run db:deploy || true ); ( npm start || node dist/index.js )'
 - Health Check Path: /health
 - Auto Deploy: true
 - Environment Variables:

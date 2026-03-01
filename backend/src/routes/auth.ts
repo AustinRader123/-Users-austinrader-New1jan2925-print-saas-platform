@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import AuthService from '../services/AuthService.js';
 import logger from '../logger.js';
+import { getUserPermissions } from '../lib/rbac.js';
 
 const router = Router();
 
@@ -40,7 +41,13 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = await AuthService.getUser(req.userId!);
-    res.json(user);
+    const tenantId = ((req as any).tenantId as string | undefined) || null;
+    const permissions = await getUserPermissions({ tenantId, userId: req.userId, userRole: req.userRole });
+    res.json({
+      ...user,
+      tenantId,
+      permissions,
+    });
   } catch (error) {
     logger.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });

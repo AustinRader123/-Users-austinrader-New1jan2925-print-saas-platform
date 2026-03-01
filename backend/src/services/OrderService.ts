@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../logger.js';
+import InventoryService from './InventoryService.js';
+import AuditService from './AuditService.js';
+import PricingRuleService from './PricingRuleService.js';
 
 const prisma = new PrismaClient();
 
@@ -109,10 +112,27 @@ export class OrderService {
   }
 
   async updateOrderStatus(orderId: string, status: string) {
-    return prisma.order.update({
+    const updated = await prisma.order.update({
       where: { id: orderId },
       data: { status: status as any },
     });
+
+    if (status === 'CANCELLED') {
+      await InventoryService.releaseForOrder(orderId);
+    }
+    if (status === 'SHIPPED') {
+      await InventoryService.shipForOrder(orderId);
+    }
+
+    await AuditService.log({
+      actorType: 'System',
+      action: 'order.status_changed',
+      entityType: 'Order',
+      entityId: orderId,
+      meta: { status },
+    });
+
+    return updated;
   }
 
   async updatePaymentStatus(orderId: string, paymentStatus: string) {
@@ -156,6 +176,70 @@ export class OrderService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async repriceOrder(orderId: string, storeId?: string) {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, ...(storeId ? { storeId } : {}) },
+      include: { items: true, user: { select: { taxExempt: true } } },
+    });
+    if (!order) throw new Error('Order not found');
+
+    let subtotal = 0;
+    let taxAmount = 0;
+    let shippingCost = 0;
+
+    for (const item of order.items) {
+      const locations = Array.isArray(item.decorationLocations as any) ? (item.decorationLocations as any as string[]) : undefined;
+      const breakdown = await PricingRuleService.evaluate({
+        storeId: order.storeId,
+        productId: item.productId,
+        variantId: item.productVariantId,
+        qty: Math.max(1, item.quantity),
+        decorationMethod: item.decorationMethod || undefined,
+        locations,
+        printSizeTier: (item.printSizeTier as any) || undefined,
+        colorCount: item.colorCount || undefined,
+        stitchCount: item.stitchCount || undefined,
+        rush: item.rush,
+        weightOz: item.weightOz || undefined,
+        userId: order.userId,
+      });
+
+      const setupTotal = breakdown.fees.reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
+      const lineTotal = Number((breakdown.blanksSubtotal + breakdown.decorationSubtotal + setupTotal).toFixed(2));
+      const unitPrice = Number((lineTotal / item.quantity).toFixed(2));
+
+      subtotal += lineTotal;
+      taxAmount += Number(breakdown.tax || 0);
+      shippingCost += Number(breakdown.shipping || 0);
+
+      await prisma.orderItem.update({
+        where: { id: item.id },
+        data: {
+          unitPrice,
+          totalPrice: lineTotal,
+          pricingSnapshot: breakdown as any,
+        },
+      });
+    }
+
+    subtotal = Number(subtotal.toFixed(2));
+    taxAmount = Number(taxAmount.toFixed(2));
+    shippingCost = Number(shippingCost.toFixed(2));
+    const totalAmount = Number((subtotal + taxAmount + shippingCost).toFixed(2));
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        subtotal,
+        taxAmount,
+        shippingCost,
+        totalAmount,
+      },
+    });
+
+    return this.getOrder(order.id, order.storeId);
   }
 }
 

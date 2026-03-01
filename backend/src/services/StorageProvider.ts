@@ -19,7 +19,8 @@ export class StorageProvider {
   private localPath: string;
 
   constructor() {
-    this.useLocal = process.env.S3_USE_LOCAL === 'true';
+    const s3Env = process.env.S3_USE_LOCAL;
+    this.useLocal = s3Env === undefined ? true : s3Env === 'true';
     this.localPath = process.env.S3_LOCAL_PATH || './uploads';
 
     if (this.useLocal) {

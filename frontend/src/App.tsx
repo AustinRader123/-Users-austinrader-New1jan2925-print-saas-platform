@@ -31,20 +31,59 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import ProductionQueuePage from './pages/ProductionQueuePage';
 import ArtworkApprovalsPage from './pages/ArtworkApprovalsPage';
 import ReportsPage from './pages/ReportsPage';
+import DashboardProductsPage from './pages/DashboardProductsPage';
+import DashboardProductDetailPage from './pages/DashboardProductDetailPage';
+import DashboardPricingPage from './pages/DashboardPricingPage';
+import DashboardQuotesPage from './pages/DashboardQuotesPage';
+import ProofApprovalPage from './pages/ProofApprovalPage';
+import StoreHomePage from './pages/StoreHomePage';
+import StoreProductsPage from './pages/StoreProductsPage';
+import StoreProductDetailPage from './pages/StoreProductDetailPage';
+import StoreProductCustomizerPage from './pages/StoreProductCustomizerPage';
+import StoreCartPage from './pages/StoreCartPage';
+import StoreCheckoutPage from './pages/StoreCheckoutPage';
+import StoreOrderStatusPage from './pages/StoreOrderStatusPage';
+import TeamStorePage from './pages/TeamStorePage';
+import TeamStoreProductPage from './pages/TeamStoreProductPage';
+import TeamStoreCartPage from './pages/TeamStoreCartPage';
+import TeamStoreCheckoutPage from './pages/TeamStoreCheckoutPage';
+import AdminTeamStoresPage from './pages/AdminTeamStoresPage';
+import AdminInventoryPage from './pages/AdminInventoryPage';
+import AdminPurchaseOrdersPage from './pages/AdminPurchaseOrdersPage';
+import AdminWebhooksPage from './pages/AdminWebhooksPage';
+import AdminSupplierSyncPage from './pages/AdminSupplierSyncPage';
+import AdminSupplierRunDetailPage from './pages/AdminSupplierRunDetailPage';
+import SettingsBillingPage from './pages/SettingsBillingPage';
+import SettingsDomainsPage from './pages/SettingsDomainsPage';
+import SettingsUsersRolesPage from './pages/SettingsUsersRolesPage';
+import OnboardingPage from './pages/OnboardingPage';
+import StorefrontThemePage from './pages/StorefrontThemePage';
+import CommunicationsPage from './pages/CommunicationsPage';
+import PublicQuotePage from './pages/PublicQuotePage';
+import PublicInvoicePage from './pages/PublicInvoicePage';
+import DocumentsQuotesPage from './pages/DocumentsQuotesPage';
+import DocumentsInvoicesPage from './pages/DocumentsInvoicesPage';
+import DocumentsProofsPage from './pages/DocumentsProofsPage';
+import DashboardProductBuilderPage from './pages/DashboardProductBuilderPage';
+import NetworkAdminPage from './pages/NetworkAdminPage';
+import NetworkRoutingPage from './pages/NetworkRoutingPage';
+import NetworkReportsPage from './pages/NetworkReportsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
+  requiredRoles?: string[];
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole, requiredRoles }) => {
   const { user } = useAuthStore();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
+  const allowedRoles = requiredRoles || (requiredRole ? [requiredRole] : []);
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -87,7 +126,21 @@ function App() {
             <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/proof/:token" element={<ProofApprovalPage />} />
+            <Route path="/quote/:token" element={<PublicQuotePage />} />
+            <Route path="/invoice/:token" element={<PublicInvoicePage />} />
             <Route path="/products/:productId" element={<ProductPage />} />
+            <Route path="/store" element={<StoreHomePage />} />
+            <Route path="/store/products" element={<StoreProductsPage />} />
+            <Route path="/store/products/:id" element={<StoreProductDetailPage />} />
+            <Route path="/store/products/:slugOrId/customize" element={<StoreProductCustomizerPage />} />
+            <Route path="/store/cart" element={<StoreCartPage />} />
+            <Route path="/store/checkout" element={<StoreCheckoutPage />} />
+            <Route path="/store/order/:token" element={<StoreOrderStatusPage />} />
+            <Route path="/team/:slug" element={<TeamStorePage />} />
+            <Route path="/team/:slug/products/:id" element={<TeamStoreProductPage />} />
+            <Route path="/team/:slug/cart" element={<TeamStoreCartPage />} />
+            <Route path="/team/:slug/checkout" element={<TeamStoreCheckoutPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
@@ -165,6 +218,166 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="ADMIN">
                     <AdminPricingSimulatorPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/team-stores"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminTeamStoresPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/inventory"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminInventoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/purchase-orders"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminPurchaseOrdersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/webhooks"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminWebhooksPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/suppliers"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <AdminSupplierSyncPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/suppliers/runs/:runId"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <AdminSupplierRunDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings/billing"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <SettingsBillingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings/stores"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <SettingsDomainsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings/users"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <SettingsUsersRolesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/onboarding"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/storefront/theme"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <StorefrontThemePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/communications"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <CommunicationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/settings/email"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <CommunicationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/settings/domains"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <SettingsDomainsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/documents/quotes"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DocumentsQuotesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/documents/invoices"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DocumentsInvoicesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="dashboard/documents/proofs"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <DocumentsProofsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="network"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <NetworkAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="network/routing"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER", "PRODUCTION_MANAGER"]}>
+                    <NetworkRoutingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="network/reports"
+                element={
+                  <ProtectedRoute requiredRoles={["ADMIN", "STORE_OWNER"]}>
+                    <NetworkReportsPage />
                   </ProtectedRoute>
                 }
               />
@@ -282,6 +495,159 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminPricingSimulatorPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/team-stores"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminTeamStoresPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/inventory"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminInventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/purchase-orders"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminPurchaseOrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/webhooks"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminWebhooksPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/dashboard/products"
+              element={
+                <ProtectedRoute>
+                  <DashboardProductsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/products/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardProductDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/catalog/product-builder/:productId"
+              element={
+                <ProtectedRoute>
+                  <DashboardProductBuilderPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/pricing"
+              element={
+                <ProtectedRoute>
+                  <DashboardPricingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/quotes"
+              element={
+                <ProtectedRoute>
+                  <DashboardQuotesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/storefront/theme"
+              element={
+                <ProtectedRoute>
+                  <StorefrontThemePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/communications"
+              element={
+                <ProtectedRoute>
+                  <CommunicationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings/email"
+              element={
+                <ProtectedRoute>
+                  <CommunicationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings/domains"
+              element={
+                <ProtectedRoute>
+                  <SettingsDomainsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/documents/quotes"
+              element={
+                <ProtectedRoute>
+                  <DocumentsQuotesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/documents/invoices"
+              element={
+                <ProtectedRoute>
+                  <DocumentsInvoicesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/documents/proofs"
+              element={
+                <ProtectedRoute>
+                  <DocumentsProofsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/designs"
+              element={
+                <ProtectedRoute>
+                  <DesignPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/designs/:designId"
+              element={
+                <ProtectedRoute>
+                  <DesignEditorPage />
                 </ProtectedRoute>
               }
             />

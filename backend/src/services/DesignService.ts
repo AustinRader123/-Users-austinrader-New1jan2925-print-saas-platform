@@ -95,6 +95,44 @@ export class DesignService {
     });
   }
 
+  async createFileAsset(input: {
+    storeId: string;
+    designId: string;
+    kind: 'DESIGN_UPLOAD' | 'MOCKUP_RENDER' | 'EXPORT_IMAGE' | 'EXPORT_VECTOR' | 'PROOF_PDF' | 'WORK_ORDER_PDF' | 'QR_CODE';
+    fileName: string;
+    url: string;
+    mimeType?: string;
+    sizeBytes?: number;
+    createdById?: string;
+    metadata?: any;
+  }) {
+    return (prisma as any).fileAsset.create({
+      data: {
+        storeId: input.storeId,
+        designId: input.designId,
+        kind: input.kind,
+        fileName: input.fileName,
+        url: input.url,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        createdById: input.createdById,
+        metadata: input.metadata,
+      },
+    });
+  }
+
+  async listFileAssets(designId: string, userId: string) {
+    const design = await prisma.design.findUnique({ where: { id: designId } });
+    if (!design || design.userId !== userId) {
+      throw new Error('Design not found or unauthorized');
+    }
+
+    return (prisma as any).fileAsset.findMany({
+      where: { designId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async exportDesign(designId: string, userId: string, format: 'png' | 'svg' = 'png') {
     const design = await this.getDesign(designId, userId);
     if (!design) {

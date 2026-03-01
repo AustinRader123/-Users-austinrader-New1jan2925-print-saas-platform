@@ -22,6 +22,8 @@ model User {
   avatar        String?
   role          UserRole        @default(CUSTOMER)
   status        UserStatus      @default(ACTIVE)
+  taxExempt     Boolean         @default(false)
+  taxExemptId   String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -32,6 +34,14 @@ model User {
   teams         Team[]          @relation("TeamMembers")
   notifications Notification[]
   apiKeys       ApiKey[]
+  tenantUsers   TenantUser[]
+  auditLogs     AuditLog[]
+  proofRequests ProofApproval[] @relation("ProofRequestedBy")
+  proofEvents   ProofApprovalEvent[]
+  fileAssetsCreated FileAsset[]
+  artworkAssets ArtworkAsset[]
+  customizationsCreated Customization[]
+  networkUserRoles NetworkUserRole[]
 
   @@index([email])
   @@index([role])
@@ -80,22 +90,544 @@ model Store {
   owners        User[]        @relation("StoreOwners")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  tenantId      String?
+  tenant        Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
   products      Product[]
+  productVariants ProductVariant[]
+  productImages ProductImage[]
   orders        Order[]
+  quotes        Quote[]
+  quoteLineItems QuoteLineItem[]
   teams         Team[]
   paymentConfig PaymentConfig?
   storeSettings StoreSettings?
   customPages   CustomPage[]
   importJobs    ImportJob[]
+  pricingRuleSets PricingRuleSet[]
+  pricingRules  PricingRule[]
+  fileAssets    FileAsset[]
+  proofApprovals ProofApproval[]
+  proofApprovalEvents ProofApprovalEvent[]
+  storefronts   Storefront[]
+  collections   Collection[]
+  collectionProducts CollectionProduct[]
+  pages         Page[]
+  carts         Cart[]
+  cartItems     CartItem[]
+  checkoutSessions CheckoutSession[]
+  teamStores    TeamStore[]
+  rosters       Roster[]
+  personalizationFields PersonalizationField[]
+  teamStoreOrderMetas TeamStoreOrderMeta[]
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
+  purchaseOrders PurchaseOrder[]
+  purchaseOrderLines PurchaseOrderLine[]
+  webhookEndpoints WebhookEndpoint[]
+  webhookDeliveries WebhookDelivery[]
   // DecoNetwork connections
   decoConnections DecoNetworkConnection[]
   inventoryEvents InventoryEvent[]
   dnInventoryEventMaps DnInventoryEventMap[]
+  supplierConnections SupplierConnection[]
+  externalProductMaps ExternalProductMap[]
+  externalVariantMaps ExternalVariantMap[]
+  externalImageMaps ExternalImageMap[]
+  supplierSyncRuns SupplierSyncRun[]
+  supplierSyncRunErrors SupplierSyncRunError[]
+  shippingRates ShippingRate[]
+  taxRates TaxRate[]
+  storeDomains StoreDomain[]
+  onboardingStates OnboardingState[]
+  storeBrandings StoreBranding[]
+  themeConfigs ThemeConfig[]
+  emailMessages EmailMessage[]
+  documentTemplates DocumentTemplate[]
+  generatedDocuments GeneratedDocument[]
+  quotePublicTokens QuotePublicToken[]
+  invoicePublicTokens InvoicePublicToken[]
+  productCustomizationProfiles ProductCustomizationProfile[]
+  personalizationSchemas PersonalizationSchema[]
+  artworkCategories ArtworkCategory[]
+  artworkAssets ArtworkAsset[]
+  customizations Customization[]
+  printPackages PrintPackage[]
+  networkStores NetworkStore[]
+  storeCatalogBindings StoreCatalogBinding[]
+  routedOrdersFrom RoutedOrder[] @relation("RoutedOrderFromStore")
+  routedOrdersTo RoutedOrder[] @relation("RoutedOrderToStore")
+  fulfilledOrders Order[] @relation("OrderFulfillmentStore")
+  royaltyLedgerFrom RoyaltyLedgerEntry[] @relation("RoyaltyFromStore")
+  royaltyLedgerTo RoyaltyLedgerEntry[] @relation("RoyaltyToStore")
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([status])
+}
+
+// ============================================================================
+// TENANCY & RBAC
+// ============================================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  description String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users     TenantUser[]
+  roles     Role[]
+  auditLogs AuditLog[]
+  stores    Store[]
+  subscriptions TenantSubscription[]
+  billingEvents BillingEvent[]
+  billingInvoices BillingInvoice[]
+  featureOverrides FeatureOverride[]
+  onboardingStates OnboardingState[]
+  emailProviderConfigs EmailProviderConfig[]
+  emailMessages EmailMessage[]
+  emailEvents EmailEvent[]
+  quotePublicTokens QuotePublicToken[]
+  invoicePublicTokens InvoicePublicToken[]
+  networks Network[]
 
   @@index([slug])
-  @@index([status])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  code        PlanCode @unique
+  name        String
+  priceCents  Int?
+  interval    PlanInterval @default(MONTH)
+  features    Json
+  limits      Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions TenantSubscription[]
+
+  @@index([active, code])
+}
+
+enum PlanCode {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum PlanInterval {
+  MONTH
+  YEAR
+}
+
+model TenantSubscription {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planCode             PlanCode
+  plan                 Plan     @relation(fields: [planCode], references: [code], onDelete: Restrict)
+  status               SubscriptionStatus @default(TRIALING)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+  provider             BillingProvider @default(MOCK)
+  providerCustomerId   String?
+  providerSubId        String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([planCode])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum BillingProvider {
+  MOCK
+  STRIPE
+}
+
+model BillingEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([type])
+}
+
+model BillingInvoice {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  number      String
+  status      BillingInvoiceStatus @default(DRAFT)
+  amountCents Int
+  currency    String   @default("USD")
+  issuedAt    DateTime @default(now())
+  paidAt      DateTime?
+  providerRef String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, number])
+  @@index([tenantId, issuedAt])
+}
+
+enum BillingInvoiceStatus {
+  DRAFT
+  PAID
+  VOID
+}
+
+model StoreDomain {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  hostname          String   @unique
+  status            DomainStatus @default(PENDING)
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId, status])
+}
+
+enum DomainStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+model FeatureOverride {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key       String
+  enabled   Boolean
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+model Network {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stores            NetworkStore[]
+  userRoles         NetworkUserRole[]
+  sharedCatalogItems SharedCatalogItem[]
+  routingRules      FulfillmentRoutingRule[]
+  routedOrders      RoutedOrder[]
+  royaltyRules      RoyaltyRule[]
+  royaltyLedger     RoyaltyLedgerEntry[]
+
+  @@index([tenantId])
+  @@index([enabled])
+}
+
+enum NetworkStoreRole {
+  OWNER
+  HUB
+  SPOKE
+}
+
+enum NetworkStoreStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model NetworkStore {
+  id        String   @id @default(cuid())
+  networkId String
+  network   Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  role      NetworkStoreRole @default(SPOKE)
+  status    NetworkStoreStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+
+  @@unique([networkId, storeId])
+  @@index([storeId])
+  @@index([networkId, role, status])
+}
+
+enum NetworkUserRoleType {
+  NETWORK_ADMIN
+  NETWORK_VIEWER
+}
+
+model NetworkUserRole {
+  id        String   @id @default(cuid())
+  networkId String
+  network   Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      NetworkUserRoleType
+  createdAt DateTime @default(now())
+
+  @@unique([networkId, userId, role])
+  @@index([userId])
+}
+
+enum SharedCatalogItemType {
+  PRODUCT
+  PRICING_RULE_SET
+  ARTWORK_CATEGORY
+  ARTWORK_ASSET
+  THEME_TEMPLATE
+}
+
+model SharedCatalogItem {
+  id          String   @id @default(cuid())
+  networkId   String
+  network     Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  type        SharedCatalogItemType
+  sourceId    String
+  version     Int      @default(1)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  bindings    StoreCatalogBinding[]
+
+  @@unique([networkId, type, sourceId])
+  @@index([networkId, type])
+}
+
+enum StoreCatalogBindingStatus {
+  APPLIED
+  OVERRIDDEN
+  DISABLED
+}
+
+model StoreCatalogBinding {
+  id                 String   @id @default(cuid())
+  storeId            String
+  store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sharedCatalogItemId String
+  sharedCatalogItem  SharedCatalogItem @relation(fields: [sharedCatalogItemId], references: [id], onDelete: Cascade)
+  status             StoreCatalogBindingStatus @default(APPLIED)
+  overrideData       Json?
+  appliedVersion     Int      @default(0)
+  appliedAt          DateTime?
+  updatedAt          DateTime @updatedAt
+
+  @@unique([storeId, sharedCatalogItemId])
+  @@index([sharedCatalogItemId])
+  @@index([storeId, status])
+}
+
+enum RoutingStrategy {
+  MANUAL
+  GEO
+  CAPACITY
+  PRIORITY
+}
+
+model FulfillmentRoutingRule {
+  id        String   @id @default(cuid())
+  networkId String
+  network   Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  name      String
+  enabled   Boolean  @default(true)
+  strategy  RoutingStrategy @default(MANUAL)
+  config    Json?
+  createdAt DateTime @default(now())
+
+  @@index([networkId, enabled])
+}
+
+enum RoutedOrderStatus {
+  PROPOSED
+  ACCEPTED
+  IN_PRODUCTION
+  SHIPPED
+  COMPLETED
+}
+
+model RoutedOrder {
+  id            String   @id @default(cuid())
+  networkId     String
+  network       Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStoreId   String
+  fromStore     Store    @relation("RoutedOrderFromStore", fields: [fromStoreId], references: [id], onDelete: Cascade)
+  toStoreId     String
+  toStore       Store    @relation("RoutedOrderToStore", fields: [toStoreId], references: [id], onDelete: Cascade)
+  status        RoutedOrderStatus @default(PROPOSED)
+  routingReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([networkId, status])
+  @@index([fromStoreId])
+  @@index([toStoreId])
+}
+
+enum RoyaltyBasis {
+  REVENUE
+  PROFIT
+  DECORATION_ONLY
+}
+
+model RoyaltyRule {
+  id          String   @id @default(cuid())
+  networkId   String
+  network     Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  name        String
+  enabled     Boolean  @default(true)
+  basis       RoyaltyBasis @default(REVENUE)
+  ratePercent Float?
+  flatCents   Int?
+  appliesTo   Json?
+  createdAt   DateTime @default(now())
+
+  @@index([networkId, enabled])
+}
+
+enum RoyaltyLedgerStatus {
+  ACCRUED
+  INVOICED
+  PAID
+}
+
+model RoyaltyLedgerEntry {
+  id           String   @id @default(cuid())
+  networkId    String
+  network      Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStoreId  String
+  fromStore    Store    @relation("RoyaltyFromStore", fields: [fromStoreId], references: [id], onDelete: Cascade)
+  toStoreId    String
+  toStore      Store    @relation("RoyaltyToStore", fields: [toStoreId], references: [id], onDelete: Cascade)
+  revenueCents Int
+  costCents    Int
+  royaltyCents Int
+  currency     String   @default("USD")
+  status       RoyaltyLedgerStatus @default(ACCRUED)
+  createdAt    DateTime @default(now())
+
+  @@index([networkId, createdAt])
+  @@index([orderId])
+  @@index([fromStoreId])
+  @@index([toStoreId])
+}
+
+model TenantUser {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles  TenantUserRole[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model TenantUserRole {
+  id        String   @id @default(cuid())
+  tenantUserId String
+  roleId    String
+  assignedAt DateTime @default(now())
+
+  tenantUser TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantUserId, roleId])
+  @@index([roleId])
+  @@index([tenantUserId])
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  description String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  users TenantUserRole[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@unique([name])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  grantedAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String?
+  actorUserId  String?
+  actorType    String?
+  action       String
+  resourceType String?
+  resourceId   String?
+  entityType   String?
+  entityId     String?
+  payload      Json?
+  meta         Json?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
 }
 
 enum StoreStatus {
@@ -171,6 +703,7 @@ model Product {
   slug           String
   category       String?
   tags           String[]
+  active         Boolean         @default(true)
   basePrice      Float           @default(0)
   status         ProductStatus   @default(DRAFT)
   type           ProductType     @default(BLANK)
@@ -185,9 +718,15 @@ model Product {
   inventoryEvents InventoryEvent[]
   decorationAreas DecorationArea[]
   cartItems      CartItem[]
+  collectionProducts CollectionProduct[]
   orderItems     OrderItem[]
   pricingRules   PricingRule[]
+  quoteLineItems QuoteLineItem[]
   mockupTemplate MockupTemplate?
+  customizationProfile ProductCustomizationProfile?
+  personalizationSchemas PersonalizationSchema[]
+  customizations Customization[]
+  externalProductMaps ExternalProductMap[]
   // DecoNetwork mapping
   dnProductMaps DnProductMap[]
 
@@ -215,13 +754,20 @@ enum ProductType {
 model ProductVariant {
   id              String   @id @default(cuid())
   productId       String
+  storeId         String
   product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name            String   // e.g., "Red - Small"
   sku             String   @unique
   size            String?
   color           String?
+  externalId      String?
   brand           String?
   weight          Float?
+  cost            Float    @default(0)
+  price           Float    @default(0)
+  inventoryQty    Int      @default(0)
+  supplierInventoryQty Int?
   supplierCost    Float    @default(0)
   inventoryCount  Int      @default(0)
   createdAt       DateTime @default(now())
@@ -236,20 +782,35 @@ model ProductVariant {
   dnVariantMaps DnVariantMap[]
   dnInventoryMaps DnInventoryMap[]
   vendorVariants  VendorProductVariant[]
+  quoteLineItems  QuoteLineItem[] @relation("QuoteLineItemProductVariant")
+  quoteLineItemsByVariant QuoteLineItem[] @relation("QuoteLineItemVariant")
+  inventoryItems  InventoryItem[]
+  stockMovements  StockMovement[]
+  purchaseOrderLines PurchaseOrderLine[]
+  externalVariantMaps ExternalVariantMap[]
+  customizations Customization[]
 
   @@unique([productId, sku])
+  @@index([storeId])
   @@index([productId])
 }
 
 model ProductImage {
   id        String   @id @default(cuid())
   productId String
+  storeId   String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   url       String
+  path      String?
+  color     String?
+  sortOrder Int      @default(0)
   altText   String?
   position  Int      @default(0)
   createdAt DateTime @default(now())
+  externalImageMaps ExternalImageMap[]
 
+  @@index([storeId])
   @@index([productId])
 }
 
@@ -414,9 +975,12 @@ model Design {
 
   // Relations
   assets              DesignAsset[]
+  fileAssets          FileAsset[]
   mockups             Mockup[]
+  proofApprovals      ProofApproval[]
   cartItems           CartItem[]
   orderItems          OrderItem[]
+  customizations      Customization[]
 
   @@index([userId])
   @@index([status])
@@ -441,11 +1005,572 @@ model DesignAsset {
   @@index([designId])
 }
 
+model FileAsset {
+  id              String        @id @default(cuid())
+  storeId         String
+  store           Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  designId        String?
+  design          Design?       @relation(fields: [designId], references: [id], onDelete: SetNull)
+  orderId         String?
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  productionJobId String?
+  productionJob   ProductionJob? @relation(fields: [productionJobId], references: [id], onDelete: SetNull)
+  kind            FileAssetKind
+  fileName        String
+  mimeType        String?
+  url             String
+  sizeBytes       Int?
+  metadata        Json?
+  createdById     String?
+  createdBy       User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  supplierSyncRuns SupplierSyncRun[] @relation("SupplierSyncRunLogFile")
+  externalImageMaps ExternalImageMap[]
+  generatedDocuments GeneratedDocument[]
+  brandingLogos StoreBranding[]
+  artworkAssets ArtworkAsset[]
+  customizationsPreview Customization[] @relation("CustomizationPreviewFile")
+  printPackages PrintPackage[]
+
+  @@index([storeId])
+  @@index([designId])
+  @@index([orderId])
+  @@index([productionJobId])
+  @@index([kind])
+}
+
+enum FileAssetKind {
+  DESIGN_UPLOAD
+  MOCKUP_RENDER
+  EXPORT_IMAGE
+  EXPORT_VECTOR
+  CUSTOMIZER_UPLOAD
+  CUSTOMIZER_PREVIEW
+  PROOF_PDF
+  WORK_ORDER_PDF
+  PRINT_PACKAGE_ZIP
+  QR_CODE
+  QUOTE_PDF
+  INVOICE_PDF
+  SUPPLIER_IMAGE
+  SUPPLIER_SYNC_LOG
+}
+
+model ProductCustomizationProfile {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId     String   @unique
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  enabled       Boolean  @default(true)
+  locations     Json
+  rules         Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  personalizationSchemas PersonalizationSchema[]
+  artworkCategories ArtworkCategory[]
+  customizations Customization[]
+
+  @@index([storeId])
+  @@index([enabled])
+}
+
+model PersonalizationSchema {
+  id         String   @id @default(cuid())
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  profileId  String?
+  profile    ProductCustomizationProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  key        String
+  label      String
+  type       String
+  required   Boolean  @default(false)
+  minLength  Int?
+  maxLength  Int?
+  options    Json?
+  pricing    Json?
+  validation Json?
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([productId])
+  @@index([profileId])
+  @@index([active])
+  @@unique([profileId, key])
+}
+
+model ArtworkCategory {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  profileId String?
+  profile   ProductCustomizationProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets ArtworkAsset[]
+
+  @@index([storeId])
+  @@index([profileId])
+  @@unique([storeId, slug])
+}
+
+model ArtworkAsset {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    ArtworkCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  fileId      String
+  file        FileAsset @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  name        String
+  tags        String[]
+  status      ArtworkAssetStatus @default(ACTIVE)
+  isPublic    Boolean  @default(true)
+  metadata    Json?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customizations Customization[] @relation("CustomizationArtworkAsset")
+
+  @@index([storeId])
+  @@index([categoryId])
+  @@index([fileId])
+  @@index([status])
+}
+
+enum ArtworkAssetStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Customization {
+  id             String   @id @default(cuid())
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  profileId      String?
+  profile        ProductCustomizationProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  designId       String?
+  design         Design?  @relation(fields: [designId], references: [id], onDelete: SetNull)
+  artworkAssetId String?
+  artworkAsset   ArtworkAsset? @relation("CustomizationArtworkAsset", fields: [artworkAssetId], references: [id], onDelete: SetNull)
+  previewFileId  String?
+  previewFile    FileAsset? @relation("CustomizationPreviewFile", fields: [previewFileId], references: [id], onDelete: SetNull)
+  payload        Json
+  pricingSnapshot Json?
+  status         CustomizationStatus @default(DRAFT)
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  printPackages PrintPackage[]
+
+  @@index([storeId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([profileId])
+  @@index([designId])
+  @@index([status])
+}
+
+enum CustomizationStatus {
+  DRAFT
+  IN_CART
+  ORDERED
+  PROOF_PENDING
+  APPROVED
+  REJECTED
+  PACKAGED
+}
+
+model OnboardingState {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  storeId     String?
+  store       Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  step        Int      @default(1)
+  data        Json?
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, storeId])
+  @@index([tenantId, completed])
+}
+
+model StoreBranding {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  logoFileId    String?
+  logoFile      FileAsset? @relation(fields: [logoFileId], references: [id], onDelete: SetNull)
+  primaryColor  String   @default("#2563EB")
+  secondaryColor String  @default("#0F172A")
+  fontPreset    String   @default("INTER")
+  companyName   String?
+  supportEmail  String?
+  footerLinks   Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([storeId])
+  @@index([storeId])
+}
+
+model ThemeConfig {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storefrontId String?
+  storefront   Storefront? @relation(fields: [storefrontId], references: [id], onDelete: SetNull)
+  config       Json
+  version      Int      @default(1)
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([storeId, publishedAt])
+  @@index([storefrontId])
+}
+
+model EmailProviderConfig {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider        EmailProviderType @default(MOCK)
+  configEncrypted String?
+  fromName        String
+  fromEmail       String
+  replyTo         String?
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId])
+  @@index([tenantId, provider, enabled])
+}
+
+enum EmailProviderType {
+  MOCK
+  SMTP
+  SENDGRID
+}
+
+model EmailMessage {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  storeId           String?
+  store             Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  type              EmailMessageType
+  toEmail           String
+  subject           String
+  bodyText          String?
+  bodyHtml          String?
+  status            EmailMessageStatus @default(QUEUED)
+  providerMessageId String?
+  error             String?
+  meta              Json?
+  createdAt         DateTime @default(now())
+  sentAt            DateTime?
+
+  events            EmailEvent[]
+
+  @@index([tenantId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([status, type])
+}
+
+enum EmailMessageType {
+  PROOF_REQUEST
+  QUOTE_SENT
+  ORDER_CONFIRMATION
+  STATUS_UPDATE
+}
+
+enum EmailMessageStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model EmailEvent {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  emailMessageId String
+  emailMessage   EmailMessage @relation(fields: [emailMessageId], references: [id], onDelete: Cascade)
+  type           EmailEventType
+  meta           Json?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([emailMessageId])
+}
+
+enum EmailEventType {
+  QUEUED
+  SENT
+  FAILED
+  OPEN
+  CLICK
+}
+
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type      DocumentType
+  name      String
+  active    Boolean  @default(true)
+  template  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, type, name])
+  @@index([storeId, type, active])
+}
+
+enum DocumentType {
+  QUOTE
+  INVOICE
+  PROOF
+  WORK_ORDER
+}
+
+model GeneratedDocument {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type      DocumentType
+  refType   DocumentRefType
+  refId     String
+  fileId    String
+  file      FileAsset @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([storeId, type, createdAt])
+  @@index([refType, refId])
+  @@index([fileId])
+}
+
+enum DocumentRefType {
+  QUOTE
+  ORDER
+  PROOF_REQUEST
+  PRODUCTION_JOB
+}
+
+model QuotePublicToken {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  quoteId    String
+  quote      Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([storeId, quoteId])
+}
+
+model InvoicePublicToken {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([storeId, orderId])
+}
+
 enum AssetType {
   UPLOADED_IMAGE
   CLIPART
   TEXT
   VECTOR
+}
+
+enum SupplierName {
+  SANMAR
+  SSACTIVEWEAR
+  ALPHABRODER
+  MOCK
+}
+
+enum SupplierAuthType {
+  API_KEY
+  OAUTH2
+  BASIC
+  MOCK
+}
+
+enum SupplierSyncStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum SupplierSyncErrorScope {
+  AUTH
+  FETCH
+  TRANSFORM
+  DOWNLOAD
+  DB
+}
+
+model SupplierConnection {
+  id                   String           @id @default(cuid())
+  storeId              String
+  store                Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier             SupplierName
+  name                 String
+  baseUrl              String?
+  authType             SupplierAuthType
+  credentialsEncrypted String           @db.Text
+  enabled              Boolean          @default(true)
+  syncEnabled          Boolean          @default(false)
+  syncIntervalMinutes  Int              @default(1440)
+  syncNextAt           DateTime?
+  syncLastAttemptAt    DateTime?
+  lastSyncAt           DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  externalProductMaps  ExternalProductMap[]
+  externalVariantMaps  ExternalVariantMap[]
+  externalImageMaps    ExternalImageMap[]
+  syncRuns             SupplierSyncRun[]
+
+  @@index([storeId])
+  @@index([supplier])
+  @@index([enabled])
+  @@index([syncEnabled])
+  @@index([syncNextAt])
+}
+
+model ExternalProductMap {
+  id                   String            @id @default(cuid())
+  storeId              String
+  store                Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplierConnectionId String
+  supplierConnection   SupplierConnection @relation(fields: [supplierConnectionId], references: [id], onDelete: Cascade)
+  externalProductId    String
+  productId            String
+  product              Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  externalMeta         Json?
+  createdAt            DateTime          @default(now())
+
+  @@unique([supplierConnectionId, externalProductId])
+  @@index([storeId])
+  @@index([productId])
+}
+
+model ExternalVariantMap {
+  id                   String            @id @default(cuid())
+  storeId              String
+  store                Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplierConnectionId String
+  supplierConnection   SupplierConnection @relation(fields: [supplierConnectionId], references: [id], onDelete: Cascade)
+  externalVariantId    String
+  variantId            String
+  variant              ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  externalMeta         Json?
+  createdAt            DateTime          @default(now())
+
+  @@unique([supplierConnectionId, externalVariantId])
+  @@index([storeId])
+  @@index([variantId])
+}
+
+model ExternalImageMap {
+  id                   String            @id @default(cuid())
+  storeId              String
+  store                Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplierConnectionId String
+  supplierConnection   SupplierConnection @relation(fields: [supplierConnectionId], references: [id], onDelete: Cascade)
+  externalImageId      String
+  fileId               String?
+  file                 FileAsset?        @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  productImageId       String
+  productImage         ProductImage      @relation(fields: [productImageId], references: [id], onDelete: Cascade)
+  externalMeta         Json?
+  createdAt            DateTime          @default(now())
+
+  @@unique([supplierConnectionId, externalImageId])
+  @@index([storeId])
+  @@index([fileId])
+  @@index([productImageId])
+}
+
+model SupplierSyncRun {
+  id                   String            @id @default(cuid())
+  storeId              String
+  store                Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplierConnectionId String
+  supplierConnection   SupplierConnection @relation(fields: [supplierConnectionId], references: [id], onDelete: Cascade)
+  status               SupplierSyncStatus @default(QUEUED)
+  startedAt            DateTime?
+  finishedAt           DateTime?
+  durationMs           Int?
+  attempts             Int               @default(0)
+  counts               Json?
+  errorSummary         String?
+  logFileId            String?
+  logFile              FileAsset?        @relation("SupplierSyncRunLogFile", fields: [logFileId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  errors               SupplierSyncRunError[]
+
+  @@index([storeId])
+  @@index([supplierConnectionId])
+  @@index([status])
+}
+
+model SupplierSyncRunError {
+  id          String                 @id @default(cuid())
+  storeId     String
+  store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  syncRunId   String
+  syncRun     SupplierSyncRun        @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  scope       SupplierSyncErrorScope
+  message     String                 @db.Text
+  meta        Json?
+  createdAt   DateTime               @default(now())
+
+  @@index([storeId])
+  @@index([syncRunId])
+  @@index([scope])
 }
 
 // ============================================================================
@@ -480,6 +1605,8 @@ model Mockup {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  proofApprovals    ProofApproval[]
+
   @@index([designId])
   @@index([productVariantId])
   @@index([status])
@@ -499,9 +1626,17 @@ enum MockupStatus {
 
 model PricingRule {
   id                String   @id @default(cuid())
+  storeId           String
   productId         String
+  ruleSetId         String?
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ruleSet           PricingRuleSet? @relation(fields: [ruleSetId], references: [id], onDelete: SetNull)
   name              String
+  method            String   @default("SCREEN_PRINT")
+  priority          Int      @default(0)
+  conditions        Json?
+  effects           Json?
   printMethod       PrintMethod?
   minQuantity       Int      @default(1)
   maxQuantity       Int?
@@ -513,7 +1648,99 @@ model PricingRule {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  @@index([ruleSetId])
   @@index([productId])
+  @@index([storeId])
+  @@index([storeId, ruleSetId, active])
+}
+
+model PricingRuleSet {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  active      Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rules       PricingRule[]
+
+  @@unique([storeId, name])
+  @@index([storeId, active])
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  storeId       String
+  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  quoteNumber   String
+  customerId    String?
+  status        QuoteStatus @default(DRAFT)
+  customerName  String?
+  customerEmail String?
+  notes         String?     @db.Text
+  subtotal      Float       @default(0)
+  total         Float       @default(0)
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  lineItems     QuoteLineItem[]
+  convertedOrder Order?        @relation("QuoteConvertedOrder")
+  publicTokens  QuotePublicToken[]
+
+  @@unique([storeId, quoteNumber])
+  @@index([storeId, status])
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  DECLINED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+model QuoteLineItem {
+  id               String         @id @default(cuid())
+  quoteId          String
+  quote            Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  storeId          String
+  store            Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variantId        String?
+  variant          ProductVariant? @relation("QuoteLineItemVariant", fields: [variantId], references: [id], onDelete: SetNull)
+  productVariantId String?
+  productVariant   ProductVariant? @relation("QuoteLineItemProductVariant", fields: [productVariantId], references: [id], onDelete: SetNull)
+  qty              Json?
+  quantity         Int            @default(1)
+  decorationMethod String?
+  decorationLocations Json?
+  decorationInput  Json?
+  printSizeTier    String?
+  colorCount       Int?
+  stitchCount      Int?
+  rush             Boolean        @default(false)
+  weightOz         Float?
+  pricingSnapshot  Json?
+  unitPrice        Float
+  lineTotal        Float
+  pricingBreakdown Json?
+  description      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([quoteId])
+  @@index([storeId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([productVariantId])
 }
 
 model PricingSnapshot {
@@ -536,8 +1763,11 @@ model PricingSnapshot {
 
 model Cart {
   id        String     @id @default(cuid())
+  storeId   String?
+  store     Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   userId    String?
   sessionId String?
+  token     String?    @unique
   status    CartStatus @default(ACTIVE)
   total     Float      @default(0)
   createdAt DateTime   @default(now())
@@ -545,38 +1775,85 @@ model Cart {
 
   // Relations
   items     CartItem[]
+  checkoutSessions CheckoutSession[]
 
   @@index([userId])
   @@index([sessionId])
+  @@index([storeId])
 }
 
 enum CartStatus {
   ACTIVE
+  OPEN
   ABANDONED
   CONVERTED
+  EXPIRED
 }
 
 model CartItem {
   id                    String           @id @default(cuid())
+  storeId               String?
+  store                 Store?           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   cartId                String
   cart                  Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId             String
   product               Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId             String?
   productVariantId      String
   productVariant        ProductVariant   @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  qty                   Json?
+  decorationMethod      String?
+  decorationLocations   Json?
   designId              String?
   design                Design?          @relation(fields: [designId], references: [id])
   quantity              Int              @default(1)
   mockupUrl             String?
   pricingSnapshot       PricingSnapshot?
+  pricingSnapshotData   Json?
   customNotes           String?
+  customizationId       String?          @unique
+  customizationJson     Json?
+  previewFileId         String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
   @@index([cartId])
+  @@index([storeId])
   @@index([productId])
   @@index([productVariantId])
   @@index([designId])
+  @@index([customizationId])
+}
+
+model CheckoutSession {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cartId          String
+  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  status          CheckoutSessionStatus @default(PENDING)
+  customerEmail   String
+  shippingAddress Json
+  billingAddress  Json?
+  totals          Json
+  paymentProvider String   @default("NONE")
+  providerRef     String?
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  token           String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([cartId])
+  @@index([status])
+}
+
+enum CheckoutSessionStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
 }
 
 // ============================================================================
@@ -592,6 +1869,8 @@ model Order {
   store               Store         @relation(fields: [storeId], references: [id])
   userId              String
   user                User          @relation(fields: [userId], references: [id])
+  fulfillmentStoreId  String?
+  fulfillmentStore    Store?        @relation("OrderFulfillmentStore", fields: [fulfillmentStoreId], references: [id], onDelete: SetNull)
   orderNumber         String        @unique
   status              OrderStatus   @default(PENDING)
   paymentStatus       PaymentStatus @default(UNPAID)
@@ -601,6 +1880,8 @@ model Order {
   shippingCost        Float         @default(0)
   totalAmount         Float
   notes               String?       @db.Text
+  sourceQuoteId       String?       @unique
+  sourceQuote         Quote?        @relation("QuoteConvertedOrder", fields: [sourceQuoteId], references: [id], onDelete: SetNull)
   
   // Customer Info
   customerEmail       String
@@ -610,6 +1891,7 @@ model Order {
   
   // Metadata
   metadata            Json?
+  publicToken         String?        @unique
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -619,6 +1901,14 @@ model Order {
   productionJobs      ProductionJob[]
   shipments           Shipment[]
   invoices            Invoice[]
+  fileAssets          FileAsset[]
+  proofApprovals      ProofApproval[]
+  invoicePublicTokens InvoicePublicToken[]
+  checkoutSessions    CheckoutSession[]
+  teamStoreMeta       TeamStoreOrderMeta[]
+  printPackages       PrintPackage[]
+  routedOrder         RoutedOrder?
+  royaltyLedgerEntries RoyaltyLedgerEntry[]
   // DecoNetwork mapping
   dnOrderMaps DnOrderMap[]
 
@@ -628,9 +1918,197 @@ model Order {
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
+  @@index([publicToken])
+  @@index([fulfillmentStoreId])
 
   @@unique([connectionId, externalId])
 
+}
+
+model Storefront {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  slug        String
+  name        String
+  status      String   @default("ACTIVE")
+  theme       Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  collections Collection[]
+  pages       Page[]
+  themeConfigs ThemeConfig[]
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storefrontId String
+  storefront  Storefront @relation(fields: [storefrontId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products    CollectionProduct[]
+
+  @@unique([storeId, storefrontId, slug])
+  @@index([storeId])
+  @@index([storefrontId])
+}
+
+model CollectionProduct {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  collectionId String
+  collection  Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder   Int      @default(0)
+
+  @@unique([storeId, collectionId, productId])
+  @@index([storeId])
+  @@index([collectionId])
+  @@index([productId])
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storefrontId String
+  storefront  Storefront @relation(fields: [storefrontId], references: [id], onDelete: Cascade)
+  slug        String
+  title       String
+  sections    Json?
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([storeId, storefrontId, slug])
+  @@index([storeId])
+  @@index([storefrontId])
+}
+
+model TeamStore {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  slug              String
+  name              String
+  status            String   @default("ACTIVE")
+  closeAt           DateTime?
+  minOrderQty       Int?
+  fundraiserPercent Float?
+  groupShipping     Boolean  @default(false)
+  theme             Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  rosterEntries     Roster[]
+  personalizationFields PersonalizationField[]
+  orderMeta         TeamStoreOrderMeta[]
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+  @@index([status])
+}
+
+model Roster {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  teamStoreId String
+  teamStore   TeamStore @relation(fields: [teamStoreId], references: [id], onDelete: Cascade)
+  name        String
+  number      String?
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  orderMeta   TeamStoreOrderMeta[]
+
+  @@index([storeId])
+  @@index([teamStoreId])
+}
+
+model PersonalizationField {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  teamStoreId String
+  teamStore   TeamStore @relation(fields: [teamStoreId], references: [id], onDelete: Cascade)
+  key         String
+  label       String
+  type        String
+  options     Json?
+  required    Boolean  @default(false)
+
+  @@unique([teamStoreId, key])
+  @@index([storeId])
+  @@index([teamStoreId])
+}
+
+model TeamStoreOrderMeta {
+  id             String   @id @default(cuid())
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  teamStoreId    String
+  teamStore      TeamStore @relation(fields: [teamStoreId], references: [id], onDelete: Cascade)
+  rosterEntryId  String?
+  rosterEntry    Roster?  @relation(fields: [rosterEntryId], references: [id], onDelete: SetNull)
+  personalization Json?
+
+  @@index([storeId])
+  @@index([orderId])
+  @@index([teamStoreId])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouseId  String?
+  qtyOnHand    Int      @default(0)
+  qtyReserved  Int      @default(0)
+  reorderPoint Int?
+  reorderQty   Int?
+  updatedAt    DateTime @updatedAt
+
+  movements    StockMovement[]
+
+  @@unique([storeId, variantId, warehouseId])
+  @@index([storeId])
+  @@index([variantId])
+}
+
+model StockMovement {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  inventoryItemId String?
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  type         String
+  qty          Int
+  refType      String
+  refId        String
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([storeId])
+  @@index([variantId])
+  @@index([type])
 }
 
 enum OrderStatus {
@@ -667,7 +2145,18 @@ model OrderItem {
   pricingSnapshot     Json?
   mockupPreviewUrl    String?
   exportAssets        Json?
+  customizationId     String?  @unique
+  customizationJson   Json?
+  previewFileId       String?
   quantity            Int
+  decorationMethod    String?
+  decorationLocations Json?
+  decorationInput     Json?
+  printSizeTier       String?
+  colorCount          Int?
+  stitchCount         Int?
+  rush                Boolean  @default(false)
+  weightOz            Float?
   unitPrice           Float
   totalPrice          Float
   createdAt           DateTime @default(now())
@@ -675,6 +2164,42 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([designId])
+  @@index([customizationId])
+}
+
+model ShippingRate {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name              String
+  active            Boolean  @default(true)
+  minSubtotal       Float?
+  maxSubtotal       Float?
+  baseCharge        Float    @default(0)
+  perItemCharge     Float    @default(0)
+  perOzCharge       Float    @default(0)
+  rushMultiplier    Float    @default(1.25)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId, active])
+}
+
+model TaxRate {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name              String
+  jurisdiction      String?
+  active            Boolean  @default(true)
+  rate              Float
+  appliesShipping   Boolean  @default(true)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId, active])
 }
 
 // ============================================================================
@@ -737,6 +2262,8 @@ model ProductionJob {
   mockupUrl       String?
   printMethod     PrintMethod?
   notes           String?         @db.Text
+  workOrderFileId String?
+  workOrderUrl    String?
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime        @default(now())
@@ -745,11 +2272,34 @@ model ProductionJob {
   // Relations
   steps           ProductionStep[]
   shipments       Shipment[]
+  fileAssets      FileAsset[]
+  printPackages   PrintPackage[]
 
   @@unique([orderId])
   @@index([orderId])
   @@index([status])
   @@index([priority])
+}
+
+model PrintPackage {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  productionJobId String?
+  productionJob   ProductionJob? @relation(fields: [productionJobId], references: [id], onDelete: SetNull)
+  customizationId String?
+  customization   Customization? @relation(fields: [customizationId], references: [id], onDelete: SetNull)
+  fileId          String
+  file            FileAsset @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([storeId])
+  @@index([orderId])
+  @@index([productionJobId])
+  @@index([customizationId])
 }
 
 enum ProductionStatus {
@@ -791,6 +2341,66 @@ enum StepStatus {
   COMPLETED
   BLOCKED
   SKIPPED
+}
+
+model ProofApproval {
+  id              String              @id @default(cuid())
+  storeId         String
+  store           Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderId         String
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  designId        String?
+  design          Design?             @relation(fields: [designId], references: [id], onDelete: SetNull)
+  mockupId        String?
+  mockup          Mockup?             @relation(fields: [mockupId], references: [id], onDelete: SetNull)
+  token           String              @unique
+  status          ProofApprovalStatus @default(PENDING)
+  recipientEmail  String?
+  message         String?
+  expiresAt       DateTime?
+  requestedById   String?
+  requestedBy     User?               @relation("ProofRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  respondedAt     DateTime?
+  responseComment String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  events          ProofApprovalEvent[]
+
+  @@index([storeId, status])
+  @@index([orderId])
+  @@index([token])
+}
+
+model ProofApprovalEvent {
+  id         String         @id @default(cuid())
+  approvalId String
+  approval   ProofApproval  @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  actorType  ProofActorType
+  actorId    String?
+  actor      User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  eventType  String
+  payload    Json?
+  createdAt  DateTime       @default(now())
+
+  @@index([approvalId])
+  @@index([storeId])
+  @@index([eventType])
+}
+
+enum ProofApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ProofActorType {
+  SYSTEM
+  ADMIN
+  CUSTOMER
 }
 
 model Shipment {
@@ -861,6 +2471,44 @@ model WebhookLog {
   createdAt DateTime @default(now())
 
   @@index([event])
+}
+
+model WebhookEndpoint {
+  id         String   @id @default(cuid())
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  url        String
+  secret     String
+  enabled    Boolean  @default(true)
+  eventTypes Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([storeId])
+  @@index([enabled])
+}
+
+model WebhookDelivery {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  webhookEndpointId String
+  webhookEndpoint   WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+  eventType         String
+  payload           Json
+  status            String   @default("QUEUED")
+  attempts          Int      @default(0)
+  lastError         String?
+  nextAttemptAt     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([webhookEndpointId])
+  @@index([eventType])
+  @@index([status])
 }
 
 // ============================================================================
@@ -1124,8 +2772,11 @@ model PurchaseOrder {
   externalId   String?
   connectionId String?
   storeId   String?
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
   vendorId  String?
-  status    String?
+  supplierName String?
+  status    String?  @default("DRAFT")
+  expectedAt DateTime?
   total     Float?   @default(0)
   rawJson   Json?
   createdAt DateTime @default(now())
@@ -1133,12 +2784,31 @@ model PurchaseOrder {
 
   // DecoNetwork mapping
   dnPurchaseOrderMaps DnPurchaseOrderMap[]
+  lines PurchaseOrderLine[]
 
   @@index([storeId])
   @@index([vendorId])
 
   @@unique([connectionId, externalId])
 
+}
+
+model PurchaseOrderLine {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  variantId       String
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  qtyOrdered      Int
+  qtyReceived     Int      @default(0)
+  costEach        Decimal? @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+
+  @@index([storeId])
+  @@index([purchaseOrderId])
+  @@index([variantId])
 }
 
 

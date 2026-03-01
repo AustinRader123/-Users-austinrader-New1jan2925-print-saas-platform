@@ -1,0 +1,17 @@
+**/node_modules
+**/.DS_Store
+**/.git
+**/.github
+**/dist
+**/build
+**/.next
+**/coverage
+**/test-results
+**/playwright-report
+artifacts
+artifacts_download
+logs
+backend/uploads
+backend/logs
+frontend/dist
+repo

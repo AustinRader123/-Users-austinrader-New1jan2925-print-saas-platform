@@ -89,10 +89,14 @@ export class ProductService {
   }
 
   async createVariant(productId: string, data: any) {
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { storeId: true } });
+    if (!product) throw new Error('Product not found');
+
     return prisma.productVariant.create({
       data: {
         ...data,
         productId,
+        storeId: product.storeId,
       },
     });
   }
@@ -110,6 +114,7 @@ export class ProductService {
     return prisma.productImage.create({
       data: {
         productId,
+        storeId: product.storeId,
         url,
         altText,
         position: (maxPosition?.position || 0) + 1,

@@ -78,9 +78,14 @@ router.post('/', authMiddleware, roleMiddleware(['ADMIN']), async (req: AuthRequ
       }
       const rule = await prisma.pricingRule.create({
         data: {
+          storeId,
           productId: resolvedProductId,
           name,
           printMethod: method,
+          method: method || 'SCREEN_PRINT',
+          priority: 100,
+          conditions: { breaks },
+          effects: {},
           minQuantity: breaks[0].minQty,
           maxQuantity: undefined,
           basePrice: 0,
@@ -132,10 +137,23 @@ router.post('/', authMiddleware, roleMiddleware(['ADMIN']), async (req: AuthRequ
     if (!resolvedProductId || !name) {
       return res.status(400).json({ error: 'name and one of productId/productVariantId/sku/vendorVariantId required' });
     }
+    const product = await prisma.product.findUnique({ where: { id: resolvedProductId }, select: { storeId: true } });
+    if (!product) {
+      return res.status(400).json({ error: 'Unable to resolve storeId from product' });
+    }
     const rule = await prisma.pricingRule.create({
       data: {
+        storeId: product.storeId,
         productId: resolvedProductId,
         name,
+        method: 'SCREEN_PRINT',
+        priority: 100,
+        conditions: {
+          quantityBreaks: quantityBreaks ?? [],
+        },
+        effects: {
+          decorationCosts: decorationCosts ?? {},
+        },
         minQuantity: minQuantity ?? 1,
         maxQuantity,
         basePrice: 0,

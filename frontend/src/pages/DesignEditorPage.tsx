@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '../lib/api';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -7,6 +7,7 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
 
 export default function DesignEditorPage() {
   const [searchParams] = useSearchParams();
+  const { designId: routeDesignId } = useParams();
   const navigate = useNavigate();
   const productId = searchParams.get('productId');
   const variantId = searchParams.get('variantId');
@@ -20,6 +21,25 @@ export default function DesignEditorPage() {
   const [generatingMockup, setGeneratingMockup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mockupRetries, setMockupRetries] = useState(0);
+  const [storeId] = useState('default');
+  const [assets, setAssets] = useState<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      if (!routeDesignId) return;
+      try {
+        const existing = await apiClient.getDesign(routeDesignId);
+        setDesign(existing);
+        setDesignName(existing.name || 'My Design');
+        const list = await apiClient.listDesignAssets(routeDesignId);
+        setAssets(list || []);
+        if (list?.[0]?.url) setUploadedImage(list[0].url);
+      } catch {
+        // keep editor usable for new design flow
+      }
+    })();
+  }, [routeDesignId]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,6 +65,7 @@ export default function DesignEditorPage() {
       setError('Failed to read file');
     };
     reader.readAsDataURL(file);
+    setSelectedFile(file);
   };
 
   const handleSaveDesign = async () => {
@@ -61,12 +82,22 @@ export default function DesignEditorPage() {
     setLoading(true);
     setError(null);
     try {
-      const newDesign = await apiClient.createDesign({
-        name: designName.trim(),
-        description: 'Custom design',
-        content: { layers: [], canvas: { width: 800, height: 600 } },
-      });
-      setDesign(newDesign);
+      const existingId = routeDesignId || design?.id;
+      const saved = existingId
+        ? await apiClient.updateDesign(existingId, { layers: [], canvas: { width: 800, height: 600 } }, designName.trim())
+        : await apiClient.createDesign({
+            name: designName.trim(),
+            description: 'Custom design',
+            content: { layers: [], canvas: { width: 800, height: 600 } },
+          });
+      setDesign(saved);
+
+      if (selectedFile) {
+        await apiClient.uploadDesignAsset(saved.id, storeId, selectedFile);
+        const list = await apiClient.listDesignAssets(saved.id);
+        setAssets(list || []);
+        if (list?.[0]?.url) setUploadedImage(list[0].url);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to save design. Please try again.');
       console.error('Design save error:', err);
@@ -84,7 +115,7 @@ export default function DesignEditorPage() {
     setGeneratingMockup(true);
     setError(null);
     try {
-      const newMockup = await apiClient.generateMockup(design.id, variantId);
+      const newMockup = await apiClient.renderDesignMockup(design.id, variantId);
       setMockup(newMockup);
       setMockupRetries(0);
     } catch (err: any) {
@@ -190,6 +221,16 @@ export default function DesignEditorPage() {
                 </button>
               )}
             </>
+          )}
+          {assets.length > 0 && (
+            <div className="rounded border border-slate-200 p-2 text-xs">
+              <div className="font-medium mb-1">Assets</div>
+              {assets.map((asset) => (
+                <a key={asset.id} href={asset.url} target="_blank" rel="noreferrer" className="block text-blue-600 underline">
+                  {asset.fileName}
+                </a>
+              ))}
+            </div>
           )}
         </div>
       </div>

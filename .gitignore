@@ -13,6 +13,22 @@ node_modules
 /.next
 /out
 
+# Runtime artifacts
+artifacts/logs/*
+!artifacts/logs/.gitkeep
+artifacts/pids/*
+!artifacts/pids/.gitkeep
+artifacts/backups/*
+!artifacts/backups/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/logs/*
+!backend/logs/.gitkeep
+frontend/test-results/*
+!frontend/test-results/.gitkeep
+frontend/playwright-report/*
+!frontend/playwright-report/.gitkeep
+
 # Misc
 .DS_Store
 .env
@@ -44,6 +60,9 @@ Thumbs.db
 # Docker
 .docker
 docker-compose.override.yml
+.env
+.env.*
+!.env.example
 
 # Yarn
 yarn-error.log

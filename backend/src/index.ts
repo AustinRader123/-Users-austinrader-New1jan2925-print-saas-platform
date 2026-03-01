@@ -27,6 +27,13 @@ if (process.env.SAFE_BOOT === 'true') {
   } catch (e) {
     console.log('BOOT 3.1: import queue init failed', (e as any)?.message || e);
   }
+  try {
+    const { requeuePendingSupplierSyncRuns } = await import('./queue/SupplierSyncQueue.js');
+    await requeuePendingSupplierSyncRuns();
+    console.log('BOOT 3.2: supplier sync queue initialized');
+  } catch (e) {
+    console.log('BOOT 3.2: supplier sync queue init failed', (e as any)?.message || e);
+  }
 }
 
 const server = appInstance.listen(PORT, '0.0.0.0', () => {

@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { listProductionJobs, updateProductionJob } from '../services/production.service';
+import { apiClient } from '../lib/api';
 
 type Job = { id: string; title?: string; status: string; dueAt?: string };
 
 const COLUMNS = [
-  { key: 'NEW', label: 'New' },
-  { key: 'PRINTING', label: 'Printing' },
-  { key: 'EMBROIDERY', label: 'Embroidery' },
-  { key: 'QA', label: 'QA' },
-  { key: 'READY', label: 'Ready' },
+  { key: 'QUEUED', label: 'Queued' },
+  { key: 'ARTWORK_REVIEW', label: 'Artwork Review' },
+  { key: 'IN_PRODUCTION', label: 'In Production' },
+  { key: 'QUALITY_CHECK', label: 'Quality Check' },
+  { key: 'READY_TO_PACK', label: 'Ready to Pack' },
+  { key: 'PACKED', label: 'Packed' },
 ];
 
 export default function ProductionQueuePage() {
@@ -77,6 +79,18 @@ export default function ProductionQueuePage() {
                 >
                   <div className="font-medium">{j.title}</div>
                   <div className="text-slate-600">Due {j.dueAt ? new Date(j.dueAt).toLocaleDateString() : '—'}</div>
+                  <button
+                    className="mt-1 rounded border px-2 py-1 text-[11px]"
+                    onClick={async () => {
+                      try {
+                        await apiClient.generateWorkOrder(j.id);
+                      } catch (e: any) {
+                        setError(e?.response?.data?.error || 'Failed to generate work order');
+                      }
+                    }}
+                  >
+                    Generate Work Order
+                  </button>
                 </div>
               ))}
             </div>

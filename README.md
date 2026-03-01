@@ -58,11 +58,13 @@ docker compose up -d
 
 2. Create or edit `backend/.env` from `backend/.env.example` and set `DATABASE_URL` and `DN_ENC_KEY`.
 
-3. Run migrations (Prisma):
+3. Run database workflow (non-interactive Prisma):
 
 ```bash
-# from repo root
-pnpm --filter backend run prisma:migrate || npx prisma migrate dev --schema=backend/prisma/schema.prisma
+# from backend/
+npm run db:migrate
+# optional local-only destructive reset
+# npm run db:reset
 ```
 
 4. Start backend (dev):
@@ -461,10 +463,10 @@ Architecture supports:
   - Route: `/health` returns `{ status: "ok" }`
   - Server binds `process.env.PORT` on `0.0.0.0`
   - CORS: production allows origins from `CORS_ORIGIN` (comma-separated); dev is permissive and supports credentials; localhost dev origins allowed.
-  - Prisma: `prisma generate` (build) and `migrate deploy` (start) when schema exists.
+  - Prisma: non-interactive DB scripts via `npm run db:deploy`.
 - Render settings:
   - Root Directory: `backend`
-  - Build: `npm ci && ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) && ( npm run build || true )`
+  - Build: `npm ci && ( npm run build || true )`
   - Start: `node dist/index.js` (Render sets `PORT`)
   - Health Check Path: `/health`
   - Env: set `NODE_ENV=production`, `DATABASE_URL`, `CORS_ORIGIN`, `JWT_SECRET`

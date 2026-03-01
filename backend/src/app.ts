@@ -14,44 +14,63 @@ import { PrismaClient } from '@prisma/client';
 import dnExplore from "./routes/dn_explore.js";
 import dnSync from "./routes/dn_sync.js";
 import dnConnections from "./routes/dn_connections.js";
+import path from 'path';
 // Routes - to be added
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
+import variantsRoutes from './routes/variants.js';
+import imagesRoutes from './routes/images.js';
 import designRoutes from './routes/designs.js';
 import cartRoutes from './routes/cart.js';
 import ordersRoutes from './routes/orders.js';
+import quotesRoutes from './routes/quotes.js';
 import pricingRoutes from './routes/pricing.js';
 import productionRoutes from './routes/production.js';
+import proofsRoutes from './routes/proofs.js';
 import vendorRoutes from './routes/vendors.js';
 import dnConnectionsRoutes from "./routes/dn_connections.js";
 import dnSyncRoutes from "./routes/dn_sync.js";
 import adminRoutes from './routes/admin.js';
+import adminSuppliersRoutes from './routes/admin_suppliers.js';
 import adminPricingRulesRoutes from './routes/admin_pricing_rules.js';
 import importJobsRoutes from './routes/import_jobs.js';
 import paymentsRoutes from './routes/payments.js';
 import debugRoutes from './routes/debug.js';
 import dnExploreRoutes from "./routes/dn_explore.js";
+import storageRoutes from './routes/storage.js';
+import publicRoutes from './routes/public.js';
+import onboardingRoutes from './routes/onboarding.js';
+import themeRoutes from './routes/theme.js';
+import communicationsRoutes from './routes/communications.js';
+import documentsRoutes from './routes/documents.js';
+import teamStoreRoutes from './routes/team-stores.js';
+import inventoryRoutes from './routes/inventory.js';
+import purchaseOrderRoutes from './routes/purchase-orders.js';
+import webhooksRoutes from './routes/webhooks.js';
+import reportsRoutes from './routes/reports.js';
+import billingRoutes from './routes/billing.js';
+import domainsRoutes from './routes/domains.js';
+import rbacRoutes from './routes/rbac.js';
+import navigationRoutes from './routes/navigation.js';
+import customizerRoutes from './routes/customizer.js';
+import publicCustomizerRoutes from './routes/public-customizer.js';
+import networkRoutes from './routes/network.js';
 
 const app: Express = express();
+app.disable('x-powered-by');
 
 // CORS configuration: prod restricts by CORS_ORIGIN, dev permissive
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
-const devOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3000',
-];
 const isProd = (process.env.NODE_ENV || 'development') === 'production';
 const commonHeaders = ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID', 'X-Correlation-ID'];
-const allowAllInProd = allowedOrigins.length === 0;
 const corsOptions: CorsOptions = isProd
   ? {
       origin: (origin, callback) => {
-        // Allow non-browser requests and exact matches
-        if (allowAllInProd || !origin || allowedOrigins.includes(origin) || devOrigins.includes(origin)) {
+        // Allow non-browser requests and explicit allowlisted origins only
+        if (!origin || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -71,7 +90,21 @@ app.get('/__ping', (req, res) => {
 
 // Middleware - RequestID must be first
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
-app.use(helmet());
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+app.use(
+  helmet({
+    hsts: isProd
+      ? {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        }
+      : false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  })
+);
 app.use(cors(corsOptions));
 // Ensure preflight requests are handled on all routes
 app.options('*', cors(corsOptions));
@@ -97,6 +130,9 @@ app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Serve uploaded files in dev from backend/uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'backend', 'uploads')));
+
 // Readiness probe - checks DB quickly with strict timeout
 const readyPrisma = new PrismaClient();
 app.get('/ready', async (req, res) => {
@@ -118,20 +154,47 @@ app.get('/ready', async (req, res) => {
 app.use('/api', optionalAuthMiddleware, tenantMiddleware);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', optionalAuthMiddleware, productRoutes);
+app.use('/api/variants', variantsRoutes);
+app.use('/api/images', imagesRoutes);
 app.use('/api/designs', authMiddleware, designRoutes);
 app.use('/api/cart', optionalAuthMiddleware, cartRoutes);
 app.use('/api/orders', authMiddleware, ordersRoutes);
+app.use('/api/quotes', authMiddleware, quotesRoutes);
 app.use('/api', paymentsRoutes);
 app.use('/api/pricing', optionalAuthMiddleware, pricingRoutes);
 app.use('/api/production', authMiddleware, productionRoutes);
+app.use('/api/proofs', proofsRoutes);
 app.use('/api/vendors', authMiddleware, vendorRoutes);
 app.use('/api/dn/connections', authMiddleware, dnConnectionsRoutes);
 app.use('/api/dn', authMiddleware, dnSyncRoutes);
 app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/admin', authMiddleware, adminSuppliersRoutes);
+app.use('/api/suppliers', authMiddleware, (req, _res, next) => {
+  req.url = `/suppliers${req.url}`;
+  next();
+}, adminSuppliersRoutes);
 app.use('/api/admin/pricing-rules', authMiddleware, adminPricingRulesRoutes);
 app.use('/api', importJobsRoutes);
 app.use('/api/dn', authMiddleware, dnExploreRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/storage', storageRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/theme', themeRoutes);
+app.use('/api/communications', communicationsRoutes);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/team-stores', teamStoreRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/webhooks', webhooksRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/billing', authMiddleware, billingRoutes);
+app.use('/api/domains', authMiddleware, domainsRoutes);
+app.use('/api/rbac', authMiddleware, rbacRoutes);
+app.use('/api/navigation', authMiddleware, navigationRoutes);
+app.use('/api/customizer', authMiddleware, customizerRoutes);
+app.use('/api/public/customizer', publicCustomizerRoutes);
+app.use('/api/network', authMiddleware, networkRoutes);
 
 // Error handling
 app.use(errorHandler);

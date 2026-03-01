@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="/tmp/skuflow-backend.log"
-PORT="${PORT:-3000}"
+BACKEND_PORT="${BACKEND_PORT:-3100}"
+PORT="${PORT:-$BACKEND_PORT}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:$PORT}"
 CMD="node backend/dist/index.js"
 
 usage() {
@@ -33,10 +35,10 @@ start_server() {
 
   echo -n "Waiting for __ping on :$PORT"
   for i in $(seq 1 40); do
-    if curl -sS -m 1 "http://127.0.0.1:$PORT/__ping" >/dev/null; then
+    if curl -sS -m 1 "$BASE_URL/__ping" >/dev/null; then
       echo " - up"
-      echo "Health: $(curl -sS -m 2 "http://127.0.0.1:$PORT/health" || true)"
-      echo "API Health: $(curl -sS -m 2 "http://127.0.0.1:$PORT/api/health" || true)"
+      echo "Health: $(curl -sS -m 2 "$BASE_URL/health" || true)"
+      echo "API Health: $(curl -sS -m 2 "$BASE_URL/api/health" || true)"
       return 0
     fi
     echo -n "."

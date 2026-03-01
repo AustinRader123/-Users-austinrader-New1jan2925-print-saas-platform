@@ -1,0 +1,113 @@
+name: Phase 6 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: phase6-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20.x
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/deco_network
+  JWT_SECRET: ci-phase6-secret-please-change-in-prod-123456
+  JWT_EXPIRY: 7d
+  BILLING_PROVIDER: mock
+  S3_USE_LOCAL: true
+  ENABLE_VENDOR_SYNC: false
+  ENABLE_MOCKUP_GENERATION: true
+  ENABLE_EMAIL_NOTIFICATIONS: false
+  CORS_ORIGIN: http://localhost:5173
+  DN_ENC_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+
+jobs:
+  backend-build-test:
+    name: Backend build + test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: deco_network
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+      - name: Deploy migrations
+        run: npm run db:deploy
+        working-directory: backend
+      - name: Seed database
+        run: npm run db:seed
+        working-directory: backend
+      - name: Build backend
+        run: npm run build
+        working-directory: backend
+      - name: Run backend tests
+        run: npm test -- --run
+        working-directory: backend
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+  smoke-suite:
+    name: Smoke checks (phase2a + phase6)
+    runs-on: ubuntu-latest
+    needs: [backend-build-test, frontend-build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+      - name: Run smoke phase2a
+        run: npm run smoke:phase2a
+        working-directory: backend
+      - name: Run smoke phase6
+        run: npm run smoke:phase6
+        working-directory: backend
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: |
+            artifacts/**
+            backend/artifacts/**
+          retention-days: 7

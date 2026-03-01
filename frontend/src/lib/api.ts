@@ -135,10 +135,97 @@ class ApiClient {
     return data;
   }
 
-  async listProducts(storeId: string, skip = 0, take = 20) {
+  async listProducts(storeId: string, skip = 0, take = 20, status?: string) {
     const { data } = await this.client.get('/products', {
-      params: { storeId, skip, take, status: 'ACTIVE' },
+      params: { storeId, skip, take, ...(status ? { status } : {}) },
     });
+    return data;
+  }
+
+  async createProduct(payload: {
+    storeId: string;
+    name: string;
+    slug?: string;
+    description?: string;
+    category?: string;
+    basePrice?: number;
+  }) {
+    const { data } = await this.client.post('/products', payload);
+    return data;
+  }
+
+  async updateProduct(productId: string, payload: {
+    storeId: string;
+    name?: string;
+    slug?: string;
+    description?: string;
+    category?: string;
+    basePrice?: number;
+    status?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  }) {
+    const { data } = await this.client.put(`/products/${productId}`, payload);
+    return data;
+  }
+
+  async deleteProduct(productId: string, storeId: string) {
+    const { data } = await this.client.delete(`/products/${productId}`, { data: { storeId } });
+    return data;
+  }
+
+  async listVariants(productId: string, storeId: string) {
+    const { data } = await this.client.get(`/products/${productId}/variants`, { params: { storeId } });
+    return data;
+  }
+
+  async createVariant(productId: string, payload: {
+    storeId: string;
+    name: string;
+    sku: string;
+    size?: string;
+    color?: string;
+    supplierCost?: number;
+    inventoryCount?: number;
+  }) {
+    const { data } = await this.client.post(`/products/${productId}/variants`, payload);
+    return data;
+  }
+
+  async updateVariant(productId: string, variantId: string, payload: {
+    storeId: string;
+    name?: string;
+    sku?: string;
+    size?: string;
+    color?: string;
+    cost?: number;
+    price?: number;
+    inventoryQty?: number;
+  }) {
+    const { data } = await this.client.put(`/variants/${variantId}`, payload);
+    return data;
+  }
+
+  async deleteVariant(productId: string, variantId: string, storeId: string) {
+    const { data } = await this.client.delete(`/variants/${variantId}`, { data: { storeId } });
+    return data;
+  }
+
+  async listProductImages(productId: string, storeId: string) {
+    const { data } = await this.client.get(`/products/${productId}/images`, { params: { storeId } });
+    return data;
+  }
+
+  async createProductImage(productId: string, payload: { storeId: string; url: string; altText?: string; position?: number }) {
+    const { data } = await this.client.post(`/products/${productId}/images`, payload);
+    return data;
+  }
+
+  async updateProductImage(productId: string, imageId: string, payload: { storeId: string; sortOrder?: number; color?: string; altText?: string }) {
+    const { data } = await this.client.put(`/products/${productId}/images/${imageId}`, payload);
+    return data;
+  }
+
+  async deleteProductImage(productId: string, imageId: string, storeId: string) {
+    const { data } = await this.client.delete(`/images/${imageId}`, { data: { storeId } });
     return data;
   }
 
@@ -186,6 +273,31 @@ class ApiClient {
 
   async getMockupsForDesign(designId: string) {
     const { data } = await this.client.get(`/designs/${designId}/mockups`);
+    return data;
+  }
+
+  async uploadDesignAsset(designId: string, storeId: string, file: File) {
+    const form = new FormData();
+    form.append('storeId', storeId);
+    form.append('file', file);
+    const { data } = await this.client.post(`/designs/${designId}/assets/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
+
+  async listDesignAssets(designId: string) {
+    const { data } = await this.client.get(`/designs/${designId}/assets`);
+    return data;
+  }
+
+  async renderDesignMockup(designId: string, variantId: string) {
+    const { data } = await this.client.post(`/designs/${designId}/mockups/render`, { variantId });
+    return data;
+  }
+
+  async getMockupStatus(mockupId: string) {
+    const { data } = await this.client.get(`/designs/mockups/${mockupId}/status`);
     return data;
   }
 
@@ -372,6 +484,100 @@ class ApiClient {
     return data;
   }
 
+  // Admin - Supplier Sync
+  async adminListSupplierConnections(storeId?: string) {
+    const { data } = await this.client.get('/suppliers/connections', {
+      params: storeId ? { storeId } : {},
+    });
+    return data;
+  }
+
+  async adminCreateSupplierConnection(payload: {
+    storeId?: string;
+    supplier: 'MOCK' | 'SANMAR' | 'SSACTIVEWEAR' | 'ALPHABRODER';
+    name: string;
+    authType: string;
+    baseUrl?: string;
+    credentials?: Record<string, any>;
+    enabled?: boolean;
+  }) {
+    const { data } = await this.client.post('/suppliers/connections', payload);
+    return data;
+  }
+
+  async adminUpdateSupplierConnection(connectionId: string, payload: any) {
+    const { data } = await this.client.patch(`/suppliers/connections/${connectionId}`, payload);
+    return data;
+  }
+
+  async adminDeleteSupplierConnection(connectionId: string, storeId?: string) {
+    const { data } = await this.client.delete(`/suppliers/connections/${connectionId}`, {
+      data: storeId ? { storeId } : {},
+    });
+    return data;
+  }
+
+  async adminTestSupplierConnection(connectionId: string, storeId?: string) {
+    const { data } = await this.client.post(`/suppliers/connections/${connectionId}/test`, {
+      ...(storeId ? { storeId } : {}),
+    });
+    return data;
+  }
+
+  async adminRunSupplierSync(
+    connectionId: string,
+    payload: { storeId?: string; queue?: boolean; includeImages?: boolean; limitProducts?: number } = {}
+  ) {
+    const { data } = await this.client.post(`/suppliers/connections/${connectionId}/sync`, payload);
+    return data;
+  }
+
+  async adminListSupplierRuns(storeId?: string, take = 50) {
+    const { data } = await this.client.get('/suppliers/runs', {
+      params: { take, ...(storeId ? { storeId } : {}) },
+    });
+    return data;
+  }
+
+  async adminGetSupplierRun(runId: string, storeId?: string) {
+    const { data } = await this.client.get(`/suppliers/runs/${runId}`, {
+      params: storeId ? { storeId } : {},
+    });
+    return data;
+  }
+
+  async downloadSupplierRunLog(runId: string, storeId?: string) {
+    const response = await this.client.get(`/suppliers/sync-runs/${runId}/log`, {
+      params: storeId ? { storeId } : {},
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `supplier-sync-${runId}.log`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async downloadSupplierCatalogCsv(connectionId: string, storeId?: string) {
+    const response = await this.client.get('/suppliers/export/catalog.csv', {
+      params: { connectionId, ...(storeId ? { storeId } : {}) },
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `supplier-catalog-${connectionId}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
   // Admin - Pricing Rules
   async adminListPricingRules(productId?: string) {
     const { data } = await this.client.get('/admin/pricing-rules', { params: productId ? { productId } : {} });
@@ -418,6 +624,811 @@ class ApiClient {
   }) {
     const { data } = await this.client.post('/pricing/preview', payload);
     return data;
+  }
+
+  async listPricingRuleSets(storeId: string) {
+    const { data } = await this.client.get('/pricing/rulesets', { params: { storeId } });
+    return data;
+  }
+
+  async createPricingRuleSet(payload: { storeId: string; name: string; description?: string; isDefault?: boolean; active?: boolean }) {
+    const { data } = await this.client.post('/pricing/rulesets', payload);
+    return data;
+  }
+
+  async updatePricingRuleSet(ruleSetId: string, payload: { storeId: string; name?: string; description?: string; isDefault?: boolean; active?: boolean }) {
+    const { data } = await this.client.put(`/pricing/rulesets/${ruleSetId}`, payload);
+    return data;
+  }
+
+  async createPricingRule(ruleSetId: string, payload: {
+    storeId: string;
+    name: string;
+    method: string;
+    priority?: number;
+    conditions?: any;
+    effects?: any;
+    active?: boolean;
+  }) {
+    const { data } = await this.client.post(`/pricing/rulesets/${ruleSetId}/rules`, payload);
+    return data;
+  }
+
+  async updatePricingRule(ruleId: string, payload: {
+    storeId: string;
+    name?: string;
+    method?: string;
+    priority?: number;
+    conditions?: any;
+    effects?: any;
+    active?: boolean;
+  }) {
+    const { data } = await this.client.put(`/pricing/rules/${ruleId}`, payload);
+    return data;
+  }
+
+  async deletePricingRule(ruleId: string, storeId: string) {
+    const { data } = await this.client.delete(`/pricing/rules/${ruleId}`, { data: { storeId } });
+    return data;
+  }
+
+  async evaluatePricing(payload: {
+    storeId: string;
+    productId: string;
+    variantId?: string;
+    qty: number;
+    decorationMethod?: string;
+    locations?: string[];
+    printSizeTier?: 'SMALL' | 'MEDIUM' | 'LARGE';
+    colorCount?: number;
+    stitchCount?: number;
+    rush?: boolean;
+    weightOz?: number;
+    userId?: string;
+    includeMargin?: boolean;
+  }) {
+    const { data } = await this.client.post('/pricing/evaluate', payload);
+    return data;
+  }
+
+  async listShippingRates(storeId: string) {
+    const { data } = await this.client.get('/pricing/shipping-rates', { params: { storeId } });
+    return data;
+  }
+
+  async updateShippingRates(payload: {
+    storeId: string;
+    rates: Array<{
+      id?: string;
+      name: string;
+      active?: boolean;
+      minSubtotal?: number | null;
+      maxSubtotal?: number | null;
+      baseCharge?: number;
+      perItemCharge?: number;
+      perOzCharge?: number;
+      rushMultiplier?: number;
+      metadata?: any;
+    }>;
+  }) {
+    const { data } = await this.client.put('/pricing/shipping-rates', payload);
+    return data;
+  }
+
+  async listTaxRates(storeId: string) {
+    const { data } = await this.client.get('/pricing/tax-rates', { params: { storeId } });
+    return data;
+  }
+
+  async updateTaxRates(payload: {
+    storeId: string;
+    rates: Array<{
+      id?: string;
+      name: string;
+      jurisdiction?: string;
+      active?: boolean;
+      rate: number;
+      appliesShipping?: boolean;
+      metadata?: any;
+    }>;
+  }) {
+    const { data } = await this.client.put('/pricing/tax-rates', payload);
+    return data;
+  }
+
+  async listQuotes(storeId: string) {
+    const { data } = await this.client.get('/quotes', { params: { storeId } });
+    return data;
+  }
+
+  async createQuote(payload: { storeId: string; customerId?: string; customerName?: string; customerEmail?: string; notes?: string }) {
+    const { data } = await this.client.post('/quotes', payload);
+    return data;
+  }
+
+  async getQuote(quoteId: string, storeId: string) {
+    const { data } = await this.client.get(`/quotes/${quoteId}`, { params: { storeId } });
+    return data;
+  }
+
+  async updateQuote(quoteId: string, payload: { storeId: string; customerId?: string; customerName?: string; customerEmail?: string; notes?: string }) {
+    const { data } = await this.client.put(`/quotes/${quoteId}`, payload);
+    return data;
+  }
+
+  async updateQuoteStatus(quoteId: string, payload: { storeId: string; status: 'DRAFT' | 'SENT' | 'APPROVED' | 'DECLINED' | 'REJECTED' | 'EXPIRED' | 'CONVERTED' }) {
+    const { data } = await this.client.put(`/quotes/${quoteId}/status`, payload);
+    return data;
+  }
+
+  async addQuoteItem(
+    quoteId: string,
+    payload: {
+      storeId: string;
+      productId: string;
+      variantId?: string;
+      qty: { units: number; [key: string]: any };
+      decorationMethod?: string;
+      decorationLocations?: string[];
+      decorationInput?: any;
+      printSizeTier?: 'SMALL' | 'MEDIUM' | 'LARGE';
+      colorCount?: number;
+      stitchCount?: number;
+      rush?: boolean;
+      weightOz?: number;
+      description?: string;
+    }
+  ) {
+    const { data } = await this.client.post(`/quotes/${quoteId}/items`, payload);
+    return data;
+  }
+
+  async convertQuoteToOrder(quoteId: string, storeId: string) {
+    const { data } = await this.client.post(`/quotes/${quoteId}/convert`, { storeId });
+    return data;
+  }
+
+  async repriceQuote(quoteId: string, storeId: string) {
+    const { data } = await this.client.post(`/quotes/${quoteId}/reprice`, { storeId });
+    return data;
+  }
+
+  async repriceOrder(orderId: string, storeId: string) {
+    const { data } = await this.client.post(`/orders/${orderId}/reprice`, { storeId });
+    return data;
+  }
+
+  async getReportsSummary(storeId: string, from?: string, to?: string) {
+    const { data } = await this.client.get('/reports/summary', { params: { storeId, ...(from ? { from } : {}), ...(to ? { to } : {}) } });
+    return data;
+  }
+
+  async getReportsProducts(storeId: string, from?: string, to?: string) {
+    const { data } = await this.client.get('/reports/products', { params: { storeId, ...(from ? { from } : {}), ...(to ? { to } : {}) } });
+    return data;
+  }
+
+  async downloadOrdersReportCsv(storeId: string, from?: string, to?: string) {
+    const response = await this.client.get('/reports/export/orders.csv', {
+      params: { storeId, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
+
+  async downloadQuotesReportCsv(storeId: string, from?: string, to?: string) {
+    const response = await this.client.get('/reports/export/quotes.csv', {
+      params: { storeId, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
+
+  async listProofRequests(storeId: string, status?: string) {
+    const { data } = await this.client.get('/proofs', { params: { storeId, ...(status ? { status } : {}) } });
+    return data;
+  }
+
+  async createProofRequest(payload: {
+    storeId: string;
+    orderId: string;
+    designId?: string;
+    mockupId?: string;
+    recipientEmail?: string;
+    message?: string;
+    expiresHours?: number;
+  }) {
+    const { data } = await this.client.post('/proofs/request', payload);
+    return data;
+  }
+
+  async respondProofRequest(approvalId: string, status: 'APPROVED' | 'REJECTED', comment?: string) {
+    const { data } = await this.client.post(`/proofs/${approvalId}/respond`, { status, comment });
+    return data;
+  }
+
+  async getPublicProof(token: string) {
+    const { data } = await this.client.get(`/proofs/public/${token}`);
+    return data;
+  }
+
+  async approvePublicProof(token: string, comment?: string) {
+    const { data } = await this.client.post(`/proofs/public/${token}/approve`, { comment });
+    return data;
+  }
+
+  async rejectPublicProof(token: string, comment?: string) {
+    const { data } = await this.client.post(`/proofs/public/${token}/reject`, { comment });
+    return data;
+  }
+
+  async generateWorkOrder(jobId: string) {
+    const { data } = await this.client.post(`/production/jobs/${jobId}/work-order`);
+    return data;
+  }
+
+  async generatePrintPackage(jobId: string) {
+    const { data } = await this.client.post(`/production/jobs/${jobId}/print-package`);
+    return data;
+  }
+
+  async getProductCustomizerConfig(storeId: string, productId: string) {
+    const { data } = await this.client.get(`/customizer/products/${productId}`, { params: { storeId } });
+    return data;
+  }
+
+  async saveProductCustomizerProfile(productId: string, payload: {
+    storeId: string;
+    enabled?: boolean;
+    locations: any[];
+    rules?: any;
+  }) {
+    const { data } = await this.client.put(`/customizer/products/${productId}/profile`, payload);
+    return data;
+  }
+
+  async saveProductPersonalizationSchemas(productId: string, payload: {
+    storeId: string;
+    schemas: any[];
+  }) {
+    const { data } = await this.client.put(`/customizer/products/${productId}/personalization-schemas`, payload);
+    return data;
+  }
+
+  async listCustomizerArtworkCategories(storeId: string, profileId?: string) {
+    const { data } = await this.client.get('/customizer/artwork-categories', {
+      params: { storeId, ...(profileId ? { profileId } : {}) },
+    });
+    return data;
+  }
+
+  async saveCustomizerArtworkCategory(payload: {
+    storeId: string;
+    profileId?: string;
+    id?: string;
+    name: string;
+    slug: string;
+    sortOrder?: number;
+    active?: boolean;
+  }) {
+    const { data } = await this.client.post('/customizer/artwork-categories', payload);
+    return data;
+  }
+
+  async uploadCustomizerArtworkAsset(payload: { storeId: string; categoryId?: string; name?: string; tags?: string; file: File }) {
+    const form = new FormData();
+    form.append('storeId', payload.storeId);
+    if (payload.categoryId) form.append('categoryId', payload.categoryId);
+    if (payload.name) form.append('name', payload.name);
+    if (payload.tags) form.append('tags', payload.tags);
+    form.append('file', payload.file);
+
+    const { data } = await this.client.post('/customizer/artwork-assets/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
+
+  async publicGetStorefront(storeSlug: string) {
+    const { data } = await this.client.get(`/public/storefront/${storeSlug}`);
+    return data;
+  }
+
+  async publicListProducts(storeSlug: string, collection?: string) {
+    const { data } = await this.client.get('/public/products', {
+      params: { storeSlug, ...(collection ? { collection } : {}) },
+    });
+    return data;
+  }
+
+  async publicGetProduct(storeSlug: string, idOrSlug: string) {
+    const { data } = await this.client.get(`/public/products/${idOrSlug}`, { params: { storeSlug } });
+    return data;
+  }
+
+  async publicGetCustomizerConfig(payload: { storeSlug?: string; storeId?: string; productId: string }) {
+    const { data } = await this.client.get(`/public/customizer/products/${payload.productId}/config`, {
+      params: {
+        ...(payload.storeSlug ? { storeSlug: payload.storeSlug } : {}),
+        ...(payload.storeId ? { storeId: payload.storeId } : {}),
+      },
+    });
+    return data;
+  }
+
+  async publicUploadCustomizerFile(payload: { storeSlug?: string; storeId?: string; file: File }) {
+    const form = new FormData();
+    if (payload.storeSlug) form.append('storeSlug', payload.storeSlug);
+    if (payload.storeId) form.append('storeId', payload.storeId);
+    form.append('file', payload.file);
+    const { data } = await this.client.post('/public/customizer/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
+
+  async publicPreviewCustomization(payload: {
+    storeSlug?: string;
+    storeId?: string;
+    productId: string;
+    variantId: string;
+    customization: any;
+  }) {
+    const { data } = await this.client.post('/public/customizer/preview', payload);
+    return data;
+  }
+
+  async publicCustomizeAndAddToCart(token: string, payload: {
+    productId: string;
+    variantId: string;
+    quantity?: number;
+    customization: any;
+    previewFileId?: string;
+  }) {
+    const { data } = await this.client.post(`/public/customizer/cart/${token}/customize-add`, payload);
+    return data;
+  }
+
+  async publicCreateCart(storeSlug: string) {
+    const { data } = await this.client.post('/public/cart', { storeSlug });
+    return data;
+  }
+
+  async publicGetCart(token: string) {
+    const { data } = await this.client.get(`/public/cart/${token}`);
+    return data;
+  }
+
+  async publicAddCartItem(token: string, payload: {
+    productId: string;
+    variantId?: string;
+    quantity?: number;
+    decorationMethod?: string;
+    decorationLocations?: string[];
+    designId?: string;
+  }) {
+    const { data } = await this.client.post(`/public/cart/${token}/items`, payload);
+    return data;
+  }
+
+  async publicUpdateCartItem(token: string, itemId: string, payload: { quantity?: number; variantId?: string }) {
+    const { data } = await this.client.put(`/public/cart/${token}/items/${itemId}`, payload);
+    return data;
+  }
+
+  async publicRemoveCartItem(token: string, itemId: string) {
+    const { data } = await this.client.delete(`/public/cart/${token}/items/${itemId}`);
+    return data;
+  }
+
+  async publicCheckout(cartToken: string, payload: {
+    customerEmail: string;
+    customerName: string;
+    shippingAddress: any;
+    billingAddress?: any;
+    paymentProvider?: 'NONE' | 'STRIPE';
+    teamStoreMeta?: {
+      teamStoreId: string;
+      rosterEntryId?: string;
+      personalization?: any;
+      groupShipping?: boolean;
+    };
+  }) {
+    const { data } = await this.client.post(`/public/checkout/${cartToken}`, payload);
+    return data;
+  }
+
+  async publicGetOrder(token: string) {
+    const { data } = await this.client.get(`/public/order/${token}`);
+    return data;
+  }
+
+  async listTeamStores(storeId: string) {
+    const { data } = await this.client.get('/team-stores', { params: { storeId } });
+    return data;
+  }
+
+  async createTeamStore(payload: {
+    storeId: string;
+    slug: string;
+    name: string;
+    status?: string;
+    closeAt?: string;
+    minOrderQty?: number;
+    fundraiserPercent?: number;
+    groupShipping?: boolean;
+    theme?: any;
+  }) {
+    const { data } = await this.client.post('/team-stores', payload);
+    return data;
+  }
+
+  async importTeamStoreRoster(teamStoreId: string, storeId: string, file: File) {
+    const form = new FormData();
+    form.append('storeId', storeId);
+    form.append('file', file);
+    const { data } = await this.client.post(`/team-stores/${teamStoreId}/roster/import`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
+
+  async listInventory(storeId: string, params: { productId?: string; variantId?: string } = {}) {
+    const { data } = await this.client.get('/inventory', { params: { storeId, ...params } });
+    return data;
+  }
+
+  async adjustInventory(payload: { storeId: string; variantId: string; qty: number; note?: string }) {
+    const { data } = await this.client.post('/inventory/adjust', payload);
+    return data;
+  }
+
+  async listPurchaseOrders(storeId: string) {
+    const { data } = await this.client.get('/purchase-orders', { params: { storeId } });
+    return data;
+  }
+
+  async getPurchaseOrder(storeId: string, id: string) {
+    const { data } = await this.client.get(`/purchase-orders/${id}`, { params: { storeId } });
+    return data;
+  }
+
+  async createPurchaseOrder(payload: { storeId: string; supplierName: string; expectedAt?: string }) {
+    const { data } = await this.client.post('/purchase-orders', payload);
+    return data;
+  }
+
+  async addPurchaseOrderLine(id: string, payload: { storeId: string; variantId: string; qtyOrdered: number; costEach?: number }) {
+    const { data } = await this.client.post(`/purchase-orders/${id}/lines`, payload);
+    return data;
+  }
+
+  async receivePurchaseOrder(id: string, payload: { storeId: string; lines: Array<{ lineId: string; qtyReceived: number }> }) {
+    const { data } = await this.client.post(`/purchase-orders/${id}/receive`, payload);
+    return data;
+  }
+
+  async listWebhookEndpoints(storeId: string) {
+    const { data } = await this.client.get('/webhooks/endpoints', { params: { storeId } });
+    return data;
+  }
+
+  async createWebhookEndpoint(payload: { storeId: string; url: string; secret: string; enabled?: boolean; eventTypes?: string[] }) {
+    const { data } = await this.client.post('/webhooks/endpoints', payload);
+    return data;
+  }
+
+  async testWebhookEndpoint(id: string, storeId: string) {
+    const { data } = await this.client.post(`/webhooks/endpoints/${id}/test`, { storeId });
+    return data;
+  }
+
+  async listWebhookDeliveries(storeId: string) {
+    const { data } = await this.client.get('/webhooks/deliveries', { params: { storeId } });
+    return data;
+  }
+
+  async getBillingSnapshot() {
+    const { data } = await this.client.get('/billing/snapshot');
+    return data;
+  }
+
+  async createBillingCheckout(planCode: 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE', successUrl?: string, cancelUrl?: string) {
+    const { data } = await this.client.post('/billing/checkout', { planCode, successUrl, cancelUrl });
+    return data;
+  }
+
+  async cancelBillingSubscription() {
+    const { data } = await this.client.post('/billing/cancel');
+    return data;
+  }
+
+  async listBillingEvents() {
+    const { data } = await this.client.get('/billing/events');
+    return data;
+  }
+
+  async listStoreDomains(storeId?: string) {
+    const { data } = await this.client.get('/domains', { params: storeId ? { storeId } : {} });
+    return data;
+  }
+
+  async createStoreDomain(payload: { hostname: string; storeId?: string }) {
+    const { data } = await this.client.post('/domains', payload);
+    return data;
+  }
+
+  async verifyStoreDomain(id: string, token?: string, manualActivate = true) {
+    const { data } = await this.client.post(`/domains/${id}/verify`, {
+      ...(token ? { token } : {}),
+      manualActivate,
+    });
+    return data;
+  }
+
+  async disableStoreDomain(id: string) {
+    const { data } = await this.client.post(`/domains/${id}/disable`);
+    return data;
+  }
+
+  async listRbacPermissions() {
+    const { data } = await this.client.get('/rbac/permissions');
+    return data;
+  }
+
+  async listRbacRoles() {
+    const { data } = await this.client.get('/rbac/roles');
+    return data;
+  }
+
+  async createRbacRole(payload: { name: string; description?: string; permissionKeys?: string[] }) {
+    const { data } = await this.client.post('/rbac/roles', payload);
+    return data;
+  }
+
+  async updateRbacRole(id: string, payload: { name: string; description?: string; permissionKeys?: string[] }) {
+    const { data } = await this.client.put(`/rbac/roles/${id}`, payload);
+    return data;
+  }
+
+  async listRbacUsers() {
+    const { data } = await this.client.get('/rbac/users');
+    return data;
+  }
+
+  async assignRbacRole(userId: string, roleId: string) {
+    const { data } = await this.client.post('/rbac/assign', { userId, roleId });
+    return data;
+  }
+
+  async getOnboarding(storeId?: string) {
+    const { data } = await this.client.get('/onboarding', { params: storeId ? { storeId } : {} });
+    return data;
+  }
+
+  async updateOnboarding(payload: { storeId?: string; step?: number; data?: Record<string, any>; completed?: boolean }) {
+    const { data } = await this.client.put('/onboarding', payload);
+    return data;
+  }
+
+  async completeOnboarding(storeId?: string) {
+    const { data } = await this.client.post('/onboarding/complete', storeId ? { storeId } : {});
+    return data;
+  }
+
+  async getOnboardingNextSteps(storeId?: string) {
+    const { data } = await this.client.get('/onboarding/next-steps', { params: storeId ? { storeId } : {} });
+    return data;
+  }
+
+  async getTheme(storeId: string) {
+    const { data } = await this.client.get('/theme', { params: { storeId } });
+    return data;
+  }
+
+  async saveThemeDraft(payload: { storeId: string; storefrontId?: string; config: any }) {
+    const { data } = await this.client.put('/theme', payload);
+    return data;
+  }
+
+  async publishTheme(storeId: string) {
+    const { data } = await this.client.post('/theme/publish', { storeId });
+    return data;
+  }
+
+  async createThemePreviewToken(storeId: string, expiresMinutes = 15) {
+    const { data } = await this.client.post('/theme/preview-token', { storeId, expiresMinutes });
+    return data;
+  }
+
+  async getThemePreview(token: string) {
+    const { data } = await this.client.get('/theme/preview', { params: { token } });
+    return data;
+  }
+
+  async getEmailConfig() {
+    const { data } = await this.client.get('/communications/email-config');
+    return data;
+  }
+
+  async updateEmailConfig(payload: {
+    provider: 'MOCK' | 'SMTP' | 'SENDGRID';
+    fromName: string;
+    fromEmail: string;
+    replyTo?: string | null;
+    enabled?: boolean;
+    config?: Record<string, any>;
+  }) {
+    const { data } = await this.client.put('/communications/email-config', payload);
+    return data;
+  }
+
+  async getCommunicationLogs(storeId?: string) {
+    const { data } = await this.client.get('/communications/logs', { params: storeId ? { storeId } : {} });
+    return data;
+  }
+
+  async listDocumentTemplates(storeId: string) {
+    const { data } = await this.client.get('/documents/templates', { params: { storeId } });
+    return data;
+  }
+
+  async upsertDocumentTemplate(type: 'QUOTE' | 'INVOICE' | 'PROOF' | 'WORK_ORDER', payload: {
+    storeId: string;
+    name: string;
+    active?: boolean;
+    template: Record<string, any>;
+  }) {
+    const { data } = await this.client.put(`/documents/templates/${type}`, payload);
+    return data;
+  }
+
+  async generateQuotePdf(quoteId: string, storeId: string) {
+    const { data } = await this.client.get(`/quotes/${quoteId}/pdf`, { params: { storeId } });
+    return data;
+  }
+
+  async sendQuote(quoteId: string, payload: { storeId: string; expiresHours?: number }) {
+    const { data } = await this.client.post(`/quotes/${quoteId}/send`, payload);
+    return data;
+  }
+
+  async generateInvoicePdf(orderId: string) {
+    const { data } = await this.client.get(`/orders/${orderId}/invoice.pdf`);
+    return data;
+  }
+
+  async sendInvoice(orderId: string, expiresHours?: number) {
+    const { data } = await this.client.post(`/orders/${orderId}/send-invoice`, { expiresHours });
+    return data;
+  }
+
+  async generateProofPdf(approvalId: string) {
+    const { data } = await this.client.get(`/proofs/${approvalId}/pdf`);
+    return data;
+  }
+
+  async listGeneratedDocuments(type: 'QUOTE' | 'INVOICE' | 'PROOF' | 'WORK_ORDER', storeId: string) {
+    const { data } = await this.client.get('/documents', { params: { type, storeId } });
+    return data;
+  }
+
+  async getNavigationMenu() {
+    const { data } = await this.client.get('/navigation/menu');
+    return data;
+  }
+
+  async getPublicQuote(token: string) {
+    const { data } = await this.client.get(`/public/quote/${token}`);
+    return data;
+  }
+
+  async getPublicInvoice(token: string) {
+    const { data } = await this.client.get(`/public/invoice/${token}`);
+    return data;
+  }
+
+  async listNetworks(tenantId?: string) {
+    const { data } = await this.client.get('/network/networks', { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async createNetwork(payload: { tenantId?: string; name: string; ownerStoreId: string }) {
+    const { data } = await this.client.post('/network/networks', payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async getNetworkOverview(networkId: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/overview`, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async listNetworkStores(networkId: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/stores`, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async addNetworkStore(networkId: string, payload: { tenantId?: string; storeId: string; role: 'OWNER' | 'HUB' | 'SPOKE'; status?: 'ACTIVE' | 'SUSPENDED' }) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/stores`, payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async createNetworkChildStore(networkId: string, payload: { tenantId?: string; name: string; slug: string; role: 'HUB' | 'SPOKE' }) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/stores/create`, payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async listNetworkSharedItems(networkId: string, tenantId?: string, type?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/shared-items`, { params: { ...(tenantId ? { tenantId } : {}), ...(type ? { type } : {}) } });
+    return data;
+  }
+
+  async publishNetworkProduct(networkId: string, productId: string, tenantId?: string) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/publish/product/${productId}`, {}, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async publishNetworkPricingRuleSet(networkId: string, ruleSetId: string, tenantId?: string) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/publish/pricing-rule-set/${ruleSetId}`, {}, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async applyNetworkSharedItems(networkId: string, payload: { storeId: string; sharedItemId?: string; tenantId?: string }) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/apply`, payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async listNetworkBindings(networkId: string, storeId: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/bindings`, { params: { storeId, ...(tenantId ? { tenantId } : {}) } });
+    return data;
+  }
+
+  async listNetworkRoutingRules(networkId: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/routing-rules`, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async upsertNetworkRoutingRule(networkId: string, payload: { tenantId?: string; id?: string; name: string; enabled?: boolean; strategy?: 'MANUAL' | 'GEO' | 'CAPACITY' | 'PRIORITY'; config?: Record<string, any> }) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/routing-rules`, payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async routeOrder(orderId: string, tenantId?: string) {
+    const { data } = await this.client.post(`/network/route-order/${orderId}`, {}, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async listRoutedOrders(networkId: string, storeId?: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/routed-orders`, { params: { ...(storeId ? { storeId } : {}), ...(tenantId ? { tenantId } : {}) } });
+    return data;
+  }
+
+  async updateRoutedOrderStatus(networkId: string, routedOrderId: string, status: 'PROPOSED' | 'ACCEPTED' | 'IN_PRODUCTION' | 'SHIPPED' | 'COMPLETED', tenantId?: string) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/routed-orders/${routedOrderId}/status`, { status }, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async listRoyaltyRules(networkId: string, tenantId?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/royalty-rules`, { params: tenantId ? { tenantId } : {} });
+    return data;
+  }
+
+  async upsertRoyaltyRule(networkId: string, payload: { tenantId?: string; id?: string; name: string; enabled?: boolean; basis?: 'REVENUE' | 'PROFIT' | 'DECORATION_ONLY'; ratePercent?: number | null; flatCents?: number | null; appliesTo?: Record<string, any> | null }) {
+    const { data } = await this.client.post(`/network/networks/${networkId}/royalty-rules`, payload, { params: payload.tenantId ? { tenantId: payload.tenantId } : {} });
+    return data;
+  }
+
+  async getRoyaltyReport(networkId: string, tenantId?: string, from?: string, to?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/royalties/report`, { params: { ...(tenantId ? { tenantId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) } });
+    return data;
+  }
+
+  async downloadRoyaltyReportCsv(networkId: string, tenantId?: string, from?: string, to?: string) {
+    const { data } = await this.client.get(`/network/networks/${networkId}/royalties/export.csv`, {
+      params: { ...(tenantId ? { tenantId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) },
+      responseType: 'blob',
+    });
+    return data as Blob;
   }
 
   // Health check against backend root (not prefixed by /api)

@@ -2,9 +2,12 @@ import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 import DesignService from '../services/DesignService.js';
 import MockupService from '../services/MockupService.js';
+import StorageProvider from '../services/StorageProvider.js';
+import multer from 'multer';
 import logger from '../logger.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Create design
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -142,6 +145,83 @@ router.get('/:designId/mockups', async (req: AuthRequest, res: Response) => {
   } catch (error) {
     logger.error('Get mockups error:', error);
     res.status(500).json({ error: 'Failed to get mockups' });
+  }
+});
+
+router.post('/:designId/assets/upload', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    const storeId = (req.body?.storeId as string) || req.storeId;
+    if (!storeId) {
+      return res.status(400).json({ error: 'Store ID required' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'File required' });
+    }
+
+    const design = await DesignService.getDesign(req.params.designId, req.userId);
+    if (!design || design.userId !== req.userId) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    const uploaded = await StorageProvider.uploadFile(req.file.buffer, req.file.originalname, 'designs');
+    const asset = await DesignService.createFileAsset({
+      storeId,
+      designId: req.params.designId,
+      kind: 'DESIGN_UPLOAD',
+      fileName: uploaded.fileName,
+      url: uploaded.url,
+      mimeType: req.file.mimetype,
+      sizeBytes: uploaded.size,
+      createdById: req.userId,
+      metadata: { originalName: req.file.originalname },
+    });
+
+    return res.status(201).json({ ...uploaded, asset });
+  } catch (error) {
+    logger.error('Upload design asset error:', error);
+    return res.status(500).json({ error: 'Failed to upload design asset' });
+  }
+});
+
+router.get('/:designId/assets', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const assets = await DesignService.listFileAssets(req.params.designId, req.userId!);
+    return res.json(assets);
+  } catch (error) {
+    logger.error('List design assets error:', error);
+    return res.status(500).json({ error: (error as Error).message || 'Failed to list design assets' });
+  }
+});
+
+router.post('/:designId/mockups/render', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const variantId = req.body?.variantId as string;
+    if (!variantId) {
+      return res.status(400).json({ error: 'variantId required' });
+    }
+    const design = await DesignService.getDesign(req.params.designId, req.userId);
+    if (!design || design.userId !== req.userId) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    const mockup = await MockupService.generateMockup(req.params.designId, variantId);
+    return res.status(201).json(mockup);
+  } catch (error) {
+    logger.error('Render mockup error:', error);
+    return res.status(500).json({ error: 'Failed to render mockup' });
+  }
+});
+
+router.get('/mockups/:mockupId/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const mockup = await MockupService.getMockup(req.params.mockupId);
+    if (!mockup) {
+      return res.status(404).json({ error: 'Mockup not found' });
+    }
+    return res.json({ id: mockup.id, status: mockup.status, imageUrl: mockup.imageUrl, error: mockup.error });
+  } catch (error) {
+    logger.error('Get mockup status error:', error);
+    return res.status(500).json({ error: 'Failed to get mockup status' });
   }
 });
 

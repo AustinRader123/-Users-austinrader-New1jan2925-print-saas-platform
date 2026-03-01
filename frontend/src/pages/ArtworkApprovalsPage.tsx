@@ -15,10 +15,10 @@ export default function ArtworkApprovalsPage() {
         const data = await listArtworkApprovals();
         const normalized = (data || []).map((a: any) => ({
           id: String(a.id),
-          thumbnailUrl: a.thumbnailUrl || a.mockupUrl,
-          orderId: a.orderId || a.designId,
-          customer: a.customer || '—',
-          dueAt: a.dueAt,
+          thumbnailUrl: a.mockup?.imageUrl || a.order?.items?.[0]?.mockupUrl || a.thumbnailUrl || a.mockupUrl,
+          orderId: a.order?.orderNumber || a.orderId || a.designId,
+          customer: a.order?.customerName || a.customer || '—',
+          dueAt: a.expiresAt || a.dueAt,
         }));
         setItems(normalized);
       } catch (e: any) {

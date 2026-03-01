@@ -5,8 +5,8 @@ dotenv.config();
 export const config = {
   // Server
   NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: parseInt(process.env.PORT || '3000'),
-  API_URL: process.env.API_URL || 'http://localhost:3000',
+  PORT: parseInt(process.env.PORT || process.env.BACKEND_PORT || '3100'),
+  API_URL: process.env.API_URL || `http://localhost:${process.env.PORT || process.env.BACKEND_PORT || '3100'}`,
 
   // Database
   DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/deco_network',

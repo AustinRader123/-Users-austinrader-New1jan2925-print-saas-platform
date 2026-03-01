@@ -41,8 +41,8 @@ log "Installing frontend deps"
 ( cd "$FRONTEND_DIR" && npm ci )
 
 # 2) Prisma migrations + seed
-log "Running prisma migrate deploy"
-( cd "$BACKEND_DIR" && npm run db:migrate )
+log "Running db:deploy"
+( cd "$BACKEND_DIR" && npm run db:deploy )
 log "Running prisma seed"
 ( cd "$BACKEND_DIR" && ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run db:seed )
 

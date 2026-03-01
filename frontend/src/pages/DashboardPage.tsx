@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import NextStepsBanner from '../components/NextStepsBanner';
 
 function Card({ children, className = '' }: React.PropsWithChildren<{ className?: string }>) {
   return <div className={`card ${className}`}>{children}</div>;
@@ -33,6 +34,7 @@ export default function DashboardPage() {
 
   return (
     <Page title="Dashboard" subtitle="Overview of your stores and production flow">
+      <NextStepsBanner />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((c) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>

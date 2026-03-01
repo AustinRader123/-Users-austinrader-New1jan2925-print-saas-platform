@@ -187,9 +187,6 @@ export class VendorImportService {
             basePrice: vPrice || 0,
             status: 'ACTIVE',
             type: 'BLANK',
-            images: imageUrl
-              ? { create: [{ url: imageUrl, altText: pName!, position: 0 }] }
-              : undefined,
           },
           update: {
             description: pDesc,
@@ -206,6 +203,7 @@ export class VendorImportService {
           variant = await prisma.productVariant.create({
             data: {
               productId: product.id,
+              storeId,
               name: `${vColor || 'Variant'}${vSize ? ' - ' + vSize : ''}`,
               sku: vSku || vExternalId!,
               size: vSize,
@@ -224,6 +222,21 @@ export class VendorImportService {
               inventoryCount: vInv || 0,
             },
           });
+        }
+
+        if (imageUrl) {
+          const existingImage = await prisma.productImage.findFirst({ where: { productId: product.id, url: imageUrl } });
+          if (!existingImage) {
+            await prisma.productImage.create({
+              data: {
+                productId: product.id,
+                storeId,
+                url: imageUrl,
+                altText: pName!,
+                position: 0,
+              },
+            });
+          }
         }
 
         await prisma.vendorProductVariant.update({
@@ -362,7 +375,7 @@ export class VendorImportService {
           const slugBase = (pName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
           const product = await prisma.product.upsert({
             where: { storeId_slug: { storeId, slug: slugBase } },
-            create: { storeId, vendorId, name: pName!, slug: slugBase, description: pDesc, basePrice: vPrice || 0, status: 'ACTIVE', type: 'BLANK', images: imageUrl ? { create: [{ url: imageUrl, altText: pName!, position: 0 }] } : undefined },
+            create: { storeId, vendorId, name: pName!, slug: slugBase, description: pDesc, basePrice: vPrice || 0, status: 'ACTIVE', type: 'BLANK' },
             update: { description: pDesc, basePrice: vPrice || 0, updatedAt: new Date() },
             include: { variants: true },
           });
@@ -370,10 +383,24 @@ export class VendorImportService {
           let variant = await prisma.productVariant.findFirst({ where: { productId: product.id, sku: vSku || vExternalId! } });
           if (!variant) {
             variant = await prisma.productVariant.create({
-              data: { productId: product.id, name: `${vColor || 'Variant'}${vSize ? ' - ' + vSize : ''}`, sku: vSku || vExternalId!, size: vSize, color: vColor, supplierCost: vPrice || 0, inventoryCount: vInv || 0 },
+              data: { productId: product.id, storeId, name: `${vColor || 'Variant'}${vSize ? ' - ' + vSize : ''}`, sku: vSku || vExternalId!, size: vSize, color: vColor, supplierCost: vPrice || 0, inventoryCount: vInv || 0 },
             });
           } else {
             await prisma.productVariant.update({ where: { id: variant.id }, data: { size: vSize, color: vColor, supplierCost: vPrice || 0, inventoryCount: vInv || 0 } });
+          }
+          if (imageUrl) {
+            const existingImage = await prisma.productImage.findFirst({ where: { productId: product.id, url: imageUrl } });
+            if (!existingImage) {
+              await prisma.productImage.create({
+                data: {
+                  productId: product.id,
+                  storeId,
+                  url: imageUrl,
+                  altText: pName!,
+                  position: 0,
+                },
+              });
+            }
           }
           await prisma.vendorProductVariant.update({ where: { id: vpv.id }, data: { productVariantId: variant.id } });
 

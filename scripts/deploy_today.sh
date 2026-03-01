@@ -24,9 +24,9 @@ cat <<'EOF'
   - Environment: Node
   - Root Directory: backend
   - Build Command:
-      npm ci && ( [ -f prisma/schema.prisma ] && npx prisma generate || true ) && ( npm run build || true )
+      npm ci && ( npm run build || true )
   - Start Command:
-      bash -lc '([ -f prisma/schema.prisma ] && npx prisma migrate deploy || true); ( npm start || node dist/index.js )'
+      bash -lc '( npm run db:deploy || true ); ( npm start || node dist/index.js )'
   - Health Check Path: /health
   - Auto Deploy: true
 - Environment Variables (Render → Environment):
@@ -62,7 +62,7 @@ EOF
 say "==> 6) Optional local builds (RUN_LOCAL_BUILD=1)"
 if [ "${RUN_LOCAL_BUILD:-0}" = "1" ]; then
   echo "Running local builds..."
-  (cd backend && npm ci && [ -f prisma/schema.prisma ] && npx prisma generate || true && npm run build)
+  (cd backend && npm ci && npm run db:deploy && npm run build)
   (cd frontend && npm ci && npm run build)
 else
   echo "Skipping local builds; set RUN_LOCAL_BUILD=1 to run."
@@ -377,8 +377,8 @@ sleep 5
 # - prisma/schema.prisma in repo root
 # - backend/prisma/schema.prisma
 # And we attempt to run via backend service:
-#   npx prisma migrate deploy
-#   npx prisma db seed (optional, only if package.json has prisma.seed or seed script)
+#   npm run db:deploy
+#   npm run db:seed (optional)
 ################################################################################
 HAS_PRISMA="false"
 if [ -f "prisma/schema.prisma" ] || [ -f "backend/prisma/schema.prisma" ]; then
@@ -386,22 +386,22 @@ if [ -f "prisma/schema.prisma" ] || [ -f "backend/prisma/schema.prisma" ]; then
 fi
 
 if [ "$HAS_PRISMA" = "true" ] && [ -n "$BACKEND_SERVICE" ]; then
-  log "Prisma detected -> running migrations inside backend service: $BACKEND_SERVICE"
+  log "Prisma detected -> running db:deploy inside backend service: $BACKEND_SERVICE"
 
-  # Migrate deploy
+  # Migration deploy (non-interactive)
   set +e
   $COMPOSE -f "$COMPOSE_FILE" ${USE_CADDY:+-f "$CADDY_OVERRIDE"} exec -T "$BACKEND_SERVICE" sh -lc \
-    'if command -v npx >/dev/null 2>&1; then npx prisma migrate deploy; else echo "npx missing"; exit 12; fi'
+    'if [ -f package.json ] && cat package.json | grep -q "\"db:deploy\""; then npm run db:deploy; else echo "db:deploy script missing"; exit 12; fi'
   MIG_STATUS=$?
   set -e
   if [ $MIG_STATUS -ne 0 ]; then
-    warn "Prisma migrate deploy failed (exit $MIG_STATUS). Check backend logs. Continuing so you can inspect."
+    warn "db:deploy failed (exit $MIG_STATUS). Check backend logs. Continuing so you can inspect."
   fi
 
   # Optional seed
   set +e
   $COMPOSE -f "$COMPOSE_FILE" ${USE_CADDY:+-f "$CADDY_OVERRIDE"} exec -T "$BACKEND_SERVICE" sh -lc \
-    'if [ -f package.json ] && (cat package.json | grep -q "\"seed\"" || cat package.json | grep -q "prisma.*seed"); then echo "Seeding..."; npx prisma db seed; else echo "No seed config detected; skipping seed."; fi'
+    'if [ -f package.json ] && cat package.json | grep -q "\"db:seed\""; then echo "Seeding..."; npm run db:seed; else echo "No db:seed script detected; skipping seed."; fi'
   SEED_STATUS=$?
   set -e
   if [ $SEED_STATUS -ne 0 ]; then

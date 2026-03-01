@@ -1,0 +1,125 @@
+name: skuflow
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deco_network}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-deco_network}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${BACKEND_PORT:-3100}
+      API_URL: ${API_URL:-http://localhost:${BACKEND_PORT:-3100}}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-deco_network}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRY: ${JWT_EXPIRY:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${FRONTEND_PORT:-5173}}
+      S3_USE_LOCAL: ${S3_USE_LOCAL:-true}
+      BILLING_PROVIDER: ${BILLING_PROVIDER:-mock}
+      ENABLE_VENDOR_SYNC: ${ENABLE_VENDOR_SYNC:-false}
+      ENABLE_EMAIL_NOTIFICATIONS: ${ENABLE_EMAIL_NOTIFICATIONS:-false}
+      DN_ENC_KEY: ${DN_ENC_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+    ports:
+      - '${BACKEND_PORT:-3100}:3100'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:3100/health >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - backend_uploads:/app/backend/uploads
+      - backend_logs:/app/backend/logs
+
+  frontend:
+    profiles: ['prod']
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '${FRONTEND_PORT:-5173}:80'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost/health >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  frontend-dev:
+    profiles: ['dev']
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:${BACKEND_PORT:-3100}/api}
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+
+  worker:
+    profiles: ['worker']
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-deco_network}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      DN_ENC_KEY: ${DN_ENC_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      ENABLE_VENDOR_SYNC: ${ENABLE_VENDOR_SYNC:-false}
+      BILLING_PROVIDER: ${BILLING_PROVIDER:-mock}
+    command: ['npm', '--prefix', 'backend', 'run', 'worker:start']
+
+volumes:
+  postgres_data:
+  backend_uploads:
+  backend_logs:
