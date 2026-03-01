@@ -1,11 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import MockWebhookClient from '../providers/webhooks/mock/MockWebhookClient.js';
+import { getWebhookClient } from '../providers/webhooks/index.js';
 
 const prisma = new PrismaClient();
 
 export class WebhookService {
-  private client = new MockWebhookClient();
+  private client = getWebhookClient();
 
   async enqueueDeliveries(storeId: string, eventType: string, payload: any) {
     const endpoints = await (prisma as any).webhookEndpoint.findMany({

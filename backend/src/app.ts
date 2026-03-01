@@ -65,16 +65,20 @@ import shippingRoutes from './routes/shipping.js';
 import shippingWebhookRoutes from './routes/shipping-webhooks.js';
 import taxRoutes from './routes/tax.js';
 import paymentsWebhookRoutes from './routes/payments-webhooks.js';
+import { PROD, assertProdDatabaseUrlGuards, isProductionRuntime } from './config/prod.js';
 
 const app: Express = express();
 app.disable('x-powered-by');
 
-// CORS configuration: prod restricts by CORS_ORIGIN, dev permissive
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
+// CORS configuration: prod restricts by CORS_ORIGINS/CORS_ORIGIN, dev permissive
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
-const isProd = (process.env.NODE_ENV || 'development') === 'production';
+const isProd = isProductionRuntime();
+if (isProd && PROD.strictCors && allowedOrigins.length === 0) {
+  throw new Error('CORS_ORIGINS (or CORS_ORIGIN) must be set in production');
+}
 const commonHeaders = ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID', 'X-Correlation-ID'];
 const corsOptions: CorsOptions = isProd
   ? {
@@ -103,6 +107,9 @@ app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
 if (process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
 }
+if (isProd && PROD.trustProxy) {
+  app.set('trust proxy', 1);
+}
 app.use(
   helmet({
     hsts: isProd
@@ -113,6 +120,9 @@ app.use(
         }
       : false,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    contentSecurityPolicy: false,
   })
 );
 app.use(cors(corsOptions));
@@ -131,8 +141,15 @@ const limiter = rateLimit({
 app.use(limiter);
 
 const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
+  windowMs: PROD.rateLimitAuth.windowMs,
+  max: PROD.rateLimitAuth.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const publicLimiter = rateLimit({
+  windowMs: PROD.rateLimitPublic.windowMs,
+  max: PROD.rateLimitPublic.max,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -146,7 +163,7 @@ const webhookLimiter = rateLimit({
 
 // Health check (Render health path)
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ ok: true });
 });
 
 // API health check (useful for frontend hitting /api base)
@@ -160,11 +177,20 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'backend', 'uploads'
 // Readiness probe - checks DB quickly with strict timeout
 const readyPrisma = new PrismaClient();
 app.get('/ready', async (req, res) => {
+  try {
+    if (isProd && PROD.requireDatabaseUrl) {
+      assertProdDatabaseUrlGuards(process.env.DATABASE_URL || '');
+    }
+  } catch (error: any) {
+    return res.status(503).json({ ready: false, error: error?.message || 'invalid database config', timestamp: new Date() });
+  }
+
   const timeoutMs = 1000;
   const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('ready timeout')), timeoutMs));
   try {
     await Promise.race([
       readyPrisma.$executeRawUnsafe('SELECT 1'),
+      readyPrisma.$executeRawUnsafe('SELECT COUNT(*) FROM "_prisma_migrations"'),
       timeout,
     ]);
     return res.status(200).json({ ready: true, timestamp: new Date() });
@@ -202,7 +228,7 @@ app.use('/api', importJobsRoutes);
 app.use('/api/dn', authMiddleware, dnExploreRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/storage', storageRoutes);
-app.use('/api/public', publicRoutes);
+app.use('/api/public', publicLimiter, publicRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/theme', themeRoutes);
 app.use('/api/communications', communicationsRoutes);

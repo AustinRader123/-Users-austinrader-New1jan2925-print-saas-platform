@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';
-import MockNotificationProvider from '../providers/notifications/mock/MockNotificationProvider.js';
+import { getNotificationProvider } from '../providers/notifications/index.js';
 
 type NotificationType =
   | 'PROOF_REQUESTED'
@@ -23,7 +23,7 @@ const DEFAULT_TEMPLATE_MAP: Record<NotificationType, { email?: string; sms?: str
 };
 
 export class NotificationService {
-  private provider = new MockNotificationProvider();
+  private provider = getNotificationProvider();
 
   async enqueue(storeId: string, type: NotificationType, channel: NotificationChannel, to: string, payload: Record<string, unknown>) {
     return (prisma as any).notificationOutbox.create({

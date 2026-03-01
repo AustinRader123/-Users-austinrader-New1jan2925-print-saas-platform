@@ -58,6 +58,8 @@ async function main() {
   const hasPricingRuleSet = await tableExists('PricingRuleSet');
   const hasPricingRule = await tableExists('PricingRule');
   const hasSupplierConnection = await tableExists('SupplierConnection');
+  const hasExternalProductMap = await tableExists('ExternalProductMap');
+  const hasExternalVariantMap = await tableExists('ExternalVariantMap');
   const hasWebhookEndpoint = await tableExists('WebhookEndpoint');
   const hasNotificationTemplate = await tableExists('NotificationTemplate');
   const hasPlan = await tableExists('Plan');
@@ -672,6 +674,76 @@ async function main() {
       variants: variantsCount,
       images: imagesCount,
     });
+
+    // PHASE3_1_MIN_DATA_GUARD
+    // Ensure deterministic minimum supplier export dataset to avoid transient no-data-row CSV checks.
+    if (hasExternalProductMap && hasExternalVariantMap && hasSupplierConnection) {
+      const mockConnection = await prisma.supplierConnection.findFirst({
+        where: { storeId: seededStore.id, supplier: 'MOCK' },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+
+      const firstProduct = await prisma.product.findFirst({
+        where: { storeId: seededStore.id },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+
+      const firstVariant = await prisma.productVariant.findFirst({
+        where: { storeId: seededStore.id },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+
+      if (mockConnection && firstProduct && firstVariant) {
+        await (prisma as any).externalProductMap.upsert({
+          where: {
+            supplierConnectionId_externalProductId: {
+              supplierConnectionId: mockConnection.id,
+              externalProductId: `seed-ext-product-${firstProduct.id}`,
+            },
+          },
+          update: {
+            productId: firstProduct.id,
+            externalMeta: { source: 'seed', phase: 'phase3_1_guard' },
+          },
+          create: {
+            storeId: seededStore.id,
+            supplierConnectionId: mockConnection.id,
+            externalProductId: `seed-ext-product-${firstProduct.id}`,
+            productId: firstProduct.id,
+            externalMeta: { source: 'seed', phase: 'phase3_1_guard' },
+          },
+        });
+
+        await (prisma as any).externalVariantMap.upsert({
+          where: {
+            supplierConnectionId_externalVariantId: {
+              supplierConnectionId: mockConnection.id,
+              externalVariantId: `seed-ext-variant-${firstVariant.id}`,
+            },
+          },
+          update: {
+            variantId: firstVariant.id,
+            externalMeta: { source: 'seed', phase: 'phase3_1_guard' },
+          },
+          create: {
+            storeId: seededStore.id,
+            supplierConnectionId: mockConnection.id,
+            externalVariantId: `seed-ext-variant-${firstVariant.id}`,
+            variantId: firstVariant.id,
+            externalMeta: { source: 'seed', phase: 'phase3_1_guard' },
+          },
+        });
+
+        console.log('  phase3_1MinDataGuard:', {
+          supplierConnectionId: mockConnection.id,
+          productId: firstProduct.id,
+          variantId: firstVariant.id,
+        });
+      }
+    }
   }
 
   console.log('Seed complete:');
