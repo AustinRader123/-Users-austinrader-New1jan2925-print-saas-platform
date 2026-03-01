@@ -66,6 +66,7 @@ import shippingWebhookRoutes from './routes/shipping-webhooks.js';
 import taxRoutes from './routes/tax.js';
 import paymentsWebhookRoutes from './routes/payments-webhooks.js';
 import { PROD, assertProdDatabaseUrlGuards, isProductionRuntime } from './config/prod.js';
+import { appVersionHeader, appVersionMeta } from './version.js';
 
 const app: Express = express();
 app.disable('x-powered-by');
@@ -105,6 +106,7 @@ app.get('/__ping', (req, res) => {
 // Middleware - RequestID must be first
 app.use((req: any, res: any, next: any) => requestIdMiddleware(req, res, next));
 app.use((req: any, res, next) => {
+  res.setHeader('X-App-Version', appVersionHeader);
   const startedAt = Date.now();
   res.on('finish', () => {
     logger.info('http_request', {
@@ -183,6 +185,10 @@ app.get('/health', (_req, res) => {
 // API health check (useful for frontend hitting /api base)
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+app.get('/api/version', (_req, res) => {
+  res.status(200).json(appVersionMeta);
 });
 
 // Serve uploaded files in dev from backend/uploads

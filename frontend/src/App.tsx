@@ -78,6 +78,7 @@ import DashboardShippingPage from './pages/DashboardShippingPage';
 import DashboardNotificationsPage from './pages/DashboardNotificationsPage';
 import DashboardWebhooksPage from './pages/DashboardWebhooksPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import VersionStamp from './components/VersionStamp';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -800,6 +801,7 @@ function App() {
             />
           </Routes>
         </main>
+        <VersionStamp />
       </div>
     </Router>
   );
