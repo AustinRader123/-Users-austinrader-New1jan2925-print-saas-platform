@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -18,10 +19,16 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { FilesModule } from './modules/files/files.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthGuard } from './common/auth.guard';
+import { RbacGuard } from './common/rbac.guard';
 
 @Module({
   imports: [
     PrismaModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'dev-secret-change-me',
+      signOptions: { expiresIn: '15m' },
+    }),
     AuthModule,
     TenantModule,
     RolesModule,
@@ -40,6 +47,6 @@ import { PrismaModule } from './prisma/prisma.module';
     AuditModule,
   ],
   controllers: [HealthController],
-  providers: [EventsGateway],
+  providers: [EventsGateway, AuthGuard, RbacGuard],
 })
 export class AppModule {}
