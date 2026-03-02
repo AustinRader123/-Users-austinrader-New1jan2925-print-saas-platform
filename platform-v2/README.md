@@ -113,6 +113,7 @@ platform-v2/
   - create (or use) webhook,
   - enqueue retry job,
   - verify duplicate queue idempotency behavior,
+  - print retry queue state pre/post dispatch,
   - dispatch retries,
   - print latest delivery logs and IDs.
 - Quick use (with existing token):
