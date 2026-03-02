@@ -52,6 +52,32 @@ platform-v2/
 
 - `http://localhost:4000/api/docs`
 
+## Webhooks (current contract)
+
+- Management (auth + tenant scoped):
+  - `GET /api/webhooks`
+  - `POST /api/webhooks`
+  - `PATCH /api/webhooks/:id`
+  - `DELETE /api/webhooks/:id`
+  - `GET /api/webhooks/deliveries`
+  - `POST /api/webhooks/:id/retries/queue`
+  - `POST /api/webhooks/retries/dispatch`
+- Public inbound receiver:
+  - `POST /api/webhooks/inbound/:id`
+  - Optional inbound headers:
+    - `x-webhook-secret`
+    - `x-webhook-event-id`
+    - `x-webhook-idempotency-key`
+    - `x-webhook-signature-ts`
+    - `x-webhook-signature`
+- Outbound dispatch headers:
+  - `x-webhook-id`, `x-webhook-event`, `x-webhook-event-id`, `x-webhook-attempt`
+  - `x-webhook-idempotency-key`, `x-webhook-signature-ts`, `x-webhook-signature`
+- Reliability behavior:
+  - Inbound dedupe and retry dedupe use `idempotencyKey`
+  - Retries transition through `RETRY_QUEUED` / `RETRY_PROCESSING` / `RETRY_SENT` / `RETRY_FAILED`
+  - Backoff is `30s * attempt` capped at `15m`
+
 ## Reverse proxy
 
 - `docker compose up --build`

@@ -197,3 +197,49 @@ s3://bucket/
 7. Smoke suite
 8. Manual approval
 9. Deploy production + post-deploy checks
+
+## 19) Webhook contract and reliability model
+
+### 19.1 Management endpoints (authenticated)
+- `GET /api/webhooks` list configured webhooks
+- `POST /api/webhooks` create webhook (`eventType`, `endpoint`, optional `secret`)
+- `PATCH /api/webhooks/:id` update endpoint/secret/status
+- `DELETE /api/webhooks/:id` soft delete + deactivate
+- `GET /api/webhooks/deliveries` query delivery logs
+- `POST /api/webhooks/:id/retries/queue` enqueue retry payload
+- `POST /api/webhooks/retries/dispatch` pull/process queued retries
+
+### 19.2 Inbound endpoint (public)
+- `POST /api/webhooks/inbound/:id`
+- Accepted headers:
+  - `x-webhook-secret`
+  - `x-webhook-event-id`
+  - `x-webhook-idempotency-key`
+  - `x-webhook-signature-ts`
+  - `x-webhook-signature`
+
+### 19.3 Outbound dispatch headers
+- `x-webhook-id`
+- `x-webhook-event`
+- `x-webhook-event-id` (when present)
+- `x-webhook-attempt`
+- `x-webhook-idempotency-key`
+- `x-webhook-signature-ts`
+- `x-webhook-signature`
+
+### 19.4 Signature and canonical payload
+- Canonical string format:
+  - `${timestamp}.${eventId || ''}.${idempotencyKey}.${jsonBody}`
+- HMAC algorithm: `sha256`
+- Inbound validation rejects mismatched signatures and records `REJECTED_SIGNATURE` activity rows.
+
+### 19.5 Idempotency policy
+- Inbound events dedupe on `idempotencyKey` within recent inbound activity window.
+- Retry queue dedupe prevents duplicate active jobs for the same `idempotencyKey`.
+- Delivery logs persist `idempotencyKey` for replay/audit traceability.
+
+### 19.6 Retry lifecycle states
+- Queue lifecycle actions in `ActivityLog`:
+  - `RETRY_QUEUED` -> `RETRY_PROCESSING` -> (`RETRY_SENT` | `RETRY_FAILED`)
+- Failed attempts with remaining budget are requeued with backoff.
+- Backoff: linear floor (`30s * attempt`) capped at `15m`.
