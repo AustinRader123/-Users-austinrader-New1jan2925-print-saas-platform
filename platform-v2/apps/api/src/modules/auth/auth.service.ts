@@ -172,6 +172,8 @@ export class AuthService {
       'invoices.read',
       'invoices.write',
       'payments.write',
+      'production.read',
+      'production.write',
     ];
   }
 
