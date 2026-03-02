@@ -77,6 +77,7 @@ platform-v2/
   - Inbound dedupe and retry dedupe use `idempotencyKey`
   - Retries transition through `RETRY_QUEUED` / `RETRY_PROCESSING` / `RETRY_SENT` / `RETRY_FAILED`
   - Backoff is `30s * attempt` capped at `15m`
+  - Signature timestamp window enforced via `WEBHOOK_SIGNATURE_MAX_SKEW_SECONDS` (default `300`)
 
 ## Webhook runbook (triage)
 

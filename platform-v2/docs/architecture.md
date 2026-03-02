@@ -232,6 +232,7 @@ s3://bucket/
   - `${timestamp}.${eventId || ''}.${idempotencyKey}.${jsonBody}`
 - HMAC algorithm: `sha256`
 - Inbound validation rejects mismatched signatures and records `REJECTED_SIGNATURE` activity rows.
+- Inbound validation rejects signatures outside configurable skew window (`WEBHOOK_SIGNATURE_MAX_SKEW_SECONDS`, default `300`).
 
 ### 19.5 Idempotency policy
 - Inbound events dedupe on `idempotencyKey` within recent inbound activity window.
