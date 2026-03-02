@@ -3,11 +3,16 @@ import { apiClient } from '../../lib/api';
 import { withFallback } from '../../lib/apiClient';
 import { useAsync } from '../../lib/query';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
+import Table from '../../ui/Table';
+import Modal from '../../ui/Modal';
+import FormField from '../../ui/FormField';
 
 export default function AppWebhooksPage() {
   const storeId = localStorage.getItem('storeId') || 'default';
   const [url, setUrl] = React.useState('https://example.org/webhooks/skuflow');
   const [message, setMessage] = React.useState<string | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
   const state = useAsync(async () => {
     return withFallback(
@@ -30,6 +35,11 @@ export default function AppWebhooksPage() {
 
   const createEndpoint = async () => {
     setMessage(null);
+    setFormError(null);
+    if (!url.trim() || !/^https?:\/\//.test(url.trim())) {
+      setFormError('Enter a valid endpoint URL starting with http:// or https://');
+      return;
+    }
     try {
       await apiClient.createWebhookEndpoint({
         storeId,
@@ -40,6 +50,7 @@ export default function AppWebhooksPage() {
         eventTypes: ['invoice.sent', 'shipment.created', 'order.status_changed'],
       });
       setMessage('Webhook endpoint created.');
+      setCreateOpen(false);
       await state.refetch();
     } catch (error: any) {
       setMessage(error?.message || 'Create endpoint failed.');
@@ -47,26 +58,32 @@ export default function AppWebhooksPage() {
   };
 
   return (
-    <div className="deco-page">
-      <PageHeader title="Webhooks / Tracking" subtitle="Deterministic webhook endpoint and delivery operations." />
+    <div className="ops-page-grid">
+      <PageHeader
+        title="Webhooks / Tracking"
+        subtitle="Deterministic webhook endpoint and delivery operations."
+        actions={
+          <div className="flex gap-2">
+            <button className="ops-btn ops-btn-secondary" onClick={() => setCreateOpen(true)}>New Endpoint</button>
+            <button
+              className="ops-btn ops-btn-secondary"
+              onClick={async () => {
+                try {
+                  await apiClient.processWebhookDeliveries(50);
+                  setMessage('Webhook processing triggered.');
+                  await state.refetch();
+                } catch (error: any) {
+                  setMessage(error?.message || 'Process failed.');
+                }
+              }}
+            >
+              Process queue
+            </button>
+          </div>
+        }
+      />
 
-      <div className="deco-panel">
-        <div className="deco-panel-head">Create endpoint</div>
-        <div className="deco-panel-body flex flex-wrap items-center gap-2">
-          <input className="deco-input" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://..." />
-          <button className="deco-btn-primary" onClick={createEndpoint}>Create endpoint</button>
-          <button className="deco-btn" onClick={async () => {
-            try {
-              await apiClient.processWebhookDeliveries(50);
-              setMessage('Webhook processing triggered.');
-              await state.refetch();
-            } catch (error: any) {
-              setMessage(error?.message || 'Process failed.');
-            }
-          }}>Process queue</button>
-          {message ? <span className="text-xs text-slate-600">{message}</span> : null}
-        </div>
-      </div>
+      {message ? <div className="text-xs text-slate-600">{message}</div> : null}
 
       {state.loading ? <LoadingState title="Loading webhooks" /> : null}
       {!state.loading && state.error ? <ErrorState message={state.error} onRetry={state.refetch} /> : null}
@@ -75,53 +92,62 @@ export default function AppWebhooksPage() {
 
       {!state.loading && !state.error && state.data ? (
         <div className="grid gap-3 lg:grid-cols-2">
-          <div className="deco-panel">
-            <div className="deco-panel-head">Endpoints</div>
-            <div className="deco-table-wrap">
-              <table className="deco-table">
-                <thead><tr><th>Name</th><th>URL</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {state.data.endpoints.map((row: any) => (
-                    <tr key={row.id}>
-                      <td>{row.name || row.id}</td>
-                      <td className="text-xs">{row.url}</td>
-                      <td>
-                        <button className="deco-btn" onClick={async () => {
-                          try {
-                            await apiClient.testWebhookEndpoint(row.id, storeId);
-                            setMessage('Webhook test delivery sent.');
-                            await state.refetch();
-                          } catch (error: any) {
-                            setMessage(error?.message || 'Webhook test failed.');
-                          }
-                        }}>Test</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Table
+            title="Endpoints"
+            rows={state.data.endpoints}
+            getRowId={(row: any) => String(row.id)}
+            searchPlaceholder="Search endpoint"
+            searchBy={(row: any, q) => String(row.name || row.id).toLowerCase().includes(q) || String(row.url || '').toLowerCase().includes(q)}
+            columns={[
+              { key: 'name', label: 'Name', sortable: true, sortValue: (row: any) => String(row.name || row.id), render: (row: any) => row.name || row.id },
+              { key: 'url', label: 'URL', sortable: true, sortValue: (row: any) => String(row.url || ''), render: (row: any) => <span className="text-xs">{row.url}</span> },
+            ]}
+            rowActions={[
+              {
+                label: 'Test',
+                onClick: async (row: any) => {
+                  try {
+                    await apiClient.testWebhookEndpoint(row.id, storeId);
+                    setMessage('Webhook test delivery sent.');
+                    await state.refetch();
+                  } catch (error: any) {
+                    setMessage(error?.message || 'Webhook test failed.');
+                  }
+                },
+              },
+            ]}
+          />
 
-          <div className="deco-panel">
-            <div className="deco-panel-head">Deliveries</div>
-            <div className="deco-table-wrap">
-              <table className="deco-table">
-                <thead><tr><th>Event</th><th>Status</th><th>Created</th></tr></thead>
-                <tbody>
-                  {state.data.deliveries.slice(0, 20).map((row: any) => (
-                    <tr key={row.id}>
-                      <td>{row.eventType || row.event || 'event'}</td>
-                      <td>{row.status || row.deliveryStatus || 'PENDING'}</td>
-                      <td>{row.createdAt || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Table
+            title="Deliveries"
+            rows={state.data.deliveries.slice(0, 50)}
+            getRowId={(row: any) => String(row.id)}
+            searchPlaceholder="Search event or status"
+            searchBy={(row: any, q) => String(row.eventType || row.event || '').toLowerCase().includes(q) || String(row.status || row.deliveryStatus || '').toLowerCase().includes(q)}
+            columns={[
+              { key: 'event', label: 'Event', sortable: true, sortValue: (row: any) => String(row.eventType || row.event || ''), render: (row: any) => row.eventType || row.event || 'event' },
+              { key: 'status', label: 'Status', sortable: true, sortValue: (row: any) => String(row.status || row.deliveryStatus || ''), render: (row: any) => <span className="ops-badge">{row.status || row.deliveryStatus || 'PENDING'}</span> },
+              { key: 'created', label: 'Created', sortable: true, sortValue: (row: any) => String(row.createdAt || ''), render: (row: any) => row.createdAt || '—' },
+            ]}
+          />
         </div>
       ) : null}
+
+      <Modal open={createOpen} title="Create Webhook Endpoint" onClose={() => setCreateOpen(false)}>
+        <div className="space-y-3">
+          <FormField
+            label="Endpoint URL"
+            description="Destination for outbound webhook events."
+            error={formError}
+          >
+            <input className="ops-input w-full" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/webhooks/skuflow" />
+          </FormField>
+          <div className="flex justify-end gap-2">
+            <button className="ops-btn ops-btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
+            <button className="ops-btn ops-btn-primary" onClick={() => void createEndpoint()}>Create endpoint</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -30,13 +30,15 @@ export function LayoutShell({
       <AppHeader navItems={navItems} onMenu={() => setMobileOpen(true)} dense={dense} onToggleDense={() => setDense((value) => !value)} />
 
       <div className="ops-shell-body">
-        <Sidebar navItems={navItems} roleLabel={roleLabel} collapsed={collapsed} className="ops-desktop-sidebar" />
+        <Sidebar
+          navItems={navItems}
+          roleLabel={roleLabel}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((value) => !value)}
+          className="ops-desktop-sidebar"
+        />
         <main className="ops-main">{children}</main>
       </div>
-
-      <button className="ops-collapse-toggle" type="button" onClick={() => setCollapsed((value) => !value)}>
-        {collapsed ? 'Expand Nav' : 'Collapse Nav'}
-      </button>
 
       {mobileOpen ? (
         <div className="ops-mobile-overlay" role="dialog" aria-modal="true" onClick={() => setMobileOpen(false)}>

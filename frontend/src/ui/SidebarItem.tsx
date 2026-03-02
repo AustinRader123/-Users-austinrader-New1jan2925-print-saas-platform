@@ -9,6 +9,7 @@ export function SidebarItem({
   collapsed,
   badgeCount,
   onNavigate,
+  compact,
 }: {
   to: string;
   label: string;
@@ -16,6 +17,7 @@ export function SidebarItem({
   collapsed?: boolean;
   badgeCount?: number;
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
   return (
     <NavLink
@@ -24,7 +26,7 @@ export function SidebarItem({
       onClick={onNavigate}
       title={collapsed ? label : undefined}
       aria-label={label}
-      className={({ isActive }) => `ops-sidebar-item ${isActive ? 'is-active' : ''}`}
+      className={({ isActive }) => `ops-sidebar-item ${compact ? 'is-compact' : ''} ${isActive ? 'is-active' : ''}`}
     >
       <Icon className="ops-sidebar-icon" />
       {!collapsed ? <span className="ops-sidebar-label">{label}</span> : null}

@@ -4,6 +4,7 @@ import { apiClient } from '../../lib/api';
 import { withFallback } from '../../lib/apiClient';
 import { useAsync } from '../../lib/query';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
+import Table from '../../ui/Table';
 
 type QuoteRow = {
   id: string;
@@ -77,37 +78,40 @@ export default function AppQuotesPage() {
       {!state.loading && !state.error && rows.length === 0 ? <EmptyState title="No quotes yet" description="Create your first quote to start the sales flow." /> : null}
 
       {!state.loading && !state.error && rows.length > 0 ? (
-        <div className="deco-panel">
-          <div className="deco-table-wrap">
-            <table className="deco-table">
-              <thead>
-                <tr>
-                  <th>Quote #</th>
-                  <th>Customer</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="font-semibold">{row.quoteNumber}</td>
-                    <td>{row.customerName}</td>
-                    <td><span className="deco-badge">{row.status}</span></td>
-                    <td>${row.total.toFixed(2)}</td>
-                    <td>{new Date(row.createdAt).toLocaleString()}</td>
-                    <td className="flex gap-1">
-                      <Link className="deco-btn" to={`/app/quotes/${row.id}`}>View</Link>
-                      <button className="deco-btn-primary" onClick={() => convert(row.id)}>Convert</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Table
+          title="Quotes"
+          rows={rows}
+          getRowId={(row) => row.id}
+          searchPlaceholder="Search quote # or customer"
+          searchBy={(row, q) => row.quoteNumber.toLowerCase().includes(q) || row.customerName.toLowerCase().includes(q)}
+          filters={[
+            {
+              key: 'status',
+              label: 'Status',
+              getValue: (row) => row.status,
+              options: Array.from(new Set(rows.map((row) => row.status))).map((value) => ({ label: value, value })),
+            },
+          ]}
+          columns={[
+            { key: 'quoteNumber', label: 'Quote #', sortable: true, sortValue: (row) => row.quoteNumber, render: (row) => <span className="font-semibold">{row.quoteNumber}</span> },
+            { key: 'customer', label: 'Customer', sortable: true, sortValue: (row) => row.customerName, render: (row) => row.customerName },
+            { key: 'status', label: 'Status', sortable: true, sortValue: (row) => row.status, render: (row) => <span className="ops-badge">{row.status}</span> },
+            { key: 'total', label: 'Total', sortable: true, sortValue: (row) => row.total, render: (row) => `$${row.total.toFixed(2)}` },
+            {
+              key: 'created',
+              label: 'Created',
+              sortable: true,
+              sortValue: (row) => new Date(row.createdAt).getTime(),
+              render: (row) => new Date(row.createdAt).toLocaleString(),
+            },
+          ]}
+          rowActions={[
+            { label: 'View', onClick: (row) => navigate(`/app/quotes/${row.id}`) },
+            { label: 'Convert', onClick: (row) => void convert(row.id) },
+          ]}
+          onBulkAction={(selected) => console.info('Selected quotes', selected.map((row) => row.id))}
+          bulkActionLabel="Select"
+        />
       ) : null}
     </div>
   );

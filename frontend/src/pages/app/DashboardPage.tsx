@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from './ui';
+import Card, { CardBody, CardHeader } from '../../ui/Card';
 
 export default function AppDashboardPage() {
   const quickActions = [
@@ -10,26 +11,77 @@ export default function AppDashboardPage() {
     { label: 'Reports', to: '/app/reports' },
   ];
 
+  const kpis = [
+    { label: 'Open Orders', value: '184', delta: '+12 today' },
+    { label: 'Quotes Pending', value: '37', delta: '+4 today' },
+    { label: 'Jobs in Production', value: '52', delta: '8 blocked' },
+    { label: 'On-time Shipments', value: '96.4%', delta: '+1.1% vs last week' },
+  ];
+
+  const trend = [24, 26, 21, 29, 34, 38, 36, 42, 39, 45, 47, 44];
+  const maxTrend = Math.max(...trend);
+
   return (
-    <div className="deco-page">
+    <div className="ops-page-grid">
       <PageHeader title="Dashboard" subtitle="Operational summary across orders, production, inventory, and fulfillment." />
 
-      <div className="deco-panel">
-        <div className="deco-panel-head">Quick Actions</div>
-        <div className="deco-panel-body grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="ops-kpi-grid">
+        {kpis.map((kpi) => (
+          <Card key={kpi.label}>
+            <CardBody className="ops-kpi-card">
+              <span className="ops-kpi-label">{kpi.label}</span>
+              <strong className="ops-kpi-value">{kpi.value}</strong>
+              <span className="ops-kpi-delta">{kpi.delta}</span>
+            </CardBody>
+          </Card>
+        ))}
+      </section>
+
+      <Card>
+        <CardHeader>Quick Actions</CardHeader>
+        <CardBody className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {quickActions.map((action) => (
-            <Link key={action.label} to={action.to} className="deco-btn">
+            <Link key={action.label} to={action.to} className="ops-btn ops-btn-secondary justify-center">
               {action.label}
             </Link>
           ))}
-        </div>
-      </div>
+        </CardBody>
+      </Card>
 
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
-        <div className="deco-panel">
-          <div className="deco-panel-head">Recent Orders Snapshot</div>
+        <Card>
+          <CardHeader>Order Throughput (12h)</CardHeader>
+          <CardBody>
+            <div className="ops-mini-chart" aria-label="Order throughput chart">
+              {trend.map((point, index) => (
+                <div key={index} className="ops-mini-chart-col">
+                  <div style={{ height: `${Math.max(12, (point / maxTrend) * 100)}%` }} className="ops-mini-chart-bar" />
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>Activity Feed</CardHeader>
+          <CardBody className="space-y-2">
+            {[
+              'SO-10602 moved to Production',
+              'Quote Q-101 approved',
+              'Webhook retry requeued (2)',
+              'Inventory batch rec-884 consumed',
+            ].map((item) => (
+              <div key={item} className="ops-activity-item">{item}</div>
+            ))}
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>Recent Orders Snapshot</CardHeader>
+        <CardBody className="p-0">
           <div className="deco-table-wrap">
-            <table className="deco-table">
+            <table className="ops-table">
               <thead>
                 <tr>
                   <th>Order #</th>
@@ -49,7 +101,7 @@ export default function AppDashboardPage() {
                   <tr key={row[0]}>
                     <td className="font-semibold">{row[0]}</td>
                     <td>{row[1]}</td>
-                    <td><span className="deco-badge">{row[2]}</span></td>
+                    <td><span className="ops-badge">{row[2]}</span></td>
                     <td>{row[3]}</td>
                     <td>{row[4]}</td>
                   </tr>
@@ -57,17 +109,8 @@ export default function AppDashboardPage() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="deco-panel">
-          <div className="deco-panel-head">Alerts</div>
-          <div className="deco-panel-body space-y-2">
-            {['Low inventory (3)', 'Pending approvals (6)', 'Webhook failures (1)'].map((item) => (
-              <div key={item} className="rounded border border-slate-200 bg-slate-50 px-2 py-2 text-xs text-slate-700">{item}</div>
-            ))}
-          </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }

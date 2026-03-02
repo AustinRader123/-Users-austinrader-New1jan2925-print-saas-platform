@@ -1,9 +1,10 @@
 import React from 'react';
-import { Command, Menu, Moon, Plus, Search, Sun } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Bell, ChevronDown, Command, Menu, Moon, Plus, Search, Sun } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { AppNavItem } from '../nav/navConfig';
 import Button from './Button';
 import Input from './Input';
+import { useAuthStore } from '../stores/authStore';
 
 function useCommandPalette(onOpen: () => void) {
   React.useEffect(() => {
@@ -29,10 +30,28 @@ export function AppHeader({
   dense: boolean;
   onToggleDense: () => void;
 }) {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const [openPalette, setOpenPalette] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [storeId, setStoreId] = React.useState(() => localStorage.getItem('storeId') || 'default');
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+
+  const crumbs = React.useMemo(() => {
+    const segments = location.pathname.split('/').filter(Boolean);
+    const appIdx = segments.indexOf('app');
+    const appSegments = appIdx >= 0 ? segments.slice(appIdx + 1) : [];
+    if (appSegments.length === 0) return [{ label: 'Dashboard', to: '/app' }];
+
+    return appSegments.map((seg, index) => {
+      const label = seg
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+      const to = `/app/${appSegments.slice(0, index + 1).join('/')}`;
+      return { label, to };
+    });
+  }, [location.pathname]);
 
   React.useEffect(() => {
     localStorage.setItem('storeId', storeId || 'default');
@@ -52,6 +71,15 @@ export function AppHeader({
       </div>
 
       <div className="ops-header-center">
+        <div className="ops-header-breadcrumbs" aria-label="Breadcrumb">
+          <Link to="/app">App</Link>
+          {crumbs.map((crumb) => (
+            <React.Fragment key={crumb.to}>
+              <span>/</span>
+              <Link to={crumb.to}>{crumb.label}</Link>
+            </React.Fragment>
+          ))}
+        </div>
         <div className="ops-global-search">
           <Search className="h-3.5 w-3.5" />
           <input placeholder="Search orders, products, jobs..." />
@@ -63,8 +91,8 @@ export function AppHeader({
           className="ops-store-pill"
           value={storeId}
           onChange={(event) => setStoreId(event.target.value)}
-          aria-label="Store selector"
-          title="Store selector"
+          aria-label="Tenant/store selector"
+          title="Tenant/store selector"
         />
 
         <Button type="button" className="ops-shortcut-btn" onClick={() => setOpenPalette(true)}>
@@ -86,10 +114,46 @@ export function AppHeader({
           </div>
         </details>
 
+        <button className="ops-icon-btn" type="button" onClick={() => setNotificationsOpen((value) => !value)} aria-label="Notifications">
+          <Bell className="h-4 w-4" />
+        </button>
+
         <button className="ops-icon-btn" type="button" onClick={onToggleDense} aria-label="Toggle density">
           {dense ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
+
+        <details className="ops-profile-menu">
+          <summary>
+            <span className="ops-avatar">{(user?.name || user?.email || 'U').slice(0, 1).toUpperCase()}</span>
+            <span className="ops-profile-name">{user?.name || user?.email || 'Account'}</span>
+            <ChevronDown className="h-3.5 w-3.5" />
+          </summary>
+          <div className="ops-create-popover">
+            <button type="button" onClick={() => navigate('/app/settings')}>Settings</button>
+            <button type="button" onClick={() => navigate('/app/users-roles')}>Users & Roles</button>
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                navigate('/login');
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </details>
       </div>
+
+      {notificationsOpen ? (
+        <div className="ops-notification-panel">
+          <div className="ops-notification-title">Notifications</div>
+          <ul>
+            <li>3 orders need approval</li>
+            <li>1 webhook retry failed</li>
+            <li>2 low-stock SKUs detected</li>
+          </ul>
+        </div>
+      ) : null}
 
       {openPalette ? (
         <div className="ops-palette-overlay" role="dialog" aria-modal="true">

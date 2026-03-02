@@ -30,6 +30,7 @@ export type AppNavItem = {
   rolesAllowed: string[];
   featureGateKey?: string;
   badgeCount?: number;
+  children?: AppNavItem[];
 };
 
 export const appNavItems: AppNavItem[] = [
@@ -38,7 +39,33 @@ export const appNavItems: AppNavItem[] = [
   { key: 'products', section: 'Core', label: 'Products', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
   { key: 'catalogs', section: 'Core', label: 'Catalogs', icon: Boxes, path: '/app/catalogs', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
 
-  { key: 'production', section: 'Workflow', label: 'Production', icon: Factory, path: '/app/production/board', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 6 },
+  {
+    key: 'production',
+    section: 'Workflow',
+    label: 'Production',
+    icon: Factory,
+    path: '/app/production/board',
+    rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'],
+    badgeCount: 6,
+    children: [
+      {
+        key: 'production-board',
+        section: 'Workflow',
+        label: 'Board',
+        icon: Factory,
+        path: '/app/production/board',
+        rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'],
+      },
+      {
+        key: 'production-jobs',
+        section: 'Workflow',
+        label: 'Jobs',
+        icon: Factory,
+        path: '/app/production/jobs',
+        rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'],
+      },
+    ],
+  },
   { key: 'purchasing', section: 'Workflow', label: 'Purchasing', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
   { key: 'inventory', section: 'Workflow', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
 
@@ -73,9 +100,17 @@ function readFeatureGates(): Record<string, boolean> {
 export function getVisibleNavItems(role?: string | null): AppNavItem[] {
   const normalizedRole = String(role || 'CUSTOMER').toUpperCase();
   const gates = readFeatureGates();
-  return appNavItems.filter((item) => {
+
+  const canSee = (item: AppNavItem) => {
     if (!item.rolesAllowed.includes(normalizedRole)) return false;
     if (!item.featureGateKey) return true;
     return gates[item.featureGateKey] !== false;
-  });
+  };
+
+  return appNavItems
+    .filter(canSee)
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter(canSee),
+    }));
 }

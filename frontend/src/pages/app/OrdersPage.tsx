@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api';
 import { withFallback } from '../../lib/apiClient';
 import { useAsync } from '../../lib/query';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
+import Table from '../../ui/Table';
 
 type OrderRow = {
   id: string;
@@ -21,10 +22,8 @@ const mockOrders: OrderRow[] = [
 ];
 
 export default function AppOrdersPage() {
-  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
   const [status, setStatus] = useState('ALL');
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
 
   const state = useAsync(async () => {
     return withFallback(
@@ -48,24 +47,15 @@ export default function AppOrdersPage() {
   const filtered = useMemo(() => {
     const rows = state.data || [];
     const filteredRows = rows.filter((row) => {
-      const q = query.trim().toLowerCase();
-      const qOk = !q || row.orderNumber.toLowerCase().includes(q) || row.customerName.toLowerCase().includes(q);
       const sOk = status === 'ALL' || row.status === status;
-      return qOk && sOk;
+      return sOk;
     });
     return filteredRows.sort((a, b) => {
       const byUpdated = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       if (byUpdated !== 0) return byUpdated;
       return String(a.id).localeCompare(String(b.id));
     });
-  }, [state.data, query, status]);
-
-  const paged = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  }, [state.data, status]);
 
   return (
     <div className="deco-page">
@@ -75,9 +65,8 @@ export default function AppOrdersPage() {
         actions={<Link to="/app/orders/new" className="deco-btn-primary">New Order</Link>}
       />
 
-      <div className="deco-panel">
-        <div className="deco-panel-body flex flex-wrap gap-2">
-          <input className="deco-input" placeholder="Search order # or customer" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="ops-card">
+        <div className="ops-card-body flex flex-wrap gap-2">
           <select className="deco-input" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="ALL">All statuses</option>
             <option value="Pending">Pending</option>
@@ -96,41 +85,63 @@ export default function AppOrdersPage() {
       ) : null}
 
       {!state.loading && !state.error && filtered.length > 0 ? (
-        <div className="deco-panel">
-          <div className="deco-table-wrap">
-            <table className="deco-table">
-              <thead>
-                <tr>
-                  <th>Order #</th>
-                  <th>Customer</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                  <th>Updated</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paged.map((row) => (
-                  <tr key={row.id}>
-                    <td className="font-semibold">{row.orderNumber}</td>
-                    <td>{row.customerName}</td>
-                    <td><span className="deco-badge">{row.status}</span></td>
-                    <td>${row.total.toFixed(2)}</td>
-                    <td>{new Date(row.updatedAt).toLocaleString()}</td>
-                    <td><Link to={`/app/orders/${row.id}`} className="deco-btn">View</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="deco-panel-body border-t border-slate-200 flex items-center justify-between">
-            <div className="text-xs text-slate-500">Page {page} of {totalPages}</div>
-            <div className="flex gap-2">
-              <button className="deco-btn" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
-              <button className="deco-btn" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
-            </div>
-          </div>
-        </div>
+        <Table
+          title="Orders"
+          rows={filtered}
+          pageSize={10}
+          searchPlaceholder="Search order # or customer"
+          searchBy={(row, query) => row.orderNumber.toLowerCase().includes(query) || row.customerName.toLowerCase().includes(query)}
+          getRowId={(row) => row.id}
+          columns={[
+            {
+              key: 'orderNumber',
+              label: 'Order #',
+              sortable: true,
+              sortValue: (row) => row.orderNumber,
+              render: (row) => <span className="font-semibold">{row.orderNumber}</span>,
+            },
+            {
+              key: 'customer',
+              label: 'Customer',
+              sortable: true,
+              sortValue: (row) => row.customerName,
+              render: (row) => row.customerName,
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              sortable: true,
+              sortValue: (row) => row.status,
+              render: (row) => <span className="ops-badge">{row.status}</span>,
+            },
+            {
+              key: 'total',
+              label: 'Total',
+              sortable: true,
+              sortValue: (row) => row.total,
+              render: (row) => `$${row.total.toFixed(2)}`,
+            },
+            {
+              key: 'updatedAt',
+              label: 'Updated',
+              sortable: true,
+              sortValue: (row) => new Date(row.updatedAt).getTime(),
+              render: (row) => new Date(row.updatedAt).toLocaleString(),
+            },
+          ]}
+          rowActions={[
+            {
+              label: 'View',
+              onClick: (row) => {
+                navigate(`/app/orders/${row.id}`);
+              },
+            },
+          ]}
+          onBulkAction={(rows) => {
+            console.info('Selected orders', rows.map((row) => row.id));
+          }}
+          bulkActionLabel="Select"
+        />
       ) : null}
     </div>
   );
