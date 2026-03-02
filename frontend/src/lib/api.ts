@@ -855,6 +855,16 @@ class ApiClient {
     return data;
   }
 
+  async updateQuoteItem(quoteId: string, itemId: string, payload: { storeId: string; qty: { units: number } }) {
+    const { data } = await this.client.put(`/quotes/${quoteId}/items/${itemId}`, payload);
+    return data;
+  }
+
+  async removeQuoteItem(quoteId: string, itemId: string, storeId: string) {
+    const { data } = await this.client.delete(`/quotes/${quoteId}/items/${itemId}`, { data: { storeId } });
+    return data;
+  }
+
   async convertQuoteToOrder(quoteId: string, storeId: string) {
     const { data } = await this.client.post(`/quotes/${quoteId}/convert`, { storeId });
     return data;

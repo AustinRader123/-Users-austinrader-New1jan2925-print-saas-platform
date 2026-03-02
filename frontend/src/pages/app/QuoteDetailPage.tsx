@@ -14,6 +14,7 @@ export default function AppQuoteDetailPage() {
   const [selectedProductId, setSelectedProductId] = React.useState('');
   const [selectedVariantId, setSelectedVariantId] = React.useState('');
   const [units, setUnits] = React.useState(12);
+  const [editingQty, setEditingQty] = React.useState<Record<string, number>>({});
 
   const state = useAsync(async () => {
     return withFallback(
@@ -111,6 +112,33 @@ export default function AppQuoteDetailPage() {
     }
   };
 
+  const saveLineQty = async (itemId: string) => {
+    const nextQty = Number(editingQty[itemId] || 0);
+    if (!Number.isFinite(nextQty) || nextQty < 1) {
+      setActionMessage('Line quantity must be at least 1.');
+      return;
+    }
+    setActionMessage(null);
+    try {
+      await apiClient.updateQuoteItem(id, itemId, { storeId, qty: { units: Math.floor(nextQty) } });
+      setActionMessage('Line item updated.');
+      await state.refetch();
+    } catch (error: any) {
+      setActionMessage(error?.message || 'Failed to update line item.');
+    }
+  };
+
+  const removeLine = async (itemId: string) => {
+    setActionMessage(null);
+    try {
+      await apiClient.removeQuoteItem(id, itemId, storeId);
+      setActionMessage('Line item removed.');
+      await state.refetch();
+    } catch (error: any) {
+      setActionMessage(error?.message || 'Failed to remove line item.');
+    }
+  };
+
   return (
     <div className="deco-page">
       <PageHeader
@@ -184,6 +212,7 @@ export default function AppQuoteDetailPage() {
                     <th>Unit Price</th>
                     <th>Line Total</th>
                     <th>Created</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -194,16 +223,30 @@ export default function AppQuoteDetailPage() {
                       if (createdDiff !== 0) return createdDiff;
                       return String(a.id).localeCompare(String(b.id));
                     })
-                    .map((item: any) => (
+                    .map((item: any) => {
+                      const currentQty = Number(editingQty[item.id] ?? item.quantity ?? item.qty?.units ?? 0);
+                      return (
                       <tr key={item.id}>
                         <td>{item.productId || item.product?.name || '—'}</td>
                         <td>{item.variantId || item.productVariantId || '—'}</td>
-                        <td>{item.quantity || item.qty?.units || 0}</td>
+                        <td>
+                          <input
+                            className="deco-input w-20"
+                            type="number"
+                            min={1}
+                            value={currentQty}
+                            onChange={(event) => setEditingQty((prev) => ({ ...prev, [item.id]: Number(event.target.value || 1) }))}
+                          />
+                        </td>
                         <td>${Number(item.unitPrice || 0).toFixed(2)}</td>
                         <td>${Number(item.lineTotal || 0).toFixed(2)}</td>
                         <td>{item.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}</td>
+                        <td className="flex gap-1">
+                          <button className="deco-btn" onClick={() => saveLineQty(item.id)}>Save</button>
+                          <button className="deco-btn" onClick={() => removeLine(item.id)}>Remove</button>
+                        </td>
                       </tr>
-                    ))}
+                    )})}
                 </tbody>
               </table>
             </div>

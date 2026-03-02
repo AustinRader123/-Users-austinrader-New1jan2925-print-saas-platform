@@ -48,6 +48,13 @@ const addItemSchema = z.object({
   description: z.string().optional(),
 });
 
+const updateItemSchema = z.object({
+  storeId: z.string().min(1),
+  qty: z.object({
+    units: z.number().int().positive(),
+  }),
+});
+
 const statusSchema = z.object({
   storeId: z.string().min(1),
   status: z.enum(['DRAFT', 'SENT', 'APPROVED', 'DECLINED', 'REJECTED', 'EXPIRED', 'CONVERTED']),
@@ -143,6 +150,32 @@ router.post('/:quoteId/items', roleMiddleware(['ADMIN', 'STORE_OWNER']), async (
   } catch (error) {
     logger.error('Add quote item error:', error);
     res.status(500).json({ error: (error as Error).message || 'Failed to add quote item' });
+  }
+});
+
+router.put('/:quoteId/items/:itemId', roleMiddleware(['ADMIN', 'STORE_OWNER']), async (req: AuthRequest, res: Response) => {
+  try {
+    const body = parseOr400(updateItemSchema, req.body, res);
+    if (!body) return;
+
+    const lineItem = await QuoteService.updateLineItem(body.storeId, req.params.quoteId, req.params.itemId, body);
+    res.json(lineItem);
+  } catch (error) {
+    logger.error('Update quote item error:', error);
+    res.status(500).json({ error: (error as Error).message || 'Failed to update quote item' });
+  }
+});
+
+router.delete('/:quoteId/items/:itemId', roleMiddleware(['ADMIN', 'STORE_OWNER']), async (req: AuthRequest, res: Response) => {
+  try {
+    const body = parseOr400(storeScopedSchema, { storeId: resolveStoreId(req) }, res);
+    if (!body) return;
+
+    const result = await QuoteService.removeLineItem(body.storeId, req.params.quoteId, req.params.itemId);
+    res.json(result);
+  } catch (error) {
+    logger.error('Remove quote item error:', error);
+    res.status(500).json({ error: (error as Error).message || 'Failed to remove quote item' });
   }
 });
 

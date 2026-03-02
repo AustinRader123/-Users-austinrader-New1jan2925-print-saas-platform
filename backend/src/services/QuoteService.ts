@@ -8,6 +8,21 @@ export class QuoteService {
     return `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
   }
 
+  private async recalcQuoteTotals(quoteId: string) {
+    const totals = await prisma.quoteLineItem.aggregate({
+      where: { quoteId },
+      _sum: { lineTotal: true },
+    });
+    const subtotal = Number(totals._sum.lineTotal || 0);
+    await prisma.quote.update({
+      where: { id: quoteId },
+      data: {
+        subtotal,
+        total: subtotal,
+      },
+    });
+  }
+
   async listQuotes(storeId: string) {
     return prisma.quote.findMany({
       where: { storeId },
@@ -170,21 +185,56 @@ export class QuoteService {
       },
     });
 
-    const totals = await prisma.quoteLineItem.aggregate({
-      where: { quoteId },
-      _sum: { lineTotal: true },
-    });
-    const subtotal = Number(totals._sum.lineTotal || 0);
+    await this.recalcQuoteTotals(quoteId);
 
-    await prisma.quote.update({
-      where: { id: quoteId },
+    return lineItem;
+  }
+
+  async updateLineItem(storeId: string, quoteId: string, lineItemId: string, input: { qty: { units: number } }) {
+    const quote = await prisma.quote.findFirst({ where: { id: quoteId, storeId } });
+    if (!quote) throw new Error('Quote not found');
+
+    const lineItem = await prisma.quoteLineItem.findFirst({
+      where: {
+        id: lineItemId,
+        quoteId,
+        storeId,
+      },
+    });
+    if (!lineItem) throw new Error('Quote line item not found');
+
+    const quantity = Math.max(1, Number(input.qty?.units || lineItem.quantity || 1));
+    const lineTotal = Number((quantity * Number(lineItem.unitPrice || 0)).toFixed(2));
+
+    const updated = await prisma.quoteLineItem.update({
+      where: { id: lineItem.id },
       data: {
-        subtotal,
-        total: subtotal,
+        qty: { ...(lineItem.qty as any || {}), units: quantity } as any,
+        quantity,
+        lineTotal,
       },
     });
 
-    return lineItem;
+    await this.recalcQuoteTotals(quoteId);
+    return updated;
+  }
+
+  async removeLineItem(storeId: string, quoteId: string, lineItemId: string) {
+    const quote = await prisma.quote.findFirst({ where: { id: quoteId, storeId } });
+    if (!quote) throw new Error('Quote not found');
+
+    const lineItem = await prisma.quoteLineItem.findFirst({
+      where: {
+        id: lineItemId,
+        quoteId,
+        storeId,
+      },
+    });
+    if (!lineItem) throw new Error('Quote line item not found');
+
+    await prisma.quoteLineItem.delete({ where: { id: lineItem.id } });
+    await this.recalcQuoteTotals(quoteId);
+    return { ok: true, id: lineItemId };
   }
 
   async convertToOrder(storeId: string, quoteId: string, userId: string) {
@@ -309,19 +359,7 @@ export class QuoteService {
       });
     }
 
-    const totals = await prisma.quoteLineItem.aggregate({
-      where: { quoteId },
-      _sum: { lineTotal: true },
-    });
-    const subtotal = Number(totals._sum.lineTotal || 0);
-
-    await prisma.quote.update({
-      where: { id: quoteId },
-      data: {
-        subtotal,
-        total: subtotal,
-      },
-    });
+    await this.recalcQuoteTotals(quoteId);
 
     return this.getQuote(storeId, quoteId);
   }
