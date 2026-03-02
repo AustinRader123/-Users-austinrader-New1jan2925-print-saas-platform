@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import {
   HelpCircle,
   LifeBuoy,
@@ -9,12 +9,11 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Toasts } from '../ui/Toasts';
-import { appNavItems } from '../nav/navConfig';
+import Sidebar from '../components/app/Sidebar';
+import MobileNavDrawer from '../components/app/MobileNavDrawer';
 
 function DecoSidebar() {
-  const location = useLocation();
   const { user } = useAuthStore();
-  const visibleItems = appNavItems;
 
   return (
     <aside className="deco-sidebar">
@@ -22,32 +21,7 @@ function DecoSidebar() {
         <div className="deco-sidebar-title">Portal Navigation</div>
         <div className="deco-sidebar-subtitle">Role: {user?.role || 'CUSTOMER'}</div>
       </div>
-
-      <nav className="deco-nav-list">
-        {visibleItems.length === 0 ? (
-          <div className="deco-nav-empty">No navigation items available for this role.</div>
-        ) : (
-          visibleItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.path === '/app'
-              ? location.pathname === '/app'
-              : location.pathname.startsWith(item.path);
-
-            return (
-              <NavLink
-                key={item.id}
-                to={item.path}
-                className={`deco-nav-item ${isActive ? 'is-active' : ''}`}
-                end={item.path === '/app'}
-              >
-                <Icon className="deco-nav-icon" />
-                <span>{item.label}</span>
-                {typeof item.badgeCount === 'number' ? <em className="deco-nav-badge">{item.badgeCount}</em> : null}
-              </NavLink>
-            );
-          })
-        )}
-      </nav>
+      <Sidebar user={user} />
     </aside>
   );
 }
@@ -80,6 +54,7 @@ function PrimaryHeader() {
     <header className="deco-primary-header">
       <div className="deco-primary-inner">
         <div className="deco-brand-wrap">
+          <MobileNavDrawer user={user} />
           <Link to="/app" className="deco-brand-logo">S</Link>
           <span className="deco-brand-text">SkuFlow</span>
         </div>

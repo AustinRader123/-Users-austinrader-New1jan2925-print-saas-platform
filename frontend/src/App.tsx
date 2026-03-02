@@ -98,6 +98,8 @@ import AppShippingPage from './pages/app/ShippingPage';
 import AppReportsPage from './pages/app/ReportsPage';
 import AppNotFoundPage from './pages/app/AppNotFoundPage';
 import BuildBanner from './components/BuildBanner';
+import AppAdminPage from './pages/app/AdminPage';
+import AppSettingsPage from './pages/app/SettingsPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -191,6 +193,8 @@ function AppRoutes() {
               <Route path="billing" element={<AppBillingPage />} />
               <Route path="shipping" element={<AppShippingPage />} />
               <Route path="reports" element={<AppReportsPage />} />
+              <Route path="admin" element={<AppAdminPage />} />
+              <Route path="settings" element={<AppSettingsPage />} />
 
               <Route path="*" element={<AppNotFoundPage />} />
             </Route>

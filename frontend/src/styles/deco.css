@@ -253,6 +253,56 @@
   min-width: 180px;
 }
 
+.deco-mobile-nav-toggle {
+  display: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--deco-border);
+  border-radius: var(--deco-radius);
+  background: #fff;
+  color: #334155;
+  align-items: center;
+  justify-content: center;
+}
+
+.deco-mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 95;
+  display: flex;
+}
+
+.deco-mobile-nav-panel {
+  width: 300px;
+  max-width: 88vw;
+  height: 100%;
+  border-right: 1px solid var(--deco-border);
+  background: #fff;
+  overflow-y: auto;
+}
+
+.deco-mobile-nav-head {
+  height: 48px;
+  border-bottom: 1px solid var(--deco-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.deco-mobile-nav-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--deco-border);
+  border-radius: var(--deco-radius);
+  background: #fff;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .deco-root .deco-brand-logo {
   width: 26px;
   height: 26px;
@@ -505,11 +555,16 @@
 
 @media (max-width: 1100px) {
   .deco-root .deco-body {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
+  .deco-root .deco-sidebar,
   .deco-root .deco-main-nav,
   .deco-root .deco-user-dropdown {
     display: none;
+  }
+
+  .deco-mobile-nav-toggle {
+    display: inline-flex;
   }
 }
