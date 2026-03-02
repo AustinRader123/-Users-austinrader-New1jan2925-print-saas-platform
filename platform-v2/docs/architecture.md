@@ -210,6 +210,7 @@ s3://bucket/
 - `GET /api/webhooks/retries/summary` query retry aggregate backlog metrics
 - `POST /api/webhooks/:id/retries/queue` enqueue retry payload
 - `POST /api/webhooks/retries/dispatch` pull/process queued retries
+- `POST /api/webhooks/retries/prune` remove stale retry logs by retention window
 
 ### 19.2 Inbound endpoint (public)
 - `POST /api/webhooks/inbound/:id`

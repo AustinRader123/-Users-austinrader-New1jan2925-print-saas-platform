@@ -228,6 +228,27 @@ export class WebhooksService {
     };
   }
 
+  async pruneRetries(tenantId: string, webhookId?: string, olderThanDays = 30) {
+    const safeDays = Math.min(Math.max(olderThanDays, 1), 365);
+    const cutoff = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
+    const result = await this.prisma.activityLog.deleteMany({
+      where: {
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+        ...(webhookId ? { entityId: webhookId } : {}),
+        createdAt: { lt: cutoff },
+      },
+    });
+
+    return {
+      deleted: result.count,
+      olderThanDays: safeDays,
+      cutoff: cutoff.toISOString(),
+      webhookId: webhookId || null,
+    };
+  }
+
   async receiveInbound(
     webhookId: string,
     input: {

@@ -145,3 +145,16 @@ export class DispatchWebhookRetriesDto {
   @Max(100)
   limit?: number;
 }
+
+export class PruneWebhookRetriesDto {
+  @IsOptional()
+  @IsString()
+  webhookId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  olderThanDays?: number;
+}

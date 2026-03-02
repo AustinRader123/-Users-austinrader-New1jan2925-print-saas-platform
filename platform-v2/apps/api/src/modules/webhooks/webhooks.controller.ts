@@ -6,6 +6,7 @@ import { TenantGuard } from '../../common/tenant.guard';
 import {
   DispatchWebhookRetriesDto,
   CreateWebhookDto,
+  PruneWebhookRetriesDto,
   QueueWebhookRetryDto,
   RecordWebhookDeliveryDto,
   UpdateWebhookDto,
@@ -99,5 +100,11 @@ export class WebhooksController {
   @Permissions('webhooks.write')
   dispatchRetries(@Headers('x-tenant-id') tenantId: string, @Body() body: DispatchWebhookRetriesDto) {
     return this.service.dispatchRetries(tenantId, body);
+  }
+
+  @Post('retries/prune')
+  @Permissions('webhooks.write')
+  pruneRetries(@Headers('x-tenant-id') tenantId: string, @Body() body: PruneWebhookRetriesDto) {
+    return this.service.pruneRetries(tenantId, body.webhookId, body.olderThanDays ?? 30);
   }
 }

@@ -64,6 +64,7 @@ platform-v2/
   - `GET /api/webhooks/retries/summary`
   - `POST /api/webhooks/:id/retries/queue`
   - `POST /api/webhooks/retries/dispatch`
+  - `POST /api/webhooks/retries/prune`
 - Public inbound receiver:
   - `POST /api/webhooks/inbound/:id`
   - Optional inbound headers:
@@ -101,9 +102,12 @@ platform-v2/
   - Queue if missing: `POST /api/webhooks/:id/retries/queue`
   - Process queue: `POST /api/webhooks/retries/dispatch`
   - Re-run dispatch until retries resolve to `RETRY_SENT` or terminal `RETRY_FAILED`.
-6. Header verification during endpoint debugging
+6. Prune old retry logs (retention)
+  - `POST /api/webhooks/retries/prune` with `{ "olderThanDays": 30 }`
+  - Optional scope: `{ "webhookId": "<id>", "olderThanDays": 30 }`
+7. Header verification during endpoint debugging
   - Outbound should include: `x-webhook-id`, `x-webhook-event`, `x-webhook-attempt`, `x-webhook-idempotency-key`, `x-webhook-signature-ts`, `x-webhook-signature`.
-7. Common root causes
+8. Common root causes
   - Signature mismatch: secret rotated or canonical payload mismatch.
   - Perma-fail retries: endpoint unreachable or consistently non-2xx response.
   - Requeue loops: max attempts too low/high or endpoint contract mismatch.
