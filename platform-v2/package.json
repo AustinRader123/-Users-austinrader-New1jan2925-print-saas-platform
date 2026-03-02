@@ -12,6 +12,8 @@
     "lint": "npm run --workspaces --if-present lint",
     "test": "npm run --workspaces --if-present test",
     "webhook:smoke": "bash scripts/webhook-smoke.sh",
+    "webhook:smoke:local": "API_BASE=http://localhost:4000 npm run webhook:smoke",
+    "webhook:smoke:prod": "API_BASE=https://skuflow.ai npm run webhook:smoke",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
