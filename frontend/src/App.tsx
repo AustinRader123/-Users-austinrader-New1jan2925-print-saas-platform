@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
@@ -25,7 +25,7 @@ import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
 import AdminDemoPage from './pages/AdminDemoPage';
 import DashboardPage from './pages/DashboardPage';
-import AppShell from './components/AppShell';
+import DecoShell from './layouts/DecoShell';
 import OrdersListPage from './pages/OrdersListPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import ProductionQueuePage from './pages/ProductionQueuePage';
@@ -78,6 +78,7 @@ import DashboardShippingPage from './pages/DashboardShippingPage';
 import DashboardNotificationsPage from './pages/DashboardNotificationsPage';
 import DashboardWebhooksPage from './pages/DashboardWebhooksPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import './styles/deco.css';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -100,34 +101,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
   return <>{children}</>;
 };
 
-function App() {
-  const { checkAuth, loading } = useAuthStore();
-
-  React.useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
+function AppRoutes() {
+  const location = useLocation();
+  const isAppRoute = location.pathname.startsWith('/app');
 
   return (
-    <Router>
-      <div className="min-h-screen bg-white dark:bg-slate-950">
-        {/* Debug overlay to verify routing and auth state */}
-        <div className="fixed bottom-2 right-2 z-50 text-xs bg-slate-800 text-slate-100 px-2 py-1 rounded opacity-70">
-          <span>path: {typeof window !== 'undefined' ? window.location.pathname : 'n/a'}</span>
-        </div>
-        <Navbar />
-        <main className="pt-16">
-          <Routes>
+    <div className={isAppRoute ? 'deco-theme deco-app-root min-h-screen' : 'min-h-screen bg-white dark:bg-slate-950'}>
+      {!isAppRoute ? <Navbar /> : null}
+      <main className={isAppRoute ? '' : 'pt-16'}>
+        <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Navigate to="/app" replace />} />
             <Route path="/solutions" element={<SolutionsPage />} />
@@ -160,7 +142,7 @@ function App() {
               path="/app"
               element={
                 <ProtectedRoute>
-                  <AppShell />
+                  <DecoShell />
                 </ProtectedRoute>
               }
             >
@@ -798,9 +780,33 @@ function App() {
                 </ProtectedRoute>
               }
             />
-          </Routes>
-        </main>
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  const { checkAuth, loading } = useAuthStore();
+
+  React.useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <Router>
+      <AppRoutes />
     </Router>
   );
 }
