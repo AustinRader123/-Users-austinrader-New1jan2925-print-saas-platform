@@ -190,6 +190,25 @@ export class WebhooksService {
     }
 
     if (webhook.secretHash && input.signature && input.signatureTimestamp && input.providedSecret) {
+      if (!this.isTimestampWithinWindow(input.signatureTimestamp)) {
+        await this.prisma.activityLog.create({
+          data: {
+            tenantId: webhook.tenantId,
+            storeId: webhook.storeId,
+            entityType: 'WEBHOOK_INBOUND',
+            entityId: webhook.id,
+            action: 'REJECTED_SIGNATURE',
+            payload: {
+              eventId: eventId || null,
+              idempotencyKey,
+              reason: 'signature timestamp outside allowed window',
+              signatureTimestamp: input.signatureTimestamp,
+            },
+          },
+        });
+        throw new UnauthorizedException('webhook signature expired');
+      }
+
       const expectedSignature = this.computeSecretSignature(
         input.providedSecret,
         input.signatureTimestamp,
@@ -588,5 +607,16 @@ export class WebhooksService {
       return false;
     }
     return timingSafeEqual(left, right);
+  }
+
+  private isTimestampWithinWindow(signatureTimestamp: string) {
+    const parsed = Date.parse(signatureTimestamp);
+    if (!Number.isFinite(parsed)) {
+      return false;
+    }
+
+    const maxSkewSeconds = Number(process.env.WEBHOOK_SIGNATURE_MAX_SKEW_SECONDS || 300);
+    const deltaSeconds = Math.abs(Date.now() - parsed) / 1000;
+    return deltaSeconds <= Math.max(maxSkewSeconds, 1);
   }
 }
