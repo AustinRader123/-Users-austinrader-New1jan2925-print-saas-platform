@@ -157,7 +157,19 @@ export class AuthService {
   }
 
   private defaultPermissions() {
-    return ['orders.read', 'orders.write', 'pricing.read', 'pricing.write', 'designer.write'];
+    return [
+      'orders.read',
+      'orders.write',
+      'quotes.read',
+      'quotes.write',
+      'pricing.read',
+      'pricing.write',
+      'designer.write',
+      'stores.read',
+      'stores.write',
+      'products.read',
+      'products.write',
+    ];
   }
 
   private async issueAuthTokens(params: {
