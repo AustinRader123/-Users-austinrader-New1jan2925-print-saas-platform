@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Toasts } from '../ui/Toasts';
-import { BUILD_INFO } from '../buildInfo';
 import { appNavItems } from '../nav/navConfig';
 
 function DecoSidebar() {
@@ -132,8 +131,6 @@ export default function DecoShell() {
           <Outlet />
         </section>
       </div>
-
-      <div className="deco-build-banner">Build: {BUILD_INFO.commit} | {BUILD_INFO.buildTime}</div>
       <Toasts />
     </div>
   );

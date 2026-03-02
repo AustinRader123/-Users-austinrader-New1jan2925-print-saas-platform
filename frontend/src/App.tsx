@@ -97,6 +97,7 @@ import AppBillingPage from './pages/app/BillingPage';
 import AppShippingPage from './pages/app/ShippingPage';
 import AppReportsPage from './pages/app/ReportsPage';
 import AppNotFoundPage from './pages/app/AppNotFoundPage';
+import BuildBanner from './components/BuildBanner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -520,6 +521,7 @@ function AppRoutes() {
             />
         </Routes>
       </main>
+      <BuildBanner />
     </div>
   );
 }
