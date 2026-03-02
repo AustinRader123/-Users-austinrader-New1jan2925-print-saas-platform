@@ -179,6 +179,7 @@ function AppRoutes() {
 
               <Route path="products" element={<AppProductsPage />} />
               <Route path="products/import" element={<AppProductImportPage />} />
+              <Route path="catalogs" element={<AppProductImportPage />} />
               <Route path="products/:id" element={<AppProductDetailPage />} />
 
               <Route path="quotes" element={<AppQuotesPage />} />
@@ -198,7 +199,15 @@ function AppRoutes() {
               <Route path="purchasing/:id" element={<AppPurchasingDetailPage />} />
 
               <Route path="billing" element={<AppBillingPage />} />
+              <Route path="payments" element={<AppBillingPage />} />
+              <Route path="taxes" element={<AppBillingPage />} />
               <Route path="shipping" element={<AppShippingPage />} />
+              <Route path="shipments" element={<AppShippingPage />} />
+              <Route path="webhooks" element={<AppAdminPage />} />
+              <Route path="customers" element={<AppOrdersPage />} />
+              <Route path="stores" element={<AppSettingsPage />} />
+              <Route path="users-roles" element={<AppSettingsPage />} />
+              <Route path="integrations" element={<AppAdminPage />} />
               <Route path="reports" element={<AppReportsPage />} />
               <Route path="admin" element={<AppAdminPage />} />
               <Route path="settings" element={<AppSettingsPage />} />

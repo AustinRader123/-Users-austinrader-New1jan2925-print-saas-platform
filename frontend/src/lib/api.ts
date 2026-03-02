@@ -388,6 +388,11 @@ class ApiClient {
     return data;
   }
 
+  async getOrderTimeline(orderId: string) {
+    const { data } = await this.client.get(`/orders/${orderId}/timeline`);
+    return data;
+  }
+
   // Production
   async getProductionJob(jobId: string) {
     const { data } = await this.client.get(`/production/jobs/${jobId}`);

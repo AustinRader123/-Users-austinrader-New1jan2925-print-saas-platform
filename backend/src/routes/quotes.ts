@@ -8,6 +8,7 @@ import FeatureGateService from '../services/FeatureGateService.js';
 import DocumentService from '../services/DocumentService.js';
 import PublicLinkService from '../services/PublicLinkService.js';
 import EmailService from '../services/EmailService.js';
+import EventService from '../services/EventService.js';
 import logger from '../logger.js';
 import { z } from 'zod';
 
@@ -192,6 +193,30 @@ router.post('/:quoteId/convert', roleMiddleware(['ADMIN', 'STORE_OWNER']), async
     } else {
       await ProductionService.createProductionJob(order.id);
     }
+
+    await EventService.emit(order.storeId, 'quote.converted', {
+      actorType: req.userId ? 'USER' : 'SYSTEM',
+      actorId: req.userId || null,
+      entityType: 'Quote',
+      entityId: req.params.quoteId,
+      properties: {
+        quoteId: req.params.quoteId,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      },
+    });
+
+    await EventService.emit(order.storeId, 'order.created_from_quote', {
+      actorType: req.userId ? 'USER' : 'SYSTEM',
+      actorId: req.userId || null,
+      entityType: 'Order',
+      entityId: order.id,
+      properties: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        quoteId: req.params.quoteId,
+      },
+    });
 
     res.status(201).json(order);
   } catch (error) {

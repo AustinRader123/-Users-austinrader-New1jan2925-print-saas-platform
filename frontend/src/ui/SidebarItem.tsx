@@ -18,7 +18,14 @@ export function SidebarItem({
   onNavigate?: () => void;
 }) {
   return (
-    <NavLink to={to} end={to === '/app'} onClick={onNavigate} className={({ isActive }) => `ops-sidebar-item ${isActive ? 'is-active' : ''}`}>
+    <NavLink
+      to={to}
+      end={to === '/app'}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      aria-label={label}
+      className={({ isActive }) => `ops-sidebar-item ${isActive ? 'is-active' : ''}`}
+    >
       <Icon className="ops-sidebar-icon" />
       {!collapsed ? <span className="ops-sidebar-label">{label}</span> : null}
       {!collapsed && typeof badgeCount === 'number' ? <em className="ops-sidebar-badge">{badgeCount}</em> : null}

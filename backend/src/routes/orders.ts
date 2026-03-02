@@ -13,6 +13,7 @@ import EventService from '../services/EventService.js';
 import logger from '../logger.js';
 
 const router = Router();
+type AuthRequestWithTenant = AuthRequest & { tenantId?: string };
 
 // Create order
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -27,7 +28,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     // Auto-create production work (legacy queue or production v2)
     if (order) {
-      const tenantId = String((req as any).tenantId || '').trim() || String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
+      const tenantId = String((req as AuthRequestWithTenant).tenantId || '').trim() || String((await prisma.store.findUnique({ where: { id: order.storeId }, select: { tenantId: true } }))?.tenantId || '');
       const useProductionV2 = tenantId ? await FeatureGateService.can(tenantId, 'production_v2.enabled') : false;
       if (useProductionV2) {
         await ProductionV2Service.createBatchesFromOrder(order.id, req.userId);
@@ -60,6 +61,37 @@ router.get('/:orderId', authMiddleware, async (req: AuthRequest, res: Response) 
   } catch (error) {
     logger.error('Get order error:', error);
     res.status(500).json({ error: 'Failed to get order' });
+  }
+});
+
+router.get('/:orderId/timeline', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const order = await OrderService.getOrder(req.params.orderId);
+
+    if (order && order.userId !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const events = await prisma.eventLog.findMany({
+      where: {
+        storeId: order.storeId,
+        OR: [
+          { entityType: 'Order', entityId: order.id },
+          { entityType: 'Quote', entityId: order.sourceQuoteId || undefined },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 50,
+    });
+
+    return res.json(events);
+  } catch (error) {
+    logger.error('Get order timeline error:', error);
+    return res.status(500).json({ error: (error as Error).message || 'Failed to get order timeline' });
   }
 });
 
@@ -111,7 +143,7 @@ router.post('/:orderId/send-invoice', authMiddleware, roleMiddleware(['ADMIN', '
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
     await DocumentService.generateInvoicePdf(order.id, req.userId);
-    const tenantId = (req as any).tenantId as string;
+    const tenantId = String((req as AuthRequestWithTenant).tenantId || '');
     const token = await PublicLinkService.createInvoiceToken(order.id, Number(req.body?.expiresHours || 168), tenantId);
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'localhost');
     const proto = String(req.headers['x-forwarded-proto'] || 'https');
@@ -157,7 +189,7 @@ router.post('/:orderId/status', authMiddleware, roleMiddleware(['ADMIN', 'STORE_
 
     const updated = await OrderService.updateOrderStatus(order.id, status);
     await NetworkRoutingService.syncRoutedOrderFromOrderStatus(order.id, status);
-    const tenantId = (req as any).tenantId as string;
+    const tenantId = String((req as AuthRequestWithTenant).tenantId || '');
     await EmailService.queueAndSend({
       tenantId,
       storeId: order.storeId,
@@ -166,6 +198,20 @@ router.post('/:orderId/status', authMiddleware, roleMiddleware(['ADMIN', 'STORE_
       subject: `Order ${order.orderNumber} status update`,
       bodyText: `Your order status is now: ${status}`,
       meta: { orderId: order.id, status },
+    });
+
+    await EventService.emit(order.storeId, 'order.status_changed', {
+      actorType: req.userId ? 'USER' : 'SYSTEM',
+      actorId: req.userId || null,
+      entityType: 'Order',
+      entityId: order.id,
+      properties: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        previousStatus: order.status,
+        status,
+        customerEmail: order.customerEmail,
+      },
     });
 
     return res.json(updated);

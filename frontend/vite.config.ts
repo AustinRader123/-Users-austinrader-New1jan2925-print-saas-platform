@@ -6,11 +6,13 @@ const buildTime = new Date().toISOString();
 const gitSha = process.env.VERCEL_GIT_COMMIT_SHA || 'local';
 const shortCommit = gitSha.slice(0, 7) || 'local';
 const uiEnv = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
+const appVersion = process.env.npm_package_version || '0.0.0';
 
 const buildProof = {
-  commit: shortCommit,
+  commit: gitSha,
   buildTime,
   env: uiEnv,
+  version: appVersion,
 };
 
 function buildProofPlugin() {
@@ -46,6 +48,7 @@ export default defineConfig({
     'import.meta.env.VITE_GIT_COMMIT_SHA': JSON.stringify(shortCommit),
     'import.meta.env.VITE_UI_ENV': JSON.stringify(uiEnv === 'production' ? 'prod' : uiEnv),
     'import.meta.env.VITE_GIT_SHA': JSON.stringify(gitSha),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
   server: {
     port: 5173,

@@ -1,8 +1,29 @@
-import { Boxes, ClipboardList, DollarSign, Factory, FileText, Package, ShoppingCart, Truck, Warehouse } from 'lucide-react';
+import {
+  BarChart3,
+  Boxes,
+  Building2,
+  ClipboardList,
+  CreditCard,
+  DollarSign,
+  Factory,
+  FileText,
+  Package,
+  Puzzle,
+  Receipt,
+  Settings,
+  ShoppingCart,
+  Truck,
+  Users,
+  Warehouse,
+  Webhook,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+
+export type AppNavSection = 'Core' | 'Workflow' | 'Money' | 'Shipping' | 'Admin';
 
 export type AppNavItem = {
   key: string;
+  section: AppNavSection;
   label: string;
   icon: LucideIcon;
   path: string;
@@ -12,18 +33,29 @@ export type AppNavItem = {
 };
 
 export const appNavItems: AppNavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: Boxes, path: '/app', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
-  { key: 'orders', label: 'Orders', icon: ClipboardList, path: '/app/orders', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 8 },
-  { key: 'products', label: 'Products', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'quotes', label: 'Quotes', icon: FileText, path: '/app/quotes', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'production', label: 'Production', icon: Factory, path: '/app/production', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 6 },
-  { key: 'inventory', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
-  { key: 'purchasing', label: 'Purchasing', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'billing', label: 'Billing', icon: DollarSign, path: '/app/billing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
-  { key: 'shipping', label: 'Shipping', icon: Truck, path: '/app/shipping', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'reports', label: 'Reports', icon: Boxes, path: '/app/reports', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'], featureGateKey: 'reports.enabled' },
-  { key: 'admin', label: 'Admin', icon: Boxes, path: '/app/admin', rolesAllowed: ['ADMIN'], featureGateKey: 'admin.enabled' },
-  { key: 'settings', label: 'Settings', icon: Boxes, path: '/app/settings', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'dashboard', section: 'Core', label: 'Dashboard', icon: Boxes, path: '/app', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
+  { key: 'orders', section: 'Core', label: 'Orders', icon: ClipboardList, path: '/app/orders', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 8 },
+  { key: 'products', section: 'Core', label: 'Products', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'catalogs', section: 'Core', label: 'Catalogs', icon: Boxes, path: '/app/catalogs', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+
+  { key: 'production', section: 'Workflow', label: 'Production', icon: Factory, path: '/app/production/board', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 6 },
+  { key: 'purchasing', section: 'Workflow', label: 'Purchasing', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'inventory', section: 'Workflow', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
+
+  { key: 'billing', section: 'Money', label: 'Billing / Invoices', icon: Receipt, path: '/app/billing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
+  { key: 'payments', section: 'Money', label: 'Payments', icon: CreditCard, path: '/app/payments', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
+  { key: 'taxes', section: 'Money', label: 'Taxes', icon: DollarSign, path: '/app/taxes', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
+
+  { key: 'shipments', section: 'Shipping', label: 'Shipments', icon: Truck, path: '/app/shipments', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'webhooks', section: 'Shipping', label: 'Webhooks / Tracking', icon: Webhook, path: '/app/webhooks', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+
+  { key: 'customers', section: 'Admin', label: 'Customers', icon: Users, path: '/app/customers', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'stores', section: 'Admin', label: 'Stores', icon: Building2, path: '/app/stores', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'users-roles', section: 'Admin', label: 'Users / Roles', icon: Users, path: '/app/users-roles', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'settings', section: 'Admin', label: 'Settings', icon: Settings, path: '/app/settings', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'integrations', section: 'Admin', label: 'Integrations', icon: Puzzle, path: '/app/integrations', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'reports', section: 'Admin', label: 'Reports', icon: BarChart3, path: '/app/reports', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'], featureGateKey: 'reports.enabled' },
+  { key: 'quotes', section: 'Admin', label: 'Quotes', icon: FileText, path: '/app/quotes', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
 ];
 
 function readFeatureGates(): Record<string, boolean> {

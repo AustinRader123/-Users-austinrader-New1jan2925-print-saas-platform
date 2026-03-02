@@ -5,6 +5,22 @@ import { withFallback } from '../../lib/apiClient';
 import { useAsync } from '../../lib/query';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
 
+type TimelineEvent = {
+  id: string;
+  eventType: string;
+  entityType?: string;
+  entityId?: string;
+  propertiesJson?: Record<string, any>;
+  createdAt: string;
+};
+
+const eventLabel: Record<string, string> = {
+  'order.created_from_quote': 'Order created from quote',
+  'quote.converted': 'Quote converted',
+  'order.status_changed': 'Order status changed',
+  'invoice.sent': 'Invoice sent',
+};
+
 export default function AppOrderDetailPage() {
   const { id = '' } = useParams();
   const [updating, setUpdating] = React.useState<string | null>(null);
@@ -28,12 +44,31 @@ export default function AppOrderDetailPage() {
     );
   }, [id]);
 
+  const timelineState = useAsync(async () => {
+    return withFallback(
+      async () => {
+        const rows = await apiClient.getOrderTimeline(id);
+        const list = Array.isArray(rows) ? rows : [];
+        return list
+          .slice()
+          .sort((a: any, b: any) => {
+            const byDate = new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            if (byDate !== 0) return byDate;
+            return String(b.id || '').localeCompare(String(a.id || ''));
+          }) as TimelineEvent[];
+      },
+      () => [],
+      `orders.timeline.${id}`
+    );
+  }, [id]);
+
   const transitionStatus = async (nextStatus: 'IN_PRODUCTION' | 'SHIPPED') => {
     setStatusError(null);
     setUpdating(nextStatus);
     try {
       await apiClient.updateOrderStatus(id, nextStatus);
       await state.refetch();
+      await timelineState.refetch();
     } catch (error: any) {
       setStatusError(error?.message || `Failed to set status ${nextStatus}`);
     } finally {
@@ -77,6 +112,32 @@ export default function AppOrderDetailPage() {
                 {updating === 'SHIPPED' ? 'Updating…' : 'Mark Shipped'}
               </button>
               {statusError ? <div className="text-xs text-red-600">{statusError}</div> : null}
+            </div>
+          </div>
+
+          <div className="deco-panel">
+            <div className="deco-panel-head">Timeline</div>
+            <div className="deco-panel-body space-y-2">
+              {timelineState.loading ? <div className="text-xs text-slate-500">Loading timeline…</div> : null}
+              {!timelineState.loading && timelineState.data && timelineState.data.length === 0 ? (
+                <div className="text-xs text-slate-500">No timeline events yet.</div>
+              ) : null}
+              {!timelineState.loading && timelineState.data?.map((evt) => {
+                const status = String(evt.propertiesJson?.status || '').trim();
+                const previousStatus = String(evt.propertiesJson?.previousStatus || '').trim();
+                const detail = evt.eventType === 'order.status_changed' && status
+                  ? `${previousStatus ? `${previousStatus} → ` : ''}${status}`
+                  : String(evt.propertiesJson?.orderNumber || evt.propertiesJson?.quoteId || '');
+                return (
+                  <div key={evt.id} className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 last:border-b-0">
+                    <div>
+                      <div className="text-sm font-medium">{eventLabel[evt.eventType] || evt.eventType}</div>
+                      {detail ? <div className="text-xs text-slate-500">{detail}</div> : null}
+                    </div>
+                    <div className="text-xs text-slate-500 whitespace-nowrap">{new Date(evt.createdAt).toLocaleString()}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
