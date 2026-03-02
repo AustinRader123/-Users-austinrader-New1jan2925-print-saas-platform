@@ -8,7 +8,7 @@ import { runWithTenant } from '../lib/tenantContext.js';
 // Sources (in priority): `x-tenant-id` header, `x-store-id` header (map store -> tenant), `tenantId` query param.
 export const tenantMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    if (req.path === '/auth/register' || req.path === '/auth/login') {
+    if (req.path.startsWith('/auth/')) {
       return next();
     }
 
