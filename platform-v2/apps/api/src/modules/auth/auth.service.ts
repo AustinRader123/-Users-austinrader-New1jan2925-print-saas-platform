@@ -174,6 +174,8 @@ export class AuthService {
       'vendors.write',
       'inventory.read',
       'inventory.write',
+      'automation.read',
+      'automation.write',
       'invoices.read',
       'invoices.write',
       'payments.write',
