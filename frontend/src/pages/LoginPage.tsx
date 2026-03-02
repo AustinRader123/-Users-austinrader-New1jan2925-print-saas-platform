@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 import { extractErrorMessage } from '../lib/errors';
@@ -66,9 +66,9 @@ export default function LoginPage() {
 
         <p className="text-sm text-center mt-4">
           Don't have an account?{' '}
-          <a href="/register" className="text-blue-500 hover:underline">
+          <Link to="/register" className="text-blue-500 hover:underline">
             Register
-          </a>
+          </Link>
         </p>
       </div>
     </div>
