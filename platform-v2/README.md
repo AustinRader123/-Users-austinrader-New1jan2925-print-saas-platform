@@ -110,6 +110,7 @@ platform-v2/
 - Purpose:
   - create (or use) webhook,
   - enqueue retry job,
+  - verify duplicate queue idempotency behavior,
   - dispatch retries,
   - print latest delivery logs and IDs.
 - Quick use (with existing token):

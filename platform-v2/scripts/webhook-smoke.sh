@@ -45,7 +45,7 @@ print(val if val is not None else '')
 PY
 }
 
-echo "[1/6] Resolve auth token"
+echo "[1/7] Resolve auth token"
 if [[ -z "${TOKEN}" ]]; then
   if [[ -z "${EMAIL}" || -z "${PASSWORD}" ]]; then
     echo "ERROR: set TOKEN or EMAIL+PASSWORD"
@@ -62,7 +62,7 @@ if [[ -z "${TOKEN}" ]]; then
 fi
 
 if [[ -z "${WEBHOOK_ID}" ]]; then
-  echo "[2/6] Create temporary webhook endpoint"
+  echo "[2/7] Create temporary webhook endpoint"
   secret="smoke-secret-$(date +%s)"
   create_payload="{\"eventType\":\"${EVENT_TYPE}\",\"endpoint\":\"${TARGET_URL}\",\"provider\":\"CUSTOM\",\"secret\":\"${secret}\",\"isActive\":true}"
   create_resp="$(req POST /api/webhooks "${create_payload}")"
@@ -74,7 +74,7 @@ if [[ -z "${WEBHOOK_ID}" ]]; then
   fi
   echo "Created WEBHOOK_ID=${WEBHOOK_ID}"
 else
-  echo "[2/6] Using existing WEBHOOK_ID=${WEBHOOK_ID}"
+  echo "[2/7] Using existing WEBHOOK_ID=${WEBHOOK_ID}"
 fi
 
 event_id="evt-$(date +%s)"
@@ -83,7 +83,7 @@ body="{\"source\":\"smoke\",\"eventId\":\"${event_id}\",\"ts\":\"$(date -u +%Y-%
 
 queue_payload="{\"eventId\":\"${event_id}\",\"idempotencyKey\":\"${idempotency_key}\",\"eventType\":\"${EVENT_TYPE}\",\"maxAttempts\":${MAX_ATTEMPTS},\"body\":${body}}"
 
-echo "[3/6] Queue retry job"
+echo "[3/7] Queue retry job"
 queue_resp="$(req POST "/api/webhooks/${WEBHOOK_ID}/retries/queue" "${queue_payload}")"
 retry_id="$(printf '%s' "${queue_resp}" | json_get retryId)"
 if [[ -z "${retry_id}" ]]; then
@@ -93,15 +93,24 @@ if [[ -z "${retry_id}" ]]; then
 fi
 echo "Queued RETRY_ID=${retry_id}"
 
-echo "[4/6] Dispatch retries"
+echo "[4/7] Verify idempotency duplicate queue"
+queue_dup_resp="$(req POST "/api/webhooks/${WEBHOOK_ID}/retries/queue" "${queue_payload}")"
+if ! printf '%s' "${queue_dup_resp}" | grep -q '"duplicate"[[:space:]]*:[[:space:]]*true'; then
+  echo "ERROR: expected duplicate=true on second queue call"
+  echo "Response: ${queue_dup_resp}"
+  exit 1
+fi
+echo "Duplicate queue confirmed"
+
+echo "[5/7] Dispatch retries"
 dispatch_resp="$(req POST /api/webhooks/retries/dispatch "{\"webhookId\":\"${WEBHOOK_ID}\",\"limit\":10}")"
 echo "Dispatch response: ${dispatch_resp}"
 
-echo "[5/6] Fetch delivery logs"
+echo "[6/7] Fetch delivery logs"
 deliveries_resp="$(req GET "/api/webhooks/deliveries?webhookId=${WEBHOOK_ID}&limit=10")"
 echo "Deliveries: ${deliveries_resp}"
 
-echo "[6/6] Done"
+echo "[7/7] Done"
 echo "WEBHOOK_ID=${WEBHOOK_ID}"
 echo "RETRY_ID=${retry_id}"
 echo "IDEMPOTENCY_KEY=${idempotency_key}"
