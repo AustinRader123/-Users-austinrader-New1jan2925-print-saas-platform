@@ -143,7 +143,7 @@ function App() {
         <main className="pt-16">
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<Navigate to="/app" replace />} />
             <Route path="/solutions" element={<SolutionsPage />} />
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/catalogs" element={<CatalogsPage />} />
