@@ -32,6 +32,11 @@ export function AppHeader({
   const navigate = useNavigate();
   const [openPalette, setOpenPalette] = React.useState(false);
   const [query, setQuery] = React.useState('');
+  const [storeId, setStoreId] = React.useState(() => localStorage.getItem('storeId') || 'default');
+
+  React.useEffect(() => {
+    localStorage.setItem('storeId', storeId || 'default');
+  }, [storeId]);
 
   useCommandPalette(() => setOpenPalette(true));
 
@@ -54,6 +59,14 @@ export function AppHeader({
       </div>
 
       <div className="ops-header-right">
+        <input
+          className="ops-store-pill"
+          value={storeId}
+          onChange={(event) => setStoreId(event.target.value)}
+          aria-label="Store selector"
+          title="Store selector"
+        />
+
         <Button type="button" className="ops-shortcut-btn" onClick={() => setOpenPalette(true)}>
           <Command className="h-3.5 w-3.5" />
           Command

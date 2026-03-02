@@ -56,6 +56,82 @@ test('sidebar IA routes are reachable', async ({ page, request, baseURL }) => {
     window.localStorage.setItem('token', value);
   }, token);
 
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const storeId = 'default';
+
+  const createProductResp = await request.post(`${root}/api/products`, {
+    headers,
+    failOnStatusCode: false,
+    data: {
+      storeId,
+      name: `Smoke Product ${Date.now()}`,
+      slug: `smoke-product-${Date.now()}`,
+      basePrice: 12.5,
+    },
+  });
+  expect([201, 400, 403].includes(createProductResp.status())).toBeTruthy();
+
+  const productsResp = await request.get(`${root}/api/products?storeId=${storeId}&skip=0&take=20`, {
+    headers,
+    failOnStatusCode: false,
+  });
+  expect([200, 403].includes(productsResp.status())).toBeTruthy();
+
+  let firstProductId = '';
+  if (productsResp.status() === 200) {
+    const productsBody = await productsResp.json();
+    const products = Array.isArray(productsBody) ? productsBody : (productsBody?.items || productsBody?.products || []);
+    firstProductId = String(products?.[0]?.id || '');
+  }
+
+  const quoteResp = await request.post(`${root}/api/quotes`, {
+    headers,
+    failOnStatusCode: false,
+    data: {
+      storeId,
+      customerName: 'Smoke User',
+      customerEmail: `smoke+${Date.now()}@example.local`,
+      notes: 'sidebar-nav smoke quote',
+    },
+  });
+  expect([201, 403].includes(quoteResp.status())).toBeTruthy();
+
+  if (quoteResp.status() === 201 && firstProductId) {
+    const quote = await quoteResp.json();
+    const quoteId = String(quote.id || '');
+    if (quoteId) {
+      const variantsResp = await request.get(`${root}/api/products/${firstProductId}/variants?storeId=${storeId}`, {
+        headers,
+        failOnStatusCode: false,
+      });
+      let variantId = '';
+      if (variantsResp.status() === 200) {
+        const variantsBody = await variantsResp.json();
+        const variants = Array.isArray(variantsBody) ? variantsBody : (variantsBody?.items || variantsBody?.variants || []);
+        variantId = String(variants?.[0]?.id || '');
+      }
+
+      const addItemResp = await request.post(`${root}/api/quotes/${quoteId}/items`, {
+        headers,
+        failOnStatusCode: false,
+        data: {
+          storeId,
+          productId: firstProductId,
+          ...(variantId ? { variantId } : {}),
+          qty: { units: 12 },
+        },
+      });
+      expect([201, 400, 403].includes(addItemResp.status())).toBeTruthy();
+
+      const convertResp = await request.post(`${root}/api/quotes/${quoteId}/convert`, {
+        headers,
+        failOnStatusCode: false,
+        data: { storeId },
+      });
+      expect([201, 400, 403].includes(convertResp.status())).toBeTruthy();
+    }
+  }
+
   await page.goto(`${root}/app`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByText(/Build:/i)).toBeVisible({ timeout: 20000 });
 

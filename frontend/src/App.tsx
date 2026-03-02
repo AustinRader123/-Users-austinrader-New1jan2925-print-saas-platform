@@ -100,6 +100,13 @@ import AppBillingPage from './pages/app/BillingPage';
 import AppShippingPage from './pages/app/ShippingPage';
 import AppReportsPage from './pages/app/ReportsPage';
 import AppNotFoundPage from './pages/app/AppNotFoundPage';
+import AppCustomersPage from './pages/app/CustomersPage';
+import AppStoresPage from './pages/app/StoresPage';
+import AppUsersRolesPage from './pages/app/UsersRolesPage';
+import AppIntegrationsPage from './pages/app/IntegrationsPage';
+import AppWebhooksPage from './pages/app/WebhooksPage';
+import AppPaymentsPage from './pages/app/PaymentsPage';
+import AppTaxesPage from './pages/app/TaxesPage';
 import BuildBanner from './components/BuildBanner';
 import AppAdminPage from './pages/app/AdminPage';
 import AppSettingsPage from './pages/app/SettingsPage';
@@ -179,7 +186,7 @@ function AppRoutes() {
 
               <Route path="products" element={<AppProductsPage />} />
               <Route path="products/import" element={<AppProductImportPage />} />
-              <Route path="catalogs" element={<AppProductImportPage />} />
+              <Route path="catalogs" element={<AppProductsPage />} />
               <Route path="products/:id" element={<AppProductDetailPage />} />
 
               <Route path="quotes" element={<AppQuotesPage />} />
@@ -199,15 +206,15 @@ function AppRoutes() {
               <Route path="purchasing/:id" element={<AppPurchasingDetailPage />} />
 
               <Route path="billing" element={<AppBillingPage />} />
-              <Route path="payments" element={<AppBillingPage />} />
-              <Route path="taxes" element={<AppBillingPage />} />
+              <Route path="payments" element={<AppPaymentsPage />} />
+              <Route path="taxes" element={<AppTaxesPage />} />
               <Route path="shipping" element={<AppShippingPage />} />
               <Route path="shipments" element={<AppShippingPage />} />
-              <Route path="webhooks" element={<AppAdminPage />} />
-              <Route path="customers" element={<AppOrdersPage />} />
-              <Route path="stores" element={<AppSettingsPage />} />
-              <Route path="users-roles" element={<AppSettingsPage />} />
-              <Route path="integrations" element={<AppAdminPage />} />
+              <Route path="webhooks" element={<AppWebhooksPage />} />
+              <Route path="customers" element={<AppCustomersPage />} />
+              <Route path="stores" element={<AppStoresPage />} />
+              <Route path="users-roles" element={<AppUsersRolesPage />} />
+              <Route path="integrations" element={<AppIntegrationsPage />} />
               <Route path="reports" element={<AppReportsPage />} />
               <Route path="admin" element={<AppAdminPage />} />
               <Route path="settings" element={<AppSettingsPage />} />
