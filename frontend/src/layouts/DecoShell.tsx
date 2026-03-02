@@ -1,46 +1,21 @@
 import React from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
-  Boxes,
-  ClipboardList,
-  DollarSign,
-  Factory,
   HelpCircle,
   LifeBuoy,
   CircleUserRound,
-  Package,
-  Settings,
   ShoppingCart,
-  Truck,
-  Warehouse,
   Wrench,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Toasts } from '../ui/Toasts';
 import { BUILD_INFO } from '../buildInfo';
-
-type NavItem = {
-  label: string;
-  to: string;
-  icon: React.ComponentType<{ className?: string }>;
-  roles?: string[];
-};
-
-const navItems: NavItem[] = [
-  { label: 'Admin Portal', to: '/app', icon: Boxes },
-  { label: 'Orders', to: '/app/orders', icon: ClipboardList },
-  { label: 'Products', to: '/app/dashboard/products', icon: Package },
-  { label: 'Production', to: '/app/production', icon: Factory },
-  { label: 'Inventory', to: '/app/dashboard/inventory', icon: Warehouse },
-  { label: 'Purchasing', to: '/app/dashboard/purchasing', icon: ShoppingCart },
-  { label: 'Billing', to: '/app/dashboard/billing', icon: DollarSign },
-  { label: 'Shipping', to: '/app/dashboard/shipping', icon: Truck },
-  { label: 'Settings', to: '/app/settings/users', icon: Settings, roles: ['ADMIN', 'STORE_OWNER'] },
-];
+import { appNavItems } from '../nav/navConfig';
 
 function DecoSidebar() {
+  const location = useLocation();
   const { user } = useAuthStore();
-  const visibleItems = navItems.filter((item) => !item.roles || (user?.role ? item.roles.includes(user.role) : false));
+  const visibleItems = appNavItems;
 
   return (
     <aside className="deco-sidebar">
@@ -55,15 +30,20 @@ function DecoSidebar() {
         ) : (
           visibleItems.map((item) => {
             const Icon = item.icon;
+            const isActive = item.path === '/app'
+              ? location.pathname === '/app'
+              : location.pathname.startsWith(item.path);
+
             return (
               <NavLink
-                key={item.label}
-                to={item.to}
-                className={({ isActive }) => `deco-nav-item ${isActive ? 'is-active' : ''}`}
-                end={item.to === '/app'}
+                key={item.id}
+                to={item.path}
+                className={`deco-nav-item ${isActive ? 'is-active' : ''}`}
+                end={item.path === '/app'}
               >
                 <Icon className="deco-nav-icon" />
                 <span>{item.label}</span>
+                {typeof item.badgeCount === 'number' ? <em className="deco-nav-badge">{item.badgeCount}</em> : null}
               </NavLink>
             );
           })

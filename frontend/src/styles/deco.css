@@ -422,6 +422,22 @@
   font-size: var(--deco-font-sm);
 }
 
+.deco-root .deco-nav-badge {
+  margin-left: auto;
+  border: 1px solid #dbe3ec;
+  border-radius: 999px;
+  min-width: 18px;
+  padding: 0 5px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-size: 10px;
+  color: #475467;
+  background: #f8fafc;
+}
+
 .deco-root .deco-nav-item:hover {
   border-color: #dbe1e8;
   background: #f8fafc;
@@ -476,22 +492,7 @@
 
 @media (max-width: 1100px) {
   .deco-root .deco-body {
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  .deco-root .deco-sidebar {
-    height: calc(100vh - 120px);
-  }
-
-  .deco-root .deco-sidebar-title,
-  .deco-root .deco-sidebar-subtitle,
-  .deco-root .deco-nav-item span {
-    display: none;
-  }
-
-  .deco-root .deco-nav-item {
-    justify-content: center;
-    padding: 8px;
+    grid-template-columns: 240px minmax(0, 1fr);
   }
 
   .deco-root .deco-main-nav,
