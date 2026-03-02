@@ -141,6 +141,10 @@ platform-v2/
   - `EVENT_TYPE=order.updated` event type
   - `MAX_ATTEMPTS=3` retry budget
   - `REQUEUE_FAILED_LIMIT=10` batch failed requeue cap
+- Expected failpath signals (`npm run webhook:smoke:failpath`):
+  - `Dispatch response` should report failed deliveries and queued/failed retry status transitions.
+  - `Batch requeue-failed response` should show `matchedFailed > 0` and usually `requeued > 0`.
+  - `Retries summary (post)` should reflect non-zero failed/queued counts until dispatch/retries are rerun.
 
 ## Reverse proxy
 
