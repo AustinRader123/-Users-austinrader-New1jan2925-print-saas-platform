@@ -176,6 +176,8 @@ export class AuthService {
       'inventory.write',
       'automation.read',
       'automation.write',
+      'notifications.read',
+      'notifications.write',
       'invoices.read',
       'invoices.write',
       'payments.write',
