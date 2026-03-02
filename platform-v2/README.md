@@ -112,9 +112,9 @@ platform-v2/
   - dispatch retries,
   - print latest delivery logs and IDs.
 - Quick use (with existing token):
-  - `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> API_BASE=http://localhost:4000 bash scripts/webhook-smoke.sh`
+  - `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> API_BASE=http://localhost:4000 npm run webhook:smoke`
 - Quick use (login flow):
-  - `cd platform-v2 && EMAIL=<user> PASSWORD=<pass> TENANT_ID=<tenant> API_BASE=http://localhost:4000 bash scripts/webhook-smoke.sh`
+  - `cd platform-v2 && EMAIL=<user> PASSWORD=<pass> TENANT_ID=<tenant> API_BASE=http://localhost:4000 npm run webhook:smoke`
 - Useful overrides:
   - `WEBHOOK_ID=<id>` reuse existing webhook
   - `TARGET_URL=https://httpbin.org/post` destination endpoint
