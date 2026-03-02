@@ -167,3 +167,23 @@ export class RequeueWebhookRetryDto {
   @Max(20)
   maxAttempts?: number;
 }
+
+export class RequeueFailedWebhookRetriesDto {
+  @IsOptional()
+  @IsString()
+  webhookId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  maxAttempts?: number;
+}

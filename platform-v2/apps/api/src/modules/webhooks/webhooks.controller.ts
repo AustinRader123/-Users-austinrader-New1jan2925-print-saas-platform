@@ -8,6 +8,7 @@ import {
   CreateWebhookDto,
   PruneWebhookRetriesDto,
   QueueWebhookRetryDto,
+  RequeueFailedWebhookRetriesDto,
   RequeueWebhookRetryDto,
   RecordWebhookDeliveryDto,
   UpdateWebhookDto,
@@ -117,5 +118,11 @@ export class WebhooksController {
     @Body() body: RequeueWebhookRetryDto
   ) {
     return this.service.requeueRetry(tenantId, retryId, body.maxAttempts);
+  }
+
+  @Post('retries/requeue-failed')
+  @Permissions('webhooks.write')
+  requeueFailedRetries(@Headers('x-tenant-id') tenantId: string, @Body() body: RequeueFailedWebhookRetriesDto) {
+    return this.service.requeueFailedRetries(tenantId, body.webhookId, body.limit ?? 50, body.maxAttempts);
   }
 }

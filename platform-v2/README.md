@@ -66,6 +66,7 @@ platform-v2/
   - `POST /api/webhooks/retries/dispatch`
   - `POST /api/webhooks/retries/prune`
   - `POST /api/webhooks/retries/:retryId/requeue`
+  - `POST /api/webhooks/retries/requeue-failed`
 - Public inbound receiver:
   - `POST /api/webhooks/inbound/:id`
   - Optional inbound headers:
@@ -102,6 +103,7 @@ platform-v2/
   - Inspect queue state: `GET /api/webhooks/retries?webhookId=<id>&status=QUEUED`
   - Queue if missing: `POST /api/webhooks/:id/retries/queue`
   - Requeue a specific failed item: `POST /api/webhooks/retries/<retryId>/requeue`
+  - Batch requeue failed items: `POST /api/webhooks/retries/requeue-failed`
   - Process queue: `POST /api/webhooks/retries/dispatch`
   - Re-run dispatch until retries resolve to `RETRY_SENT` or terminal `RETRY_FAILED`.
 6. Prune old retry logs (retention)

@@ -306,6 +306,58 @@ export class WebhooksService {
     };
   }
 
+  async requeueFailedRetries(tenantId: string, webhookId?: string, limit = 50, maxAttemptsOverride?: number) {
+    const safeLimit = Math.min(Math.max(limit, 1), 200);
+    const failed = await this.prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+        action: 'RETRY_FAILED',
+        ...(webhookId ? { entityId: webhookId } : {}),
+      },
+      orderBy: { createdAt: 'asc' },
+      take: safeLimit,
+    });
+
+    const results: Array<Record<string, unknown>> = [];
+
+    for (const row of failed as any[]) {
+      const payload = (row.payload || {}) as Record<string, any>;
+      const previousAttempt = Number(payload.attempt || 0);
+      const previousMax = Number(payload.maxAttempts || 5);
+      const effectiveMax = Math.max(
+        Number.isFinite(maxAttemptsOverride as number) ? Number(maxAttemptsOverride) : previousMax,
+        previousAttempt + 1,
+        1
+      );
+
+      const updated = await this.prisma.activityLog.update({
+        where: { id: row.id },
+        data: {
+          action: 'RETRY_QUEUED',
+          payload: {
+            ...payload,
+            status: 'QUEUED',
+            previousStatus: 'FAILED',
+            maxAttempts: effectiveMax,
+            nextAttemptAt: new Date().toISOString(),
+            requeuedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      results.push({ retryId: updated.id, status: 'QUEUED', maxAttempts: effectiveMax });
+    }
+
+    return {
+      requestedLimit: safeLimit,
+      matchedFailed: failed.length,
+      requeued: results.length,
+      webhookId: webhookId || null,
+      results,
+    };
+  }
+
   async receiveInbound(
     webhookId: string,
     input: {
