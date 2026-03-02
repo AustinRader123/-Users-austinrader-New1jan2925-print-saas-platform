@@ -2,6 +2,19 @@ import { create } from 'zustand';
 import { apiClient } from '../lib/api';
 import { extractErrorMessage } from '../lib/errors';
 
+function decodeJwtPayload(token: string): any | null {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length < 2) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4 || 4)) % 4);
+    const decoded = atob(padded);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 export interface User {
   id: string;
   email: string;
@@ -33,6 +46,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const result = await apiClient.register(email, password, name);
       apiClient.setToken(result.token);
+      localStorage.setItem('lastLoginEmail', String(email || '').trim().toLowerCase());
       set({ token: result.token, user: { id: result.userId, email, name, role: result.role } });
     } catch (error: any) {
       const message = extractErrorMessage(error) || 'Registration failed';
@@ -48,6 +62,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const result = await apiClient.login(email, password);
       apiClient.setToken(result.token);
+      localStorage.setItem('lastLoginEmail', String(email || '').trim().toLowerCase());
       set({ token: result.token, user: { id: result.userId, email, role: result.role } });
     } catch (error: any) {
       const message = extractErrorMessage(error) || 'Login failed';
@@ -75,7 +90,23 @@ export const useAuthStore = create<AuthStore>((set) => ({
       apiClient.setToken(token);
       const user = await apiClient.getMe();
       set({ user, token });
-    } catch (error) {
+    } catch (error: any) {
+      const message = extractErrorMessage(error);
+      if (String(message || '').toLowerCase().includes('tenantid required')) {
+        const payload = decodeJwtPayload(token);
+        if (payload?.userId && payload?.role) {
+          set({
+            token,
+            user: {
+              id: String(payload.userId),
+              email: localStorage.getItem('lastLoginEmail') || 'user@local',
+              role: String(payload.role),
+            },
+            error: message,
+          });
+          return;
+        }
+      }
       apiClient.clearToken();
       set({ user: null, token: null });
     } finally {
