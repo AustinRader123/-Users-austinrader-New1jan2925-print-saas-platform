@@ -249,6 +249,63 @@ export class WebhooksService {
     };
   }
 
+  async requeueRetry(tenantId: string, retryId: string, maxAttemptsOverride?: number) {
+    const existing = await this.prisma.activityLog.findFirst({
+      where: {
+        id: retryId,
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('retry record not found');
+    }
+
+    const payload = (existing.payload || {}) as Record<string, any>;
+    const previousStatus = String(payload.status || 'UNKNOWN').toUpperCase();
+    const previousAttempt = Number(payload.attempt || 0);
+    const previousMax = Number(payload.maxAttempts || 5);
+
+    if (existing.action === 'RETRY_SENT') {
+      return {
+        retryId,
+        queued: false,
+        reason: 'already sent',
+        status: previousStatus,
+      };
+    }
+
+    const effectiveMax = Math.max(
+      Number.isFinite(maxAttemptsOverride as number) ? Number(maxAttemptsOverride) : previousMax,
+      previousAttempt + 1,
+      1
+    );
+
+    const updated = await this.prisma.activityLog.update({
+      where: { id: retryId },
+      data: {
+        action: 'RETRY_QUEUED',
+        payload: {
+          ...payload,
+          status: 'QUEUED',
+          previousStatus,
+          maxAttempts: effectiveMax,
+          nextAttemptAt: new Date().toISOString(),
+          requeuedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    return {
+      retryId: updated.id,
+      queued: true,
+      status: 'QUEUED',
+      previousStatus,
+      maxAttempts: effectiveMax,
+    };
+  }
+
   async receiveInbound(
     webhookId: string,
     input: {

@@ -158,3 +158,12 @@ export class PruneWebhookRetriesDto {
   @Max(365)
   olderThanDays?: number;
 }
+
+export class RequeueWebhookRetryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  maxAttempts?: number;
+}

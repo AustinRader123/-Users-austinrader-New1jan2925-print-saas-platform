@@ -8,6 +8,7 @@ import {
   CreateWebhookDto,
   PruneWebhookRetriesDto,
   QueueWebhookRetryDto,
+  RequeueWebhookRetryDto,
   RecordWebhookDeliveryDto,
   UpdateWebhookDto,
 } from './webhooks.dto';
@@ -106,5 +107,15 @@ export class WebhooksController {
   @Permissions('webhooks.write')
   pruneRetries(@Headers('x-tenant-id') tenantId: string, @Body() body: PruneWebhookRetriesDto) {
     return this.service.pruneRetries(tenantId, body.webhookId, body.olderThanDays ?? 30);
+  }
+
+  @Post('retries/:retryId/requeue')
+  @Permissions('webhooks.write')
+  requeueRetry(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('retryId') retryId: string,
+    @Body() body: RequeueWebhookRetryDto
+  ) {
+    return this.service.requeueRetry(tenantId, retryId, body.maxAttempts);
   }
 }

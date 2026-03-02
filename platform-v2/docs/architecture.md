@@ -211,6 +211,7 @@ s3://bucket/
 - `POST /api/webhooks/:id/retries/queue` enqueue retry payload
 - `POST /api/webhooks/retries/dispatch` pull/process queued retries
 - `POST /api/webhooks/retries/prune` remove stale retry logs by retention window
+- `POST /api/webhooks/retries/:retryId/requeue` requeue a specific retry record
 
 ### 19.2 Inbound endpoint (public)
 - `POST /api/webhooks/inbound/:id`
