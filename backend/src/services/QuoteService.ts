@@ -12,7 +12,7 @@ export class QuoteService {
     return prisma.quote.findMany({
       where: { storeId },
       include: { lineItems: true, convertedOrder: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
   }
 
@@ -21,7 +21,7 @@ export class QuoteService {
       where: { id: quoteId, storeId },
       include: {
         lineItems: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         },
         convertedOrder: true,
       },
