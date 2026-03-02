@@ -71,6 +71,10 @@ export class RecordWebhookDeliveryDto {
   eventId?: string;
 
   @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(100)
@@ -102,6 +106,10 @@ export class QueueWebhookRetryDto {
   @IsOptional()
   @IsString()
   eventId?: string;
+
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
 
   @IsOptional()
   @IsString()

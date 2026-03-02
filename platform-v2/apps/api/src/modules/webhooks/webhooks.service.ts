@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { createHash, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateWebhookDto,
@@ -90,6 +90,7 @@ export class WebhooksService {
     const payload = {
       status: dto.status,
       eventId: dto.eventId || null,
+      idempotencyKey: dto.idempotencyKey || null,
       responseCode: dto.responseCode || null,
       latencyMs: dto.latencyMs || null,
       attempt: dto.attempt || 1,
@@ -148,7 +149,17 @@ export class WebhooksService {
     });
   }
 
-  async receiveInbound(webhookId: string, providedSecret: string | undefined, eventId: string | undefined, body: Record<string, unknown>) {
+  async receiveInbound(
+    webhookId: string,
+    input: {
+      providedSecret?: string;
+      eventId?: string;
+      signature?: string;
+      signatureTimestamp?: string;
+      idempotencyKey?: string;
+      body: Record<string, unknown>;
+    }
+  ) {
     const webhook = await this.prisma.webhook.findFirst({
       where: { id: webhookId, isActive: true, deletedAt: null },
       select: { id: true, tenantId: true, storeId: true, eventType: true, secretHash: true },
@@ -157,7 +168,11 @@ export class WebhooksService {
       throw new NotFoundException('webhook not found');
     }
 
-    if (webhook.secretHash && !this.secretMatches(webhook.secretHash, providedSecret)) {
+    const eventId = input.eventId;
+    const idempotencyKey = input.idempotencyKey || this.computeIdempotencyKey(webhook.id, eventId, input.body);
+    const bodyText = this.jsonString(input.body);
+
+    if (webhook.secretHash && !this.secretMatches(webhook.secretHash, input.providedSecret)) {
       await this.prisma.activityLog.create({
         data: {
           tenantId: webhook.tenantId,
@@ -167,10 +182,65 @@ export class WebhooksService {
           action: 'REJECTED_SIGNATURE',
           payload: {
             eventId: eventId || null,
+            idempotencyKey,
           },
         },
       });
       throw new UnauthorizedException('invalid webhook secret');
+    }
+
+    if (webhook.secretHash && input.signature && input.signatureTimestamp && input.providedSecret) {
+      const expectedSignature = this.computeSecretSignature(
+        input.providedSecret,
+        input.signatureTimestamp,
+        eventId,
+        idempotencyKey,
+        bodyText
+      );
+      if (!this.tokenMatches(expectedSignature, input.signature)) {
+        await this.prisma.activityLog.create({
+          data: {
+            tenantId: webhook.tenantId,
+            storeId: webhook.storeId,
+            entityType: 'WEBHOOK_INBOUND',
+            entityId: webhook.id,
+            action: 'REJECTED_SIGNATURE',
+            payload: {
+              eventId: eventId || null,
+              idempotencyKey,
+              reason: 'signature mismatch',
+            },
+          },
+        });
+        throw new UnauthorizedException('invalid webhook signature');
+      }
+    }
+
+    const recentInbound = await this.prisma.activityLog.findMany({
+      where: {
+        tenantId: webhook.tenantId,
+        entityType: 'WEBHOOK_INBOUND',
+        entityId: webhook.id,
+        action: 'RECEIVED',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const duplicate = recentInbound.find((entry: any) => {
+      const payload = entry.payload as Record<string, unknown> | null;
+      return payload?.idempotencyKey === idempotencyKey;
+    });
+
+    if (duplicate) {
+      return {
+        accepted: true,
+        duplicate: true,
+        webhookId: webhook.id,
+        eventType: webhook.eventType,
+        activityId: duplicate.id,
+        idempotencyKey,
+      };
     }
 
     const activity = await this.prisma.activityLog.create({
@@ -182,8 +252,9 @@ export class WebhooksService {
         action: 'RECEIVED',
         payload: {
           eventId: eventId || null,
+          idempotencyKey,
           eventType: webhook.eventType,
-          body,
+          body: input.body,
         },
       },
     });
@@ -193,6 +264,7 @@ export class WebhooksService {
       webhookId: webhook.id,
       eventType: webhook.eventType,
       activityId: activity.id,
+      idempotencyKey,
     };
   }
 
@@ -205,6 +277,35 @@ export class WebhooksService {
       throw new NotFoundException('webhook not found');
     }
 
+    const idempotencyKey = dto.idempotencyKey || this.computeIdempotencyKey(webhook.id, dto.eventId, dto.body);
+    const recentRetries = await this.prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+        entityId: webhook.id,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    });
+
+    const existing = recentRetries.find((entry: any) => {
+      const payload = entry.payload as Record<string, unknown> | null;
+      if (payload?.idempotencyKey !== idempotencyKey) {
+        return false;
+      }
+      return ['RETRY_QUEUED', 'RETRY_PROCESSING', 'RETRY_SENT'].includes(entry.action);
+    });
+
+    if (existing) {
+      return {
+        retryId: existing.id,
+        webhookId,
+        status: existing.action,
+        duplicate: true,
+        idempotencyKey,
+      };
+    }
+
     const retryLog = await this.prisma.activityLog.create({
       data: {
         tenantId,
@@ -215,6 +316,7 @@ export class WebhooksService {
         payload: {
           status: 'QUEUED',
           eventId: dto.eventId || null,
+          idempotencyKey,
           eventType: dto.eventType || webhook.eventType,
           body: dto.body,
           attempt: dto.attempt ?? 0,
@@ -229,6 +331,7 @@ export class WebhooksService {
       retryId: retryLog.id,
       webhookId,
       status: 'QUEUED',
+      idempotencyKey,
     };
   }
 
@@ -274,7 +377,7 @@ export class WebhooksService {
 
       const webhook = await this.prisma.webhook.findFirst({
         where: { id: item.entityId, tenantId, isActive: true, deletedAt: null },
-        select: { id: true, endpoint: true, eventType: true },
+        select: { id: true, endpoint: true, eventType: true, secretHash: true },
       });
 
       if (!webhook) {
@@ -296,6 +399,16 @@ export class WebhooksService {
 
       try {
         const startedAt = Date.now();
+        const eventId = payload.eventId ? String(payload.eventId) : undefined;
+        const idempotencyKey = payload.idempotencyKey
+          ? String(payload.idempotencyKey)
+          : this.computeIdempotencyKey(webhook.id, eventId, payload.body || {});
+        const signatureTimestamp = new Date().toISOString();
+        const bodyText = this.jsonString(payload.body || {});
+        const signature = webhook.secretHash
+          ? this.computeHashedSecretSignature(webhook.secretHash, signatureTimestamp, eventId, idempotencyKey, bodyText)
+          : undefined;
+
         const response = await fetch(webhook.endpoint, {
           method: 'POST',
           headers: {
@@ -303,9 +416,12 @@ export class WebhooksService {
             'x-webhook-id': webhook.id,
             'x-webhook-event': String(payload.eventType || webhook.eventType),
             'x-webhook-attempt': String(attempt),
-            ...(payload.eventId ? { 'x-webhook-event-id': String(payload.eventId) } : {}),
+            ...(eventId ? { 'x-webhook-event-id': eventId } : {}),
+            'x-webhook-idempotency-key': idempotencyKey,
+            'x-webhook-signature-ts': signatureTimestamp,
+            ...(signature ? { 'x-webhook-signature': signature } : {}),
           },
-          body: JSON.stringify(payload.body || {}),
+          body: bodyText,
         });
         const latencyMs = Date.now() - startedAt;
         const responseText = (await response.text()).slice(0, 4000);
@@ -314,7 +430,8 @@ export class WebhooksService {
         if (ok) {
           await this.recordDelivery(tenantId, webhook.id, {
             status: 'SUCCESS',
-            eventId: payload.eventId,
+            eventId,
+            idempotencyKey,
             attempt,
             responseCode: response.status,
             latencyMs,
@@ -329,6 +446,7 @@ export class WebhooksService {
                 ...payload,
                 status: 'SENT',
                 attempt,
+                idempotencyKey,
                 responseCode: response.status,
                 sentAt: new Date().toISOString(),
               },
@@ -342,7 +460,8 @@ export class WebhooksService {
         const canRetry = attempt < maxAttempts;
         await this.recordDelivery(tenantId, webhook.id, {
           status: canRetry ? 'RETRY' : 'FAILED',
-          eventId: payload.eventId,
+          eventId,
+          idempotencyKey,
           attempt,
           responseCode: response.status,
           latencyMs,
@@ -358,6 +477,7 @@ export class WebhooksService {
               ...payload,
               status: canRetry ? 'QUEUED' : 'FAILED',
               attempt,
+              idempotencyKey,
               responseCode: response.status,
               error: `HTTP ${response.status}`,
               nextAttemptAt: canRetry ? new Date(Date.now() + this.retryBackoffMs(attempt)).toISOString() : null,
@@ -376,6 +496,7 @@ export class WebhooksService {
         await this.recordDelivery(tenantId, webhook.id, {
           status: canRetry ? 'RETRY' : 'FAILED',
           eventId: payload.eventId,
+          idempotencyKey: payload.idempotencyKey,
           attempt,
           error: error?.message || 'dispatch error',
         });
@@ -388,6 +509,7 @@ export class WebhooksService {
               ...payload,
               status: canRetry ? 'QUEUED' : 'FAILED',
               attempt,
+              idempotencyKey: payload.idempotencyKey,
               error: error?.message || 'dispatch error',
               nextAttemptAt: canRetry ? new Date(Date.now() + this.retryBackoffMs(attempt)).toISOString() : null,
             },
@@ -426,5 +548,45 @@ export class WebhooksService {
 
   private retryBackoffMs(attempt: number) {
     return Math.min(30000 * Math.max(attempt, 1), 15 * 60 * 1000);
+  }
+
+  private computeIdempotencyKey(webhookId: string, eventId: string | undefined, body: Record<string, unknown>) {
+    const bodyHash = createHash('sha256').update(this.jsonString(body)).digest('hex').slice(0, 24);
+    return `${webhookId}:${eventId || 'no-event'}:${bodyHash}`;
+  }
+
+  private jsonString(body: Record<string, unknown>) {
+    return JSON.stringify(body || {});
+  }
+
+  private computeSecretSignature(
+    secret: string,
+    timestamp: string,
+    eventId: string | undefined,
+    idempotencyKey: string,
+    bodyText: string
+  ) {
+    const canonical = `${timestamp}.${eventId || ''}.${idempotencyKey}.${bodyText}`;
+    return createHmac('sha256', secret).update(canonical).digest('hex');
+  }
+
+  private computeHashedSecretSignature(
+    secretHash: string,
+    timestamp: string,
+    eventId: string | undefined,
+    idempotencyKey: string,
+    bodyText: string
+  ) {
+    const canonical = `${timestamp}.${eventId || ''}.${idempotencyKey}.${bodyText}`;
+    return createHmac('sha256', secretHash).update(canonical).digest('hex');
+  }
+
+  private tokenMatches(expected: string, provided: string) {
+    const left = Buffer.from(expected, 'utf8');
+    const right = Buffer.from(provided, 'utf8');
+    if (left.length !== right.length) {
+      return false;
+    }
+    return timingSafeEqual(left, right);
   }
 }
