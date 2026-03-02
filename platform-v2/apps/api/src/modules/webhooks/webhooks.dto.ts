@@ -97,3 +97,43 @@ export class RecordWebhookDeliveryDto {
   @IsObject()
   responseBody?: Record<string, unknown>;
 }
+
+export class QueueWebhookRetryDto {
+  @IsOptional()
+  @IsString()
+  eventId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  eventType?: string;
+
+  @IsObject()
+  body!: Record<string, unknown>;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  attempt?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  maxAttempts?: number;
+}
+
+export class DispatchWebhookRetriesDto {
+  @IsOptional()
+  @IsString()
+  webhookId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}

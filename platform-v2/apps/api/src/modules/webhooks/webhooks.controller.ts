@@ -3,7 +3,13 @@ import { AuthGuard } from '../../common/auth.guard';
 import { Permissions } from '../../common/permissions.decorator';
 import { RbacGuard } from '../../common/rbac.guard';
 import { TenantGuard } from '../../common/tenant.guard';
-import { CreateWebhookDto, RecordWebhookDeliveryDto, UpdateWebhookDto } from './webhooks.dto';
+import {
+  DispatchWebhookRetriesDto,
+  CreateWebhookDto,
+  QueueWebhookRetryDto,
+  RecordWebhookDeliveryDto,
+  UpdateWebhookDto,
+} from './webhooks.dto';
 import { WebhooksService } from './webhooks.service';
 
 @Controller('api/webhooks')
@@ -59,5 +65,17 @@ export class WebhooksController {
     @Body() body: RecordWebhookDeliveryDto
   ) {
     return this.service.recordDelivery(tenantId, id, body);
+  }
+
+  @Post(':id/retries/queue')
+  @Permissions('webhooks.write')
+  queueRetry(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string, @Body() body: QueueWebhookRetryDto) {
+    return this.service.queueRetry(tenantId, id, body);
+  }
+
+  @Post('retries/dispatch')
+  @Permissions('webhooks.write')
+  dispatchRetries(@Headers('x-tenant-id') tenantId: string, @Body() body: DispatchWebhookRetriesDto) {
+    return this.service.dispatchRetries(tenantId, body);
   }
 }
