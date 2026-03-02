@@ -23,6 +23,7 @@ import { AuthGuard } from './common/auth.guard';
 import { RbacGuard } from './common/rbac.guard';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
     NotificationsModule,
     FilesModule,
     AuditModule,
+    WebhooksModule,
   ],
   controllers: [HealthController],
   providers: [EventsGateway, AuthGuard, RbacGuard],

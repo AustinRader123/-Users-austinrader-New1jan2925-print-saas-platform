@@ -180,6 +180,8 @@ export class AuthService {
       'files.write',
       'notifications.read',
       'notifications.write',
+      'webhooks.read',
+      'webhooks.write',
       'audit.read',
       'invoices.read',
       'invoices.write',
