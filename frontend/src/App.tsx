@@ -103,9 +103,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
 
 function BuildBanner() {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-black px-3 py-1 font-mono text-xs text-green-400">
-      Build: {BUILD_INFO.commit} | {BUILD_INFO.buildTime}
-    </div>
+    <>
+      <div className="fixed left-0 right-0 top-0 z-[99999] bg-black px-3 py-1 text-center font-mono text-xs font-semibold text-lime-300 shadow-[0_0_0_1px_#00ff66]">
+        DEPLOY PROOF — Build: {BUILD_INFO.commit} | {BUILD_INFO.buildTime}
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 z-[99999] bg-black px-3 py-1 text-center font-mono text-xs font-semibold text-lime-300 shadow-[0_0_0_1px_#00ff66]">
+        DEPLOY PROOF — Build: {BUILD_INFO.commit} | {BUILD_INFO.buildTime}
+      </div>
+    </>
   );
 }
 
