@@ -103,6 +103,24 @@ platform-v2/
   - Perma-fail retries: endpoint unreachable or consistently non-2xx response.
   - Requeue loops: max attempts too low/high or endpoint contract mismatch.
 
+## Webhook smoke script
+
+- Script: `scripts/webhook-smoke.sh`
+- Purpose:
+  - create (or use) webhook,
+  - enqueue retry job,
+  - dispatch retries,
+  - print latest delivery logs and IDs.
+- Quick use (with existing token):
+  - `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> API_BASE=http://localhost:4000 bash scripts/webhook-smoke.sh`
+- Quick use (login flow):
+  - `cd platform-v2 && EMAIL=<user> PASSWORD=<pass> TENANT_ID=<tenant> API_BASE=http://localhost:4000 bash scripts/webhook-smoke.sh`
+- Useful overrides:
+  - `WEBHOOK_ID=<id>` reuse existing webhook
+  - `TARGET_URL=https://httpbin.org/post` destination endpoint
+  - `EVENT_TYPE=order.updated` event type
+  - `MAX_ATTEMPTS=3` retry budget
+
 ## Reverse proxy
 
 - `docker compose up --build`
