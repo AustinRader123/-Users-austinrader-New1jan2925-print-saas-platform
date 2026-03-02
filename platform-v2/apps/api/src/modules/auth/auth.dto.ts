@@ -8,3 +8,27 @@ export class LoginDto {
   @MinLength(8)
   password!: string;
 }
+
+export class RegisterDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsString()
+  @MinLength(1)
+  firstName!: string;
+
+  @IsString()
+  @MinLength(1)
+  lastName!: string;
+}
+
+export type AuthResult = {
+  token: string;
+  refreshToken: string;
+  tenantId: string;
+  permissions: string[];
+};

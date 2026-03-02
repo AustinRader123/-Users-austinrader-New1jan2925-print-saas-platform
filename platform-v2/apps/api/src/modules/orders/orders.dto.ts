@@ -1,20 +1,45 @@
-import { IsArray, IsInt, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsEmail, IsInt, IsOptional, IsString, Min, MinLength, ValidateNested } from 'class-validator';
 
-export class CreateOrderDto {
+export class CreateOrderItemDto {
   @IsString()
-  customerId!: string;
-
-  @IsArray()
-  items!: Array<{
-    sku: string;
-    quantity: number;
-    baseUnitCost: number;
-  }>;
+  @MinLength(1)
+  productId!: string;
 
   @IsString()
-  method!: 'SCREENPRINT' | 'EMBROIDERY' | 'DTF';
+  @MinLength(1)
+  variantId!: string;
 
   @IsInt()
+  @Min(1)
+  quantity!: number;
+
+  @Type(() => Number)
   @Min(0)
-  colorCount!: number;
+  unitPrice!: number;
+
+  @IsOptional()
+  @IsString()
+  designId?: string;
+
+  @IsOptional()
+  pricingSnapshot?: Record<string, unknown>;
+}
+
+export class CreateOrderDto {
+  @IsEmail()
+  customerEmail!: string;
+
+  @IsString()
+  @MinLength(1)
+  customerFirstName!: string;
+
+  @IsString()
+  @MinLength(1)
+  customerLastName!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items!: CreateOrderItemDto[];
 }
