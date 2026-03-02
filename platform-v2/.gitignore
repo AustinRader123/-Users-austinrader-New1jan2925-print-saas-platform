@@ -1,0 +1,11 @@
+node_modules/
+
+# Build outputs
+apps/api/dist/
+apps/web/.next/
+packages/*/dist/
+
+# Caches and logs
+*.tsbuildinfo
+*.log
+coverage/
