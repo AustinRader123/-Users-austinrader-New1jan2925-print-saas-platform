@@ -3,13 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKEND_PORT="${BACKEND_PORT:-3100}"
-BASE_URL="${BASE_URL:-http://localhost:${BACKEND_PORT}}"
 
 cd "$ROOT/backend"
 
 export NODE_ENV="${NODE_ENV:-production}"
 export BACKEND_PORT
 export PORT="${PORT:-$BACKEND_PORT}"
+BASE_URL="${BASE_URL:-http://localhost:${PORT}}"
 export CORS_ORIGINS="${CORS_ORIGINS:-${BASE_URL},http://localhost:3000,http://127.0.0.1:3000}"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
