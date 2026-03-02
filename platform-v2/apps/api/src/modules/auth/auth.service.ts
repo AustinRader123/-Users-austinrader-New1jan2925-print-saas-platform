@@ -178,6 +178,7 @@ export class AuthService {
       'automation.write',
       'notifications.read',
       'notifications.write',
+      'audit.read',
       'invoices.read',
       'invoices.write',
       'payments.write',
