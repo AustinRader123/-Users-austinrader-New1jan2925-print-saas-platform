@@ -3,4 +3,5 @@ export const BUILD_INFO = {
   buildTime: (import.meta as any).env?.VITE_BUILD_TIME ?? ((import.meta as any).env?.DEV ? new Date().toISOString() : 'unknown'),
   env: (import.meta as any).env?.VITE_UI_ENV ?? ((import.meta as any).env?.PROD ? 'prod' : 'preview'),
   version: (import.meta as any).env?.VITE_APP_VERSION ?? '0.0.0',
+  deployMarker: (import.meta as any).env?.VITE_DEPLOY_MARKER ?? 'routing-fix-login-20260302',
 };
