@@ -3,6 +3,14 @@
     {
       "source": "/api/:match*",
       "destination": "https://users-austinrader-new1jan2925-print-saas-50g3.onrender.com/api/:match*"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/index.html"
     }
   ]
 }
