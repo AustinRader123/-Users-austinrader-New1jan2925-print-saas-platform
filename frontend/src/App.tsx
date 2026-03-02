@@ -121,7 +121,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
   const { user } = useAuthStore();
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/app/login" replace />;
   }
 
   const allowedRoles = requiredRoles || (requiredRole ? [requiredRole] : []);
@@ -167,6 +167,8 @@ function AppRoutes() {
             <Route path="/team/:slug/checkout" element={<TeamStoreCheckoutPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/app/login" element={<LoginPage />} />
+            <Route path="/app/register" element={<RegisterPage />} />
 
             {/* Protected App namespace */}
             <Route

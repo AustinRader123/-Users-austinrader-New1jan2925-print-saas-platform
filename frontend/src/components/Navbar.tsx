@@ -67,10 +67,10 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="space-x-2">
-                <Link to="/login" className="btn btn-secondary">
+                <Link to="/app/login" className="btn btn-secondary">
                   Login
                 </Link>
-                <Link to="/register" className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800">
+                <Link to="/app/register" className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800">
                   Sign Up
                 </Link>
               </div>

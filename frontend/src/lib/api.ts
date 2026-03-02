@@ -67,8 +67,8 @@ class ApiClient {
       }
       return config;
     });
-    // Avoid hanging requests; fail fast for diagnostics
-    this.client.defaults.timeout = 10000; // 10s
+    // Avoid hanging requests while allowing backend cold starts/warmups
+    this.client.defaults.timeout = 30000; // 30s
 
     // Basic response interceptor to unify network/CORS errors
     this.client.interceptors.response.use(
@@ -85,15 +85,17 @@ class ApiClient {
         }
         // Auto-logout on 401 and redirect to login
         const status = error?.response?.status;
-        if (status === 401) {
+        const requestPath = String(error?.config?.url || '');
+        const isAuthEndpoint = /\/auth\/(login|register)$/i.test(requestPath);
+        if (status === 401 && !isAuthEndpoint) {
           try {
             this.clearToken();
           } catch {}
           if (typeof window !== 'undefined') {
             // Preserve current path to return after auth
             const path = window.location.pathname;
-            const redirect = path && path !== '/login' ? `?next=${encodeURIComponent(path)}` : '';
-            window.location.href = `/login${redirect}`;
+            const redirect = path && path !== '/app/login' ? `?next=${encodeURIComponent(path)}` : '';
+            window.location.href = `/app/login${redirect}`;
           }
         }
         if (status === 403) {

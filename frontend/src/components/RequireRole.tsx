@@ -12,7 +12,7 @@ export default function RequireRole({ children, roles, redirectTo = '/' }: Requi
   const { user } = useAuthStore();
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/app/login" replace />;
   }
 
   if (!roles.includes(user.role)) {

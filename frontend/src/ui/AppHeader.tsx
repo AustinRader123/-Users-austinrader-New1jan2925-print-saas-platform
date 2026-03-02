@@ -135,7 +135,7 @@ export function AppHeader({
               type="button"
               onClick={() => {
                 logout();
-                navigate('/login');
+                navigate('/app/login');
               }}
             >
               Sign out
