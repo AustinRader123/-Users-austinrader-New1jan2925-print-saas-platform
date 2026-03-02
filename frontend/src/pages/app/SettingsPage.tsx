@@ -6,6 +6,14 @@ import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
 
 export default function AppSettingsPage() {
   const storeId = localStorage.getItem('storeId') || 'default';
+  const [shippingProvider, setShippingProvider] = React.useState(localStorage.getItem('provider.shipping') || 'mock');
+  const [billingProvider, setBillingProvider] = React.useState(localStorage.getItem('provider.billing') || 'mock');
+
+  const updateProvider = (key: 'shipping' | 'billing', value: string) => {
+    if (key === 'shipping') setShippingProvider(value);
+    if (key === 'billing') setBillingProvider(value);
+    localStorage.setItem(`provider.${key}`, value);
+  };
 
   const state = useAsync(async () => {
     return withFallback(
@@ -31,6 +39,24 @@ export default function AppSettingsPage() {
       <div className="deco-panel">
         <div className="deco-panel-body">
           <button className="deco-btn" onClick={state.refetch}>Load data</button>
+        </div>
+      </div>
+
+      <div className="deco-panel">
+        <div className="deco-panel-head">Provider selectors</div>
+        <div className="deco-panel-body grid gap-2 md:grid-cols-2">
+          <label className="text-xs text-slate-600">Shipping provider
+            <select className="deco-input mt-1 w-full" value={shippingProvider} onChange={(e) => updateProvider('shipping', e.target.value)}>
+              <option value="mock">mock</option>
+              <option value="live">live</option>
+            </select>
+          </label>
+          <label className="text-xs text-slate-600">Billing provider
+            <select className="deco-input mt-1 w-full" value={billingProvider} onChange={(e) => updateProvider('billing', e.target.value)}>
+              <option value="mock">mock</option>
+              <option value="live">live</option>
+            </select>
+          </label>
         </div>
       </div>
 

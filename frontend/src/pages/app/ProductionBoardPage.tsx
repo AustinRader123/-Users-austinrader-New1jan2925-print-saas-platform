@@ -7,8 +7,8 @@ import { ErrorState, LoadingState } from './ui';
 const fallbackBoard = {
   needsProof: [{ id: 'JOB-901', title: 'Atlas Team Tees' }],
   readyToPrint: [{ id: 'JOB-902', title: 'North Ridge Hoodies' }],
-  inProduction: [{ id: 'JOB-903', title: 'Metro Jerseys' }],
-  completed: [{ id: 'JOB-904', title: 'Summit Warmups' }],
+  wip: [{ id: 'JOB-903', title: 'Metro Jerseys' }],
+  shipped: [{ id: 'JOB-904', title: 'Summit Warmups' }],
 };
 
 export default function AppProductionBoardPage() {
@@ -19,8 +19,8 @@ export default function AppProductionBoardPage() {
         return {
           needsProof: result?.needsProof || [],
           readyToPrint: result?.readyToPrint || [],
-          inProduction: result?.inProduction || [],
-          completed: result?.completed || [],
+          wip: result?.inProduction || [],
+          shipped: result?.completed || [],
         };
       },
       () => fallbackBoard,
@@ -34,8 +34,8 @@ export default function AppProductionBoardPage() {
   const columns = [
     { title: 'Needs Proof', key: 'needsProof' as const },
     { title: 'Ready to Print', key: 'readyToPrint' as const },
-    { title: 'In Production', key: 'inProduction' as const },
-    { title: 'Completed', key: 'completed' as const },
+    { title: 'WIP', key: 'wip' as const },
+    { title: 'Shipped', key: 'shipped' as const },
   ];
 
   return (

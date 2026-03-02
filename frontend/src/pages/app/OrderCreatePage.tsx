@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apiClient } from '../../lib/api';
 import { PageHeader } from './ui';
 
 export default function AppOrderCreatePage() {
@@ -8,14 +9,26 @@ export default function AppOrderCreatePage() {
   const [customerEmail, setCustomerEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      const storeId = localStorage.getItem('storeId') || 'default';
+      const cart = await apiClient.getCart();
+      const created = await apiClient.createOrder(storeId, cart.id, {
+        name: customerName,
+        email: customerEmail,
+        notes,
+      });
+      navigate(`/app/orders/${created.id || created.orderId || ''}`);
+    } catch (submitError: any) {
+      setError(submitError?.message || 'Could not create order. Make sure an active cart exists for this user.');
+    } finally {
       setSaving(false);
-      navigate('/app/orders');
-    }, 400);
+    }
   };
 
   return (
@@ -34,6 +47,7 @@ export default function AppOrderCreatePage() {
         </div>
         <div className="deco-panel-body border-t border-slate-200">
           <button className="deco-btn-primary" disabled={saving} type="submit">{saving ? 'Saving...' : 'Create Order'}</button>
+          {error ? <div className="mt-2 text-xs text-red-600">{error}</div> : null}
         </div>
       </form>
     </div>

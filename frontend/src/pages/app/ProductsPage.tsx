@@ -45,7 +45,12 @@ export default function AppProductsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = state.data || [];
-    return !q ? rows : rows.filter((row) => row.name.toLowerCase().includes(q) || row.sku.toLowerCase().includes(q));
+    const filteredRows = !q ? rows : rows.filter((row) => row.name.toLowerCase().includes(q) || row.sku.toLowerCase().includes(q));
+    return filteredRows.sort((a, b) => {
+      const updatedDiff = new Date(b.updated).getTime() - new Date(a.updated).getTime();
+      if (updatedDiff !== 0) return updatedDiff;
+      return String(a.id).localeCompare(String(b.id));
+    });
   }, [state.data, query]);
 
   return (

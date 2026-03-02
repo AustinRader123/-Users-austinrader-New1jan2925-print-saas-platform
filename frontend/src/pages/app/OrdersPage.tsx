@@ -23,6 +23,8 @@ const mockOrders: OrderRow[] = [
 export default function AppOrdersPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const state = useAsync(async () => {
     return withFallback(
@@ -45,13 +47,25 @@ export default function AppOrdersPage() {
 
   const filtered = useMemo(() => {
     const rows = state.data || [];
-    return rows.filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const q = query.trim().toLowerCase();
       const qOk = !q || row.orderNumber.toLowerCase().includes(q) || row.customerName.toLowerCase().includes(q);
       const sOk = status === 'ALL' || row.status === status;
       return qOk && sOk;
     });
+    return filteredRows.sort((a, b) => {
+      const byUpdated = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      if (byUpdated !== 0) return byUpdated;
+      return String(a.id).localeCompare(String(b.id));
+    });
   }, [state.data, query, status]);
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
   return (
     <div className="deco-page">
@@ -96,7 +110,7 @@ export default function AppOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {paged.map((row) => (
                   <tr key={row.id}>
                     <td className="font-semibold">{row.orderNumber}</td>
                     <td>{row.customerName}</td>
@@ -108,6 +122,13 @@ export default function AppOrdersPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="deco-panel-body border-t border-slate-200 flex items-center justify-between">
+            <div className="text-xs text-slate-500">Page {page} of {totalPages}</div>
+            <div className="flex gap-2">
+              <button className="deco-btn" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
+              <button className="deco-btn" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
+            </div>
           </div>
         </div>
       ) : null}

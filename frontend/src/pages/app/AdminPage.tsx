@@ -5,6 +5,21 @@ import { useAsync } from '../../lib/query';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from './ui';
 
 export default function AppAdminPage() {
+  const [gates, setGates] = React.useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem('featureGates');
+      return raw ? JSON.parse(raw) : { 'reports.enabled': true, 'admin.enabled': true };
+    } catch {
+      return { 'reports.enabled': true, 'admin.enabled': true };
+    }
+  });
+
+  const toggleGate = (key: string) => {
+    const next = { ...gates, [key]: !gates[key] };
+    setGates(next);
+    localStorage.setItem('featureGates', JSON.stringify(next));
+  };
+
   const state = useAsync(async () => {
     return withFallback(
       async () => {
@@ -29,6 +44,14 @@ export default function AppAdminPage() {
       <div className="deco-panel">
         <div className="deco-panel-body">
           <button className="deco-btn" onClick={state.refetch}>Load data</button>
+        </div>
+      </div>
+
+      <div className="deco-panel">
+        <div className="deco-panel-head">Feature gates</div>
+        <div className="deco-panel-body flex flex-wrap gap-2">
+          <button className="deco-btn" onClick={() => toggleGate('reports.enabled')}>reports.enabled: {String(gates['reports.enabled'] !== false)}</button>
+          <button className="deco-btn" onClick={() => toggleGate('admin.enabled')}>admin.enabled: {String(gates['admin.enabled'] !== false)}</button>
         </div>
       </div>
 

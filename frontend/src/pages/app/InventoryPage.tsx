@@ -12,6 +12,9 @@ const mockRows = [
 
 export default function AppInventoryPage() {
   const storeId = localStorage.getItem('storeId') || 'default';
+  const tenantId = localStorage.getItem('tenantId') || '';
+  const [batchId, setBatchId] = React.useState('');
+  const [actionMessage, setActionMessage] = React.useState<string | null>(null);
 
   const state = useAsync(async () => {
     return withFallback(
@@ -24,6 +27,27 @@ export default function AppInventoryPage() {
     );
   }, [storeId]);
 
+  const runBatchAction = async (action: 'reserve' | 'release' | 'consume') => {
+    if (!batchId.trim()) {
+      setActionMessage('Enter a batch ID first.');
+      return;
+    }
+    if (!tenantId) {
+      setActionMessage('tenantId is required for inventory batch actions.');
+      return;
+    }
+    setActionMessage(null);
+    try {
+      if (action === 'reserve') await apiClient.reserveInventoryBatch(batchId.trim(), tenantId);
+      if (action === 'release') await apiClient.releaseInventoryBatch(batchId.trim(), tenantId);
+      if (action === 'consume') await apiClient.consumeInventoryBatch(batchId.trim(), tenantId);
+      setActionMessage(`Batch ${action} completed.`);
+      await state.refetch();
+    } catch (error: any) {
+      setActionMessage(error?.message || `Batch ${action} failed.`);
+    }
+  };
+
   return (
     <div className="deco-page">
       <PageHeader
@@ -31,6 +55,16 @@ export default function AppInventoryPage() {
         subtitle="Monitor stock, reservations, and reorder thresholds."
         actions={<Link className="deco-btn-primary" to="/app/inventory/receive">Receive Inventory</Link>}
       />
+
+      <div className="deco-panel">
+        <div className="deco-panel-body flex flex-wrap items-center gap-2">
+          <input className="deco-input" value={batchId} onChange={(e) => setBatchId(e.target.value)} placeholder="Batch ID for reserve/consume/release" />
+          <button className="deco-btn" onClick={() => runBatchAction('reserve')}>Reserve</button>
+          <button className="deco-btn" onClick={() => runBatchAction('consume')}>Consume</button>
+          <button className="deco-btn" onClick={() => runBatchAction('release')}>Release</button>
+          {actionMessage ? <span className="text-xs text-slate-600">{actionMessage}</span> : null}
+        </div>
+      </div>
 
       {state.loading ? <LoadingState title="Loading inventory" /> : null}
       {!state.loading && state.error ? <ErrorState message={state.error} onRetry={state.refetch} /> : null}
@@ -52,7 +86,9 @@ export default function AppInventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {state.data.map((row: any) => {
+                {[...state.data]
+                  .sort((a: any, b: any) => String(a.sku || a.code || a.id).localeCompare(String(b.sku || b.code || b.id)))
+                  .map((row: any) => {
                   const onHand = Number(row.onHand ?? row.quantity ?? 0);
                   const reserved = Number(row.reserved ?? 0);
                   const available = Number(row.available ?? onHand - reserved);
@@ -64,10 +100,8 @@ export default function AppInventoryPage() {
                       <td>{available}</td>
                       <td>{row.reorderLevel ?? '—'}</td>
                       <td>{row.supplier || row.supplierName || '—'}</td>
-                      <td className="flex gap-1">
-                        <button className="deco-btn" disabled title="Adjust action pending API support">Adjust</button>
-                        <button className="deco-btn" disabled title="Reserve action pending API support">Reserve</button>
-                        <button className="deco-btn" disabled title="Release action pending API support">Release</button>
+                      <td className="text-xs text-slate-600">
+                        Use batch actions above for reserve/consume/release.
                       </td>
                     </tr>
                   );

@@ -12,6 +12,8 @@ const mockRows = [
 
 export default function AppPurchasingPage() {
   const storeId = localStorage.getItem('storeId') || 'default';
+  const tenantId = localStorage.getItem('tenantId') || '';
+  const [actionMessage, setActionMessage] = React.useState<string | null>(null);
 
   const state = useAsync(async () => {
     return withFallback(
@@ -24,9 +26,38 @@ export default function AppPurchasingPage() {
     );
   }, [storeId]);
 
+  const runPoAction = async (id: string, action: 'send' | 'receive' | 'close') => {
+    if (!tenantId) {
+      setActionMessage('tenantId is required for purchasing actions.');
+      return;
+    }
+    setActionMessage(null);
+    try {
+      if (action === 'send') {
+        await apiClient.sendPurchasingPo(id, { storeId, tenantId });
+      }
+      if (action === 'receive') {
+        await apiClient.receivePurchasingPo(id, {
+          storeId,
+          tenantId,
+          locationId: 'default',
+          lines: [],
+        });
+      }
+      if (action === 'close') {
+        await apiClient.closePurchasingPo(id, { storeId, tenantId });
+      }
+      setActionMessage(`PO action completed: ${action}`);
+      await state.refetch();
+    } catch (error: any) {
+      setActionMessage(error?.message || `PO action failed: ${action}`);
+    }
+  };
+
   return (
     <div className="deco-page">
       <PageHeader title="Purchasing" subtitle="Manage supplier purchase orders and receiving." />
+      {actionMessage ? <div className="text-xs text-slate-600">{actionMessage}</div> : null}
 
       {state.loading ? <LoadingState title="Loading purchase orders" /> : null}
       {!state.loading && state.error ? <ErrorState message={state.error} onRetry={state.refetch} /> : null}
@@ -47,7 +78,13 @@ export default function AppPurchasingPage() {
                 </tr>
               </thead>
               <tbody>
-                {state.data.map((row: any) => (
+                {[...state.data]
+                  .sort((a: any, b: any) => {
+                    const dateCompare = String(b.expectedAt || '').localeCompare(String(a.expectedAt || ''));
+                    if (dateCompare !== 0) return dateCompare;
+                    return String(a.id || a.number).localeCompare(String(b.id || b.number));
+                  })
+                  .map((row: any) => (
                   <tr key={row.id || row.number}>
                     <td className="font-semibold">{row.number || row.id}</td>
                     <td>{row.supplierName || row.supplier || '—'}</td>
@@ -55,9 +92,9 @@ export default function AppPurchasingPage() {
                     <td>{row.lineCount || row.items?.length || 0}</td>
                     <td>{row.expectedAt || '—'}</td>
                     <td className="flex gap-1">
-                      <button className="deco-btn">Send</button>
-                      <button className="deco-btn">Receive</button>
-                      <button className="deco-btn">Close</button>
+                      <button className="deco-btn" onClick={() => runPoAction(String(row.id || row.number), 'send')}>Send</button>
+                      <button className="deco-btn" onClick={() => runPoAction(String(row.id || row.number), 'receive')}>Receive</button>
+                      <button className="deco-btn" onClick={() => runPoAction(String(row.id || row.number), 'close')}>Close</button>
                       <Link className="deco-btn" to={`/app/purchasing/${row.id || row.number}`}>View</Link>
                     </td>
                   </tr>

@@ -74,6 +74,10 @@ class ApiClient {
     this.client.interceptors.response.use(
       (resp) => resp,
       (error) => {
+        const requestId = error?.response?.data?.requestId || error?.response?.headers?.['x-request-id'];
+        if (requestId && typeof error?.message === 'string' && !error.message.includes('requestId=')) {
+          error.message = `${error.message} (requestId=${requestId})`;
+        }
         // Axios uses 'Network Error' for CORS/mixed-content or DNS failures
         if (error && !error.response) {
           error.message = 'Network error. Check API URL, HTTPS, and CORS settings.';
@@ -376,6 +380,11 @@ class ApiClient {
 
   async listOrders() {
     const { data } = await this.client.get('/orders');
+    return data;
+  }
+
+  async updateOrderStatus(orderId: string, status: string) {
+    const { data } = await this.client.post(`/orders/${orderId}/status`, { status });
     return data;
   }
 
@@ -1309,6 +1318,21 @@ class ApiClient {
     return data;
   }
 
+  async reserveInventoryBatch(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/inventory/batches/${batchId}/reserve`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async releaseInventoryBatch(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/inventory/batches/${batchId}/release`, {}, { params: { tenantId } });
+    return data;
+  }
+
+  async consumeInventoryBatch(batchId: string, tenantId: string) {
+    const { data } = await this.client.post(`/inventory/batches/${batchId}/consume`, {}, { params: { tenantId } });
+    return data;
+  }
+
   async listPurchaseOrders(storeId: string) {
     const { data } = await this.client.get('/purchase-orders', { params: { storeId } });
     return data;
@@ -1627,6 +1651,16 @@ class ApiClient {
     cost?: number;
   }) {
     const { data } = await this.client.post(`/shipping/orders/${orderId}/label`, payload);
+    return data;
+  }
+
+  async quoteShippingRates(payload: {
+    storeId: string;
+    orderId: string;
+    destination?: Record<string, any>;
+    weightOz?: number;
+  }) {
+    const { data } = await this.client.post('/shipping/rates', payload);
     return data;
   }
 
