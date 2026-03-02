@@ -41,6 +41,7 @@ test('deploy proof + app navigation smoke', async ({ page, request, baseURL }) =
   const navItems: Array<{ label: string; title: RegExp }> = [
     { label: 'Orders', title: /Orders/i },
     { label: 'Products', title: /Products/i },
+    { label: 'Quotes', title: /Quotes/i },
     { label: 'Production', title: /Production/i },
     { label: 'Inventory', title: /Inventory/i },
     { label: 'Purchasing', title: /Purchasing/i },
@@ -62,6 +63,7 @@ test('deploy proof + app navigation smoke', async ({ page, request, baseURL }) =
   const sectionChecks = [
     '/api/orders',
     '/api/products?storeId=default',
+    '/api/quotes?storeId=default',
     '/api/production/jobs?storeId=default',
     '/api/inventory?storeId=default',
     '/api/purchase-orders?storeId=default',

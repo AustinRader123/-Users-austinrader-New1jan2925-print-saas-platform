@@ -66,6 +66,7 @@ export function AppHeader({
           </summary>
           <div className="ops-create-popover">
             <button type="button" onClick={() => navigate('/app/orders/new')}>New Order</button>
+            <button type="button" onClick={() => navigate('/app/quotes/new')}>New Quote</button>
             <button type="button" onClick={() => navigate('/app/products/import')}>New Product</button>
             <button type="button" onClick={() => navigate('/app/purchasing')}>New PO</button>
             <button type="button" onClick={() => navigate('/app/shipping')}>New Shipment</button>

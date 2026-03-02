@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, DollarSign, Factory, Package, ShoppingCart, Truck, Warehouse } from 'lucide-react';
+import { Boxes, ClipboardList, DollarSign, Factory, FileText, Package, ShoppingCart, Truck, Warehouse } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type AppNavItem = {
@@ -15,6 +15,7 @@ export const appNavItems: AppNavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: Boxes, path: '/app', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
   { key: 'orders', label: 'Orders', icon: ClipboardList, path: '/app/orders', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 8 },
   { key: 'products', label: 'Products', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'quotes', label: 'Quotes', icon: FileText, path: '/app/quotes', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
   { key: 'production', label: 'Production', icon: Factory, path: '/app/production', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 6 },
   { key: 'inventory', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
   { key: 'purchasing', label: 'Purchasing', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },

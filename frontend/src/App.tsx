@@ -84,6 +84,9 @@ import AppOrdersPage from './pages/app/OrdersPage';
 import AppOrderDetailPage from './pages/app/OrderDetailPage';
 import AppOrderCreatePage from './pages/app/OrderCreatePage';
 import AppProductsPage from './pages/app/ProductsPage';
+import AppQuotesPage from './pages/app/QuotesPage';
+import AppQuoteCreatePage from './pages/app/QuoteCreatePage';
+import AppQuoteDetailPage from './pages/app/QuoteDetailPage';
 import AppProductDetailPage from './pages/app/ProductDetailPage';
 import AppProductImportPage from './pages/app/ProductImportPage';
 import AppProductionPage from './pages/app/ProductionPage';
@@ -177,6 +180,10 @@ function AppRoutes() {
               <Route path="products" element={<AppProductsPage />} />
               <Route path="products/import" element={<AppProductImportPage />} />
               <Route path="products/:id" element={<AppProductDetailPage />} />
+
+              <Route path="quotes" element={<AppQuotesPage />} />
+              <Route path="quotes/new" element={<AppQuoteCreatePage />} />
+              <Route path="quotes/:id" element={<AppQuoteDetailPage />} />
 
               <Route path="production" element={<AppProductionPage />}>
                 <Route index element={<Navigate to="/app/production/board" replace />} />
