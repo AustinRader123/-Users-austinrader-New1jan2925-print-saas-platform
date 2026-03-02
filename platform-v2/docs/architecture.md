@@ -243,3 +243,18 @@ s3://bucket/
   - `RETRY_QUEUED` -> `RETRY_PROCESSING` -> (`RETRY_SENT` | `RETRY_FAILED`)
 - Failed attempts with remaining budget are requeued with backoff.
 - Backoff: linear floor (`30s * attempt`) capped at `15m`.
+
+### 19.7 Triage runbook (operator flow)
+1. Validate webhook state via `GET /api/webhooks` (active + endpoint + event type).
+2. Check inbound activity (`WEBHOOK_INBOUND`):
+  - `RECEIVED` = accepted
+  - `REJECTED_SIGNATURE` = secret/signature/canonical mismatch
+3. Verify idempotency behavior:
+  - Duplicate events should resolve to same `idempotencyKey` and avoid duplicate processing.
+4. Inspect delivery logs via `GET /api/webhooks/deliveries`:
+  - Track `DELIVERY_SUCCESS`, `DELIVERY_RETRY`, `DELIVERY_FAILED` with response metadata.
+5. Recover stuck retries:
+  - enqueue: `POST /api/webhooks/:id/retries/queue`
+  - process: `POST /api/webhooks/retries/dispatch`
+6. Confirm outbound headers on target receiver:
+  - `x-webhook-id`, `x-webhook-event`, `x-webhook-attempt`, `x-webhook-idempotency-key`, `x-webhook-signature-ts`, `x-webhook-signature`.
