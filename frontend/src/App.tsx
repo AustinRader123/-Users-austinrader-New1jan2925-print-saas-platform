@@ -217,6 +217,22 @@ function AppRoutes() {
               <Route path="integrations" element={<AppIntegrationsPage />} />
               <Route path="reports" element={<AppReportsPage />} />
               <Route path="admin" element={<AppAdminPage />} />
+              <Route
+                path="admin/suppliers"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminSupplierSyncPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/suppliers/runs/:runId"
+                element={
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <AdminSupplierRunDetailPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="settings" element={<AppSettingsPage />} />
 
               <Route path="*" element={<AppNotFoundPage />} />
@@ -358,6 +374,22 @@ function AppRoutes() {
               element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminWebhooksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/suppliers"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminSupplierSyncPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/suppliers/runs/:runId"
+              element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminSupplierRunDetailPage />
                 </ProtectedRoute>
               }
             />

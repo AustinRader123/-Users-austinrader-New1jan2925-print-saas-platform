@@ -12,7 +12,16 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "type-check": "tsc --noEmit",
     "smoke:ui": "playwright test tests/ui-live-proof.spec.ts",
-    "smoke:sidebar-nav": "playwright test tests/sidebar-nav.spec.ts"
+    "smoke:sidebar-nav": "playwright test tests/sidebar-nav.spec.ts",
+    "smoke:orders": "playwright test tests/modules-smoke.spec.ts --grep @orders",
+    "smoke:products": "playwright test tests/modules-smoke.spec.ts --grep @products",
+    "smoke:quotes": "playwright test tests/modules-smoke.spec.ts --grep @quotes",
+    "smoke:production": "playwright test tests/modules-smoke.spec.ts --grep @production",
+    "smoke:inventory": "playwright test tests/modules-smoke.spec.ts --grep @inventory",
+    "smoke:purchasing": "playwright test tests/modules-smoke.spec.ts --grep @purchasing",
+    "smoke:shipping": "playwright test tests/modules-smoke.spec.ts --grep @shipping",
+    "smoke:billing": "playwright test tests/modules-smoke.spec.ts --grep @billing",
+    "smoke:portal": "playwright test tests/modules-smoke.spec.ts --grep @portal"
   },
   "dependencies": {
     "axios": "^1.6.2",
