@@ -124,6 +124,7 @@ platform-v2/
   - enqueue retry job,
   - verify duplicate queue idempotency behavior,
   - print retry queue state pre/post dispatch,
+  - exercise manual requeue and batch `requeue-failed` recovery endpoints,
   - dispatch retries,
   - print latest delivery logs and IDs.
 - Quick use (with existing token):
@@ -138,6 +139,7 @@ platform-v2/
   - `TARGET_URL=https://httpbin.org/post` destination endpoint
   - `EVENT_TYPE=order.updated` event type
   - `MAX_ATTEMPTS=3` retry budget
+  - `REQUEUE_FAILED_LIMIT=10` batch failed requeue cap
 
 ## Reverse proxy
 

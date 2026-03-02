@@ -10,6 +10,7 @@ WEBHOOK_ID="${WEBHOOK_ID:-}"
 TARGET_URL="${TARGET_URL:-https://httpbin.org/post}"
 EVENT_TYPE="${EVENT_TYPE:-order.updated}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-3}"
+REQUEUE_FAILED_LIMIT="${REQUEUE_FAILED_LIMIT:-10}"
 
 req() {
   local method="$1"
@@ -45,7 +46,7 @@ print(val if val is not None else '')
 PY
 }
 
-echo "[1/7] Resolve auth token"
+echo "[1/11] Resolve auth token"
 if [[ -z "${TOKEN}" ]]; then
   if [[ -z "${EMAIL}" || -z "${PASSWORD}" ]]; then
     echo "ERROR: set TOKEN or EMAIL+PASSWORD"
@@ -62,7 +63,7 @@ if [[ -z "${TOKEN}" ]]; then
 fi
 
 if [[ -z "${WEBHOOK_ID}" ]]; then
-  echo "[2/7] Create temporary webhook endpoint"
+  echo "[2/11] Create temporary webhook endpoint"
   secret="smoke-secret-$(date +%s)"
   create_payload="{\"eventType\":\"${EVENT_TYPE}\",\"endpoint\":\"${TARGET_URL}\",\"provider\":\"CUSTOM\",\"secret\":\"${secret}\",\"isActive\":true}"
   create_resp="$(req POST /api/webhooks "${create_payload}")"
@@ -74,7 +75,7 @@ if [[ -z "${WEBHOOK_ID}" ]]; then
   fi
   echo "Created WEBHOOK_ID=${WEBHOOK_ID}"
 else
-  echo "[2/7] Using existing WEBHOOK_ID=${WEBHOOK_ID}"
+  echo "[2/11] Using existing WEBHOOK_ID=${WEBHOOK_ID}"
 fi
 
 event_id="evt-$(date +%s)"
@@ -83,7 +84,7 @@ body="{\"source\":\"smoke\",\"eventId\":\"${event_id}\",\"ts\":\"$(date -u +%Y-%
 
 queue_payload="{\"eventId\":\"${event_id}\",\"idempotencyKey\":\"${idempotency_key}\",\"eventType\":\"${EVENT_TYPE}\",\"maxAttempts\":${MAX_ATTEMPTS},\"body\":${body}}"
 
-echo "[3/7] Queue retry job"
+echo "[3/11] Queue retry job"
 queue_resp="$(req POST "/api/webhooks/${WEBHOOK_ID}/retries/queue" "${queue_payload}")"
 retry_id="$(printf '%s' "${queue_resp}" | json_get retryId)"
 if [[ -z "${retry_id}" ]]; then
@@ -93,7 +94,7 @@ if [[ -z "${retry_id}" ]]; then
 fi
 echo "Queued RETRY_ID=${retry_id}"
 
-echo "[4/7] Verify idempotency duplicate queue"
+echo "[4/11] Verify idempotency duplicate queue"
 queue_dup_resp="$(req POST "/api/webhooks/${WEBHOOK_ID}/retries/queue" "${queue_payload}")"
 if ! printf '%s' "${queue_dup_resp}" | grep -q '"duplicate"[[:space:]]*:[[:space:]]*true'; then
   echo "ERROR: expected duplicate=true on second queue call"
@@ -102,21 +103,26 @@ if ! printf '%s' "${queue_dup_resp}" | grep -q '"duplicate"[[:space:]]*:[[:space
 fi
 echo "Duplicate queue confirmed"
 
-echo "[5/9] Inspect retry queue state (pre-dispatch)"
+echo "[5/11] Inspect retry queue state (pre-dispatch)"
 retries_pre_resp="$(req GET "/api/webhooks/retries?webhookId=${WEBHOOK_ID}&limit=10")"
 summary_pre_resp="$(req GET "/api/webhooks/retries/summary?webhookId=${WEBHOOK_ID}&hours=24")"
 echo "Retries (pre): ${retries_pre_resp}"
 echo "Retries summary (pre): ${summary_pre_resp}"
 
-echo "[6/9] Dispatch retries"
+echo "[6/11] Dispatch retries"
 dispatch_resp="$(req POST /api/webhooks/retries/dispatch "{\"webhookId\":\"${WEBHOOK_ID}\",\"limit\":10}")"
 echo "Dispatch response: ${dispatch_resp}"
 
-echo "[7/10] Requeue same retry id (manual recovery path)"
+echo "[7/11] Requeue same retry id (manual recovery path)"
 requeue_resp="$(req POST "/api/webhooks/retries/${retry_id}/requeue" "{\"maxAttempts\":${MAX_ATTEMPTS}}")"
 echo "Requeue response: ${requeue_resp}"
 
-echo "[8/10] Fetch delivery/retry logs"
+echo "[8/11] Batch requeue failed retries (new recovery path)"
+requeue_failed_payload="{\"webhookId\":\"${WEBHOOK_ID}\",\"limit\":${REQUEUE_FAILED_LIMIT},\"maxAttempts\":${MAX_ATTEMPTS}}"
+requeue_failed_resp="$(req POST "/api/webhooks/retries/requeue-failed" "${requeue_failed_payload}")"
+echo "Batch requeue-failed response: ${requeue_failed_resp}"
+
+echo "[9/11] Fetch delivery/retry logs"
 deliveries_resp="$(req GET "/api/webhooks/deliveries?webhookId=${WEBHOOK_ID}&limit=10")"
 retries_post_resp="$(req GET "/api/webhooks/retries?webhookId=${WEBHOOK_ID}&limit=10")"
 summary_post_resp="$(req GET "/api/webhooks/retries/summary?webhookId=${WEBHOOK_ID}&hours=24")"
@@ -124,8 +130,9 @@ echo "Deliveries: ${deliveries_resp}"
 echo "Retries (post): ${retries_post_resp}"
 echo "Retries summary (post): ${summary_post_resp}"
 
-echo "[9/10] Done"
+echo "[10/11] Done"
 echo "WEBHOOK_ID=${WEBHOOK_ID}"
 echo "RETRY_ID=${retry_id}"
 echo "IDEMPOTENCY_KEY=${idempotency_key}"
-echo "[10/10] Complete"
+echo "REQUEUE_FAILED_LIMIT=${REQUEUE_FAILED_LIMIT}"
+echo "[11/11] Complete"
