@@ -78,7 +78,7 @@ import DashboardShippingPage from './pages/DashboardShippingPage';
 import DashboardNotificationsPage from './pages/DashboardNotificationsPage';
 import DashboardWebhooksPage from './pages/DashboardWebhooksPage';
 import AnalyticsPage from './pages/AnalyticsPage';
-import VersionStamp from './components/VersionStamp';
+import { BUILD_INFO } from './buildInfo';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -100,6 +100,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
 
   return <>{children}</>;
 };
+
+function BuildBanner() {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-black px-3 py-1 font-mono text-xs text-green-400">
+      Build: {BUILD_INFO.commit} | {BUILD_INFO.buildTime}
+    </div>
+  );
+}
 
 function App() {
   const { checkAuth, loading } = useAuthStore();
@@ -801,7 +809,7 @@ function App() {
             />
           </Routes>
         </main>
-        <VersionStamp />
+        <BuildBanner />
       </div>
     </Router>
   );
