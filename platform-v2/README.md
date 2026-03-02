@@ -133,6 +133,7 @@ platform-v2/
   - `cd platform-v2 && EMAIL=<user> PASSWORD=<pass> TENANT_ID=<tenant> API_BASE=http://localhost:4000 npm run webhook:smoke`
 - Shortcut aliases:
   - Local API default: `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> npm run webhook:smoke:local`
+  - Local fail path (forces delivery failures): `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> npm run webhook:smoke:failpath`
   - Production API default: `cd platform-v2 && TOKEN=<jwt> TENANT_ID=<tenant> npm run webhook:smoke:prod`
 - Useful overrides:
   - `WEBHOOK_ID=<id>` reuse existing webhook
