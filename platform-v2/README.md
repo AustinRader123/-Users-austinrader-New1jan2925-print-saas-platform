@@ -61,6 +61,7 @@ platform-v2/
   - `DELETE /api/webhooks/:id`
   - `GET /api/webhooks/deliveries`
   - `GET /api/webhooks/retries`
+  - `GET /api/webhooks/retries/summary`
   - `POST /api/webhooks/:id/retries/queue`
   - `POST /api/webhooks/retries/dispatch`
 - Public inbound receiver:
@@ -95,6 +96,7 @@ platform-v2/
   - `GET /api/webhooks/deliveries?webhookId=<id>`
   - Look for `DELIVERY_SUCCESS`, `DELIVERY_RETRY`, `DELIVERY_FAILED` and check `responseCode`, `latencyMs`, and `error`.
 5. Unstick queued retries
+  - Monitor backlog: `GET /api/webhooks/retries/summary?webhookId=<id>&hours=24`
   - Inspect queue state: `GET /api/webhooks/retries?webhookId=<id>&status=QUEUED`
   - Queue if missing: `POST /api/webhooks/:id/retries/queue`
   - Process queue: `POST /api/webhooks/retries/dispatch`

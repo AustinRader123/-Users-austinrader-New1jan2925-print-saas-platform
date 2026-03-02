@@ -69,6 +69,16 @@ export class WebhooksController {
     return this.service.retries(tenantId, webhookId, status, action, limit ? Number(limit) : 100);
   }
 
+  @Get('retries/summary')
+  @Permissions('webhooks.read')
+  retriesSummary(
+    @Headers('x-tenant-id') tenantId: string,
+    @Query('webhookId') webhookId?: string,
+    @Query('hours') hours?: string
+  ) {
+    return this.service.retriesSummary(tenantId, webhookId, hours ? Number(hours) : 24);
+  }
+
   @Post(':id/deliveries')
   @Permissions('webhooks.write')
   recordDelivery(

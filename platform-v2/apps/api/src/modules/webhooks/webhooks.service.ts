@@ -172,6 +172,62 @@ export class WebhooksService {
     });
   }
 
+  async retriesSummary(tenantId: string, webhookId?: string, hours = 24) {
+    const safeHours = Math.min(Math.max(hours, 1), 24 * 30);
+    const since = new Date(Date.now() - safeHours * 60 * 60 * 1000);
+
+    const rows = await this.prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+        ...(webhookId ? { entityId: webhookId } : {}),
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+
+    const actionCounts: Record<string, number> = {};
+    const statusCounts: Record<string, number> = {};
+    let oldestQueuedAt: Date | null = null;
+    let maxAttempt = 0;
+
+    for (const row of rows as any[]) {
+      actionCounts[row.action] = (actionCounts[row.action] || 0) + 1;
+      const payload = (row.payload || {}) as Record<string, unknown>;
+      const status = typeof payload.status === 'string' ? payload.status : undefined;
+      if (status) {
+        const normalized = status.toUpperCase();
+        statusCounts[normalized] = (statusCounts[normalized] || 0) + 1;
+        if (normalized === 'QUEUED') {
+          if (!oldestQueuedAt || row.createdAt < oldestQueuedAt) {
+            oldestQueuedAt = row.createdAt;
+          }
+        }
+      }
+
+      const attempt = Number(payload.attempt || 0);
+      if (Number.isFinite(attempt) && attempt > maxAttempt) {
+        maxAttempt = attempt;
+      }
+    }
+
+    return {
+      windowHours: safeHours,
+      since: since.toISOString(),
+      total: rows.length,
+      actionCounts,
+      statusCounts,
+      queuedCount: statusCounts.QUEUED || 0,
+      sentCount: statusCounts.SENT || 0,
+      failedCount: statusCounts.FAILED || 0,
+      processingCount: statusCounts.PROCESSING || 0,
+      maxAttempt,
+      oldestQueuedAt: oldestQueuedAt ? oldestQueuedAt.toISOString() : null,
+      oldestQueuedAgeSeconds: oldestQueuedAt ? Math.floor((Date.now() - oldestQueuedAt.getTime()) / 1000) : null,
+    };
+  }
+
   async receiveInbound(
     webhookId: string,
     input: {

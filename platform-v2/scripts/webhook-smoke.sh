@@ -102,21 +102,26 @@ if ! printf '%s' "${queue_dup_resp}" | grep -q '"duplicate"[[:space:]]*:[[:space
 fi
 echo "Duplicate queue confirmed"
 
-echo "[5/7] Inspect retry queue state (pre-dispatch)"
+echo "[5/9] Inspect retry queue state (pre-dispatch)"
 retries_pre_resp="$(req GET "/api/webhooks/retries?webhookId=${WEBHOOK_ID}&limit=10")"
+summary_pre_resp="$(req GET "/api/webhooks/retries/summary?webhookId=${WEBHOOK_ID}&hours=24")"
 echo "Retries (pre): ${retries_pre_resp}"
+echo "Retries summary (pre): ${summary_pre_resp}"
 
-echo "[6/8] Dispatch retries"
+echo "[6/9] Dispatch retries"
 dispatch_resp="$(req POST /api/webhooks/retries/dispatch "{\"webhookId\":\"${WEBHOOK_ID}\",\"limit\":10}")"
 echo "Dispatch response: ${dispatch_resp}"
 
-echo "[7/8] Fetch delivery/retry logs"
+echo "[7/9] Fetch delivery/retry logs"
 deliveries_resp="$(req GET "/api/webhooks/deliveries?webhookId=${WEBHOOK_ID}&limit=10")"
 retries_post_resp="$(req GET "/api/webhooks/retries?webhookId=${WEBHOOK_ID}&limit=10")"
+summary_post_resp="$(req GET "/api/webhooks/retries/summary?webhookId=${WEBHOOK_ID}&hours=24")"
 echo "Deliveries: ${deliveries_resp}"
 echo "Retries (post): ${retries_post_resp}"
+echo "Retries summary (post): ${summary_post_resp}"
 
-echo "[8/8] Done"
+echo "[8/9] Done"
 echo "WEBHOOK_ID=${WEBHOOK_ID}"
 echo "RETRY_ID=${retry_id}"
 echo "IDEMPOTENCY_KEY=${idempotency_key}"
+echo "[9/9] Complete"
