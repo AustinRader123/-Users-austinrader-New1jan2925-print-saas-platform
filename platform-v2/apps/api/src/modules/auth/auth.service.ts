@@ -169,6 +169,7 @@ export class AuthService {
       'stores.write',
       'products.read',
       'products.write',
+      'crm.read',
       'invoices.read',
       'invoices.write',
       'payments.write',
