@@ -34,11 +34,51 @@
       "destination": "https://users-austinrader-new1jan2925-print-saas-50g3.onrender.com/api/:match*"
     },
     {
+      "source": "/favicon.ico",
+      "destination": "/vite.svg"
+    },
+    {
       "source": "/app",
       "destination": "/index.html"
     },
     {
       "source": "/app/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/store/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/team/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/proof/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/quote/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/invoice/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/portal/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
