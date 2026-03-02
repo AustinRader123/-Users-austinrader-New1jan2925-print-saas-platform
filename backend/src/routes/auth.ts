@@ -5,10 +5,13 @@ import logger from '../logger.js';
 import { getUserPermissions } from '../lib/rbac.js';
 
 const router = Router();
+type AuthRequestWithTenant = AuthRequest & { tenantId?: string };
 
 router.post('/register', async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, name } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+    const name = String(req.body?.name || '');
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -18,13 +21,14 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     res.json(result);
   } catch (error) {
     logger.error('Register error:', error);
-    res.status(400).json({ error: (error as any).message });
+    res.status(400).json({ error: (error as Error).message });
   }
 });
 
 router.post('/login', async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
@@ -41,7 +45,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = await AuthService.getUser(req.userId!);
-    const tenantId = ((req as any).tenantId as string | undefined) || null;
+    const tenantId = (req as AuthRequestWithTenant).tenantId || null;
     const permissions = await getUserPermissions({ tenantId, userId: req.userId, userRole: req.userRole });
     res.json({
       ...user,

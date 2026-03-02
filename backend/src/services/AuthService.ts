@@ -8,21 +8,37 @@ const prisma = new PrismaClient();
 
 export class AuthService {
   async register(email: string, password: string, name: string) {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
+    });
     if (existingUser) {
       throw new Error('User already exists');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, passwordHash, name, role: 'CUSTOMER' },
+      data: { email: normalizedEmail, passwordHash, name, role: 'CUSTOMER' },
     });
 
     return this.generateToken(user.id, user.role, undefined);
   }
 
   async login(email: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
+    });
     if (!user) {
       throw new Error('Invalid credentials');
     }

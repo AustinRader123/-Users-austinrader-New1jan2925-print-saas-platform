@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
+import { extractErrorMessage } from '../lib/errors';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function LoginPage() {
       const next = params.get('next');
       navigate(next || '/app', { replace: true });
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Login failed');
+      toast.error(extractErrorMessage(error) || 'Login failed');
     }
   };
 

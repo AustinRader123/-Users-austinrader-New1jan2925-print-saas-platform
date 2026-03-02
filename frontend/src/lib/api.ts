@@ -119,12 +119,14 @@ class ApiClient {
 
   // Auth
   async register(email: string, password: string, name: string) {
-    const { data } = await this.client.post('/auth/register', { email, password, name });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const { data } = await this.client.post('/auth/register', { email: normalizedEmail, password, name: String(name || '').trim() });
     return data;
   }
 
   async login(email: string, password: string) {
-    const { data } = await this.client.post('/auth/login', { email, password });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const { data } = await this.client.post('/auth/login', { email: normalizedEmail, password });
     return data;
   }
 
