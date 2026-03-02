@@ -206,6 +206,7 @@ s3://bucket/
 - `PATCH /api/webhooks/:id` update endpoint/secret/status
 - `DELETE /api/webhooks/:id` soft delete + deactivate
 - `GET /api/webhooks/deliveries` query delivery logs
+- `GET /api/webhooks/retries` query retry queue/activity logs
 - `POST /api/webhooks/:id/retries/queue` enqueue retry payload
 - `POST /api/webhooks/retries/dispatch` pull/process queued retries
 

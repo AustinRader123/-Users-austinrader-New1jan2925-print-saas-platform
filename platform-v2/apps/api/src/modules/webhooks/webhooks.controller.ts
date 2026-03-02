@@ -57,6 +57,18 @@ export class WebhooksController {
     return this.service.deliveries(tenantId, webhookId, status, limit ? Number(limit) : 100);
   }
 
+  @Get('retries')
+  @Permissions('webhooks.read')
+  retries(
+    @Headers('x-tenant-id') tenantId: string,
+    @Query('webhookId') webhookId?: string,
+    @Query('status') status?: string,
+    @Query('action') action?: string,
+    @Query('limit') limit?: string
+  ) {
+    return this.service.retries(tenantId, webhookId, status, action, limit ? Number(limit) : 100);
+  }
+
   @Post(':id/deliveries')
   @Permissions('webhooks.write')
   recordDelivery(

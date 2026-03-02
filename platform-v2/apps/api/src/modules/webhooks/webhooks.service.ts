@@ -149,6 +149,29 @@ export class WebhooksService {
     });
   }
 
+  async retries(tenantId: string, webhookId?: string, status?: string, action?: string, limit = 100) {
+    const rows = await this.prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        entityType: 'WEBHOOK_RETRY',
+        ...(webhookId ? { entityId: webhookId } : {}),
+        ...(action ? { action: action.trim().toUpperCase() } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 500),
+    });
+
+    if (!status) {
+      return rows;
+    }
+
+    const normalizedStatus = status.trim().toUpperCase();
+    return rows.filter((entry: any) => {
+      const payload = entry.payload as Record<string, unknown> | null;
+      return payload?.status === normalizedStatus;
+    });
+  }
+
   async receiveInbound(
     webhookId: string,
     input: {
