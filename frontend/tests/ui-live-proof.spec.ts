@@ -35,7 +35,7 @@ test('deploy proof + app navigation smoke', async ({ page, request, baseURL }) =
   }, token);
 
   await page.goto(`${root}/app`, { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText('UI commit')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/Build:/i)).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('heading', { name: /Dashboard/i })).toBeVisible({ timeout: 20000 });
 
   const navItems: Array<{ label: string; title: RegExp }> = [

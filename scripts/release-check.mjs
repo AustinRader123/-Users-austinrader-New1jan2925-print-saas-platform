@@ -21,6 +21,17 @@ const steps = [
   { name: 'smoke:phase16', command: 'npm', args: ['run', 'smoke:phase16'], cwd: 'backend' },
   { name: 'smoke:phase17', command: 'npm', args: ['run', 'smoke:phase17'], cwd: 'backend' },
   {
+    name: 'smoke:sidebar-nav',
+    command: 'npm',
+    args: ['run', 'smoke:sidebar-nav'],
+    cwd: 'frontend',
+    env: {
+      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL || 'https://skuflow.ai',
+      SMOKE_EMAIL: process.env.SMOKE_EMAIL,
+      SMOKE_PASSWORD: process.env.SMOKE_PASSWORD,
+    },
+  },
+  {
     name: 'smoke:prod_sim',
     command: 'npm',
     args: ['run', 'smoke:prod_sim'],
