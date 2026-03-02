@@ -23,9 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: platform-v2/package-lock.json
       - name: Validate webhook smoke script syntax
         run: bash -n scripts/webhook-smoke.sh
-      - run: npm install
+      - run: npm ci
       - name: Build API fast check
         if: steps.changes.outputs.api == 'true'
         run: npm run -w apps/api build
