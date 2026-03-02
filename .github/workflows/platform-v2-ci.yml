@@ -1,0 +1,21 @@
+name: platform-v2-ci
+on:
+  push:
+    paths:
+      - 'platform-v2/**'
+  pull_request:
+    paths:
+      - 'platform-v2/**'
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run build

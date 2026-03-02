@@ -1,0 +1,24 @@
+{
+  "name": "platform-v2",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces --if-present build",
+    "dev": "npm run -w apps/web dev & npm run -w apps/api start:dev",
+    "lint": "npm run --workspaces --if-present lint",
+    "test": "npm run --workspaces --if-present test",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "prisma": "^5.21.1",
+    "tsx": "^4.20.4",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@platform/web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "NODE_ENV=production next build",
+    "start": "NODE_ENV=production next start -p 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "zustand": "^5.0.1",
+    "zod": "^3.24.1",
+    "react-hook-form": "^7.54.2",
+    "@hookform/resolvers": "^3.9.1",
+    "tailwindcss": "^3.4.17",
+    "fabric": "^6.5.3",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.5",
+    "postcss": "^8.4.49",
+    "autoprefixer": "^10.4.20"
+  }
+}

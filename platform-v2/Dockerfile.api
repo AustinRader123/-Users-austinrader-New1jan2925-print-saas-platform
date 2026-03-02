@@ -1,0 +1,12 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package.json tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/pricing-engine/package.json packages/pricing-engine/
+RUN npm install
+
+COPY . .
+RUN npm run -w apps/api build
+
+EXPOSE 4000
+CMD ["npm", "run", "-w", "apps/api", "start"]
