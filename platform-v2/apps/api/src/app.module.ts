@@ -22,6 +22,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthGuard } from './common/auth.guard';
 import { RbacGuard } from './common/rbac.guard';
 import { QuotesModule } from './modules/quotes/quotes.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { QuotesModule } from './modules/quotes/quotes.module';
     DesignerModule,
     OrdersModule,
     QuotesModule,
+    InvoicesModule,
     UsersModule,
     StoresModule,
     ProductsModule,

@@ -169,6 +169,9 @@ export class AuthService {
       'stores.write',
       'products.read',
       'products.write',
+      'invoices.read',
+      'invoices.write',
+      'payments.write',
     ];
   }
 
