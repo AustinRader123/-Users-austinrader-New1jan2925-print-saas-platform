@@ -7,6 +7,7 @@ import {
   Factory,
   HelpCircle,
   LifeBuoy,
+  CircleUserRound,
   Package,
   Settings,
   ShoppingCart,
@@ -45,7 +46,7 @@ function DecoSidebar() {
     <aside className="deco-sidebar">
       <div className="deco-sidebar-header">
         <div className="deco-sidebar-title">Portal Navigation</div>
-        <div className="deco-sidebar-subtitle">Role: {user?.role || 'Guest'}</div>
+        <div className="deco-sidebar-subtitle">Role: {user?.role || 'CUSTOMER'}</div>
       </div>
 
       <nav className="deco-nav-list">
@@ -80,10 +81,14 @@ function UtilityBar() {
           <a href="/contact" className="deco-utility-link">Request a Demo</a>
           <a href="/pricing" className="deco-utility-link">Pricing</a>
         </div>
-        <button className="deco-icon-btn" type="button" aria-label="Support and help">
-          <LifeBuoy className="h-4 w-4" />
-          <HelpCircle className="h-4 w-4" />
-        </button>
+        <div className="deco-utility-right">
+          <button className="deco-icon-btn" type="button" aria-label="Support">
+            <LifeBuoy className="h-3.5 w-3.5" />
+          </button>
+          <button className="deco-icon-btn" type="button" aria-label="Help">
+            <HelpCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -106,13 +111,16 @@ function PrimaryHeader() {
           <a href="/catalogs" className="deco-main-link">Catalogs</a>
           <a href="/resources" className="deco-main-link">Resources</a>
           <a href="/contact" className="deco-main-link">Contact Us</a>
-          <a href="/pricing" className="deco-pricing-btn">Pricing</a>
         </nav>
 
         <div className="deco-user-wrap">
           <NavLink to="/app/cart" className="deco-cart-btn" aria-label="Cart">
             <ShoppingCart className="h-4 w-4" />
           </NavLink>
+
+          <button className="deco-icon-btn" type="button" aria-label="User actions">
+            <CircleUserRound className="h-3.5 w-3.5" />
+          </button>
 
           <details className="deco-user-dropdown">
             <summary>{user?.email || 'Account'}</summary>

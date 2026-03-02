@@ -78,7 +78,6 @@ import DashboardShippingPage from './pages/DashboardShippingPage';
 import DashboardNotificationsPage from './pages/DashboardNotificationsPage';
 import DashboardWebhooksPage from './pages/DashboardWebhooksPage';
 import AnalyticsPage from './pages/AnalyticsPage';
-import './styles/deco.css';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -106,7 +105,7 @@ function AppRoutes() {
   const isAppRoute = location.pathname.startsWith('/app');
 
   return (
-    <div className={isAppRoute ? 'deco-theme deco-app-root min-h-screen' : 'min-h-screen bg-white dark:bg-slate-950'}>
+    <div className={isAppRoute ? 'deco-root min-h-screen' : 'min-h-screen bg-white dark:bg-slate-950'}>
       {!isAppRoute ? <Navbar /> : null}
       <main className={isAppRoute ? '' : 'pt-16'}>
         <Routes>
