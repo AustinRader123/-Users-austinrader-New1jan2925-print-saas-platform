@@ -1,82 +1,96 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { ShoppingCart, LogOut, Zap, Layers, Box, BookOpen, MessageSquare, Star, DollarSign } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  function closeMobileMenu() {
+    setMobileOpen(false);
+  }
 
   return (
-    <nav className="fixed top-0 w-full bg-white border-b border-slate-200 z-50">
-      {/* Top promo bar */}
-      <div className="w-full bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-500 text-white text-xs py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <span className="flex items-center gap-1"><Zap size={14} /> Request Your Demo</span>
-          <Link to="/pricing" className="underline">Pricing</Link>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+    <nav className="fixed top-0 z-50 w-full border-b border-slate-800 bg-slate-950/95 backdrop-blur">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">S</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+              <span className="font-bold text-white">S</span>
             </div>
-            <span className="font-bold text-lg hidden sm:inline text-slate-900">SkuFlow</span>
+            <span className="hidden text-lg font-bold text-slate-100 sm:inline">SkuFlow</span>
           </Link>
 
-          {/* Right Navigation (marketing) */}
-          <div className="hidden md:flex items-center space-x-2">
-            <Link to="/solutions" className="flex items-center gap-2 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 hover:text-blue-600">
-              <Layers size={16} /> <span>Solutions</span>
-            </Link>
-            <Link to="/features" className="flex items-center gap-2 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 hover:text-blue-600">
-              <Star size={16} /> <span>Features</span>
-            </Link>
-            <Link to="/catalogs" className="flex items-center gap-2 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 hover:text-blue-600">
-              <Box size={16} /> <span>Catalogs</span>
-            </Link>
-            <Link to="/resources" className="flex items-center gap-2 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 hover:text-blue-600">
-              <BookOpen size={16} /> <span>Resources</span>
-            </Link>
-            <Link to="/contact" className="flex items-center gap-2 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 hover:text-blue-600">
-              <MessageSquare size={16} /> <span>Contact Us</span>
-            </Link>
-            <Link to="/pricing" className="ml-2 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg shadow-sm">
-              <DollarSign size={16} /> <span>Pricing</span>
-            </Link>
+          <div className="hidden items-center space-x-6 lg:flex">
+            <Link to="/solutions" className="text-sm font-medium text-slate-300 hover:text-white">Solutions</Link>
+            <Link to="/features" className="text-sm font-medium text-slate-300 hover:text-white">Features</Link>
+            <Link to="/industries" className="text-sm font-medium text-slate-300 hover:text-white">Built For</Link>
+            <Link to="/pricing" className="text-sm font-medium text-slate-300 hover:text-white">Pricing</Link>
+            <Link to="/resources" className="text-sm font-medium text-slate-300 hover:text-white">Resources</Link>
+            <Link to="/company/about" className="text-sm font-medium text-slate-300 hover:text-white">Company</Link>
           </div>
 
-          {/* Right Actions */}
-          <div className="flex items-center space-x-4">
-            <Link to="/cart" className="p-2 hover:bg-slate-100 rounded-lg">
-              <ShoppingCart size={20} />
+          <div className="hidden items-center space-x-2 sm:flex">
+            <Link to="/company/contact" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+              Request Demo
+            </Link>
+            <Link to="/app/login" className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-900">
+              Sign In
             </Link>
 
             {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-slate-600 dark:text-slate-400 hidden sm:inline">
-                  {user.email}
-                </span>
-                <button
-                  onClick={logout}
-                  className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800"
-                >
-                  <LogOut size={20} />
-                </button>
-              </div>
-            ) : (
-              <div className="space-x-2">
-                <Link to="/app/login" className="btn btn-secondary">
-                  Login
-                </Link>
-                <Link to="/app/register" className="px-3 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800">
-                  Sign Up
-                </Link>
-              </div>
-            )}
+              <button
+                onClick={logout}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200 hover:bg-slate-800"
+                aria-label="Sign out"
+              >
+                <LogOut size={18} />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="sm:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileOpen((current) => !current)}
+              className="rounded-lg border border-slate-700 p-2 text-slate-200 hover:bg-slate-900"
+              aria-label="Open navigation"
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+
+        {mobileOpen ? (
+          <div className="border-t border-slate-800 py-3 sm:hidden">
+            <div className="grid gap-2">
+              <Link to="/solutions" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Solutions</Link>
+              <Link to="/features" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Features</Link>
+              <Link to="/industries" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Built For</Link>
+              <Link to="/pricing" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Pricing</Link>
+              <Link to="/resources" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Resources</Link>
+              <Link to="/company/about" onClick={closeMobileMenu} className="rounded-lg px-2 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900">Company</Link>
+            </div>
+            <div className="mt-3 grid gap-2">
+              <Link
+                to="/company/contact"
+                onClick={closeMobileMenu}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-500"
+              >
+                Request Demo
+              </Link>
+              <Link
+                to="/app/login"
+                onClick={closeMobileMenu}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-center text-sm font-semibold text-slate-100 hover:bg-slate-900"
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
+        ) : null}
       </div>
     </nav>
   );

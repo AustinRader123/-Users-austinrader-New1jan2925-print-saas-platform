@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import Navbar from './components/Navbar';
-import HomePage from './pages/HomePage';
 import ProductPage from './pages/ProductPage';
 import DesignPage from './pages/DesignPage';
 import DesignEditorPage from './pages/DesignEditorPage';
@@ -17,14 +16,6 @@ import AdminPricingRulesPage from './pages/AdminPricingRulesPage';
 import AdminVendorsPage from './pages/AdminVendorsPage';
 import AdminVendorDetailPage from './pages/AdminVendorDetailPage';
 import AdminPricingSimulatorPage from './pages/AdminPricingSimulatorPage';
-import SolutionsPage from './pages/SolutionsPage';
-import FeaturesPage from './pages/FeaturesPage';
-import CatalogsPage from './pages/CatalogsPage';
-import ResourcesPage from './pages/ResourcesPage';
-import DocsPage from './pages/DocsPage';
-import FAQPage from './pages/FAQPage';
-import ContactPage from './pages/ContactPage';
-import PricingPage from './pages/PricingPage';
 import AdminDemoPage from './pages/AdminDemoPage';
 import DashboardPage from './pages/DashboardPage';
 import DecoShell from './layouts/DecoShell';
@@ -114,6 +105,23 @@ import SkuFlowAssistant from './components/SkuFlowAssistant';
 import AppAdminPage from './pages/app/AdminPage';
 import AppSettingsPage from './pages/app/SettingsPage';
 
+const HomePage = lazy(() => import('./pages/HomePage'));
+const SolutionsPage = lazy(() => import('./pages/SolutionsPage'));
+const SolutionDetailPage = lazy(() => import('./pages/SolutionDetailPage'));
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const FeatureDetailPage = lazy(() => import('./pages/FeatureDetailPage'));
+const IndustriesPage = lazy(() => import('./pages/IndustriesPage'));
+const IndustryDetailPage = lazy(() => import('./pages/IndustryDetailPage'));
+const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage'));
+const CaseStudiesPage = lazy(() => import('./pages/CaseStudiesPage'));
+const GuidesPage = lazy(() => import('./pages/GuidesPage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
@@ -135,6 +143,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole,
   return <>{children}</>;
 };
 
+const RouteLoadingFallback: React.FC = () => (
+  <div className="flex min-h-[50vh] items-center justify-center px-6">
+    <div className="text-sm text-slate-500">Loading page...</div>
+  </div>
+);
+
 function AppRoutes() {
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith('/app');
@@ -143,16 +157,25 @@ function AppRoutes() {
     <div className={isAppRoute ? 'deco-root min-h-screen' : 'min-h-screen bg-white dark:bg-slate-950'}>
       {!isAppRoute ? <Navbar /> : null}
       <main className={isAppRoute ? '' : 'pt-16'}>
-        <Routes>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/app" replace />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/solutions" element={<SolutionsPage />} />
+            <Route path="/solutions/:solutionSlug" element={<SolutionDetailPage />} />
             <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/catalogs" element={<CatalogsPage />} />
+            <Route path="/features/:featureSlug" element={<FeatureDetailPage />} />
+            <Route path="/industries" element={<IndustriesPage />} />
+            <Route path="/industries/:industrySlug" element={<IndustryDetailPage />} />
             <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/resources/blog" element={<BlogPage />} />
+            <Route path="/resources/case-studies" element={<CaseStudiesPage />} />
+            <Route path="/resources/guides" element={<GuidesPage />} />
             <Route path="/resources/docs" element={<DocsPage />} />
             <Route path="/resources/faq" element={<FAQPage />} />
-            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/company/about" element={<AboutPage />} />
+            <Route path="/company/contact" element={<ContactPage />} />
+            <Route path="/contact" element={<Navigate to="/company/contact" replace />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/proof/:token" element={<ProofApprovalPage />} />
             <Route path="/quote/:token" element={<PublicQuotePage />} />
@@ -585,7 +608,8 @@ function AppRoutes() {
                 </ProtectedRoute>
               }
             />
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
       <SkuFlowAssistant inApp={isAppRoute} />
       <BuildBanner />
