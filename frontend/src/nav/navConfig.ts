@@ -34,10 +34,15 @@ export type AppNavItem = {
 };
 
 export const appNavItems: AppNavItem[] = [
-  { key: 'dashboard', section: 'Core', label: 'Dashboard', icon: Boxes, path: '/app', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
-  { key: 'orders', section: 'Core', label: 'Orders', icon: ClipboardList, path: '/app/orders', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 8 },
-  { key: 'products', section: 'Core', label: 'Products', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'catalogs', section: 'Core', label: 'Catalogs', icon: Boxes, path: '/app/catalogs', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'dashboard', section: 'Core', label: 'Home', icon: Boxes, path: '/app', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
+  { key: 'forecasting', section: 'Core', label: 'Forecasting', icon: BarChart3, path: '/app/reports', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
+  { key: 'inventory', section: 'Core', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
+  { key: 'replenishment', section: 'Core', label: 'Replenishment', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'alerts', section: 'Core', label: 'Alerts / Action Center', icon: ClipboardList, path: '/app/orders', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 8 },
+  { key: 'analytics', section: 'Core', label: 'Analytics', icon: BarChart3, path: '/app/reports', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER', 'ACCOUNTING'] },
+  { key: 'products', section: 'Core', label: 'Products / SKUs', icon: Package, path: '/app/products', rolesAllowed: ['CUSTOMER', 'ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
+  { key: 'locations', section: 'Core', label: 'Locations / Warehouses', icon: Building2, path: '/app/stores', rolesAllowed: ['ADMIN', 'STORE_OWNER'] },
+  { key: 'suppliers', section: 'Core', label: 'Suppliers / POs', icon: Truck, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
 
   {
     key: 'production',
@@ -67,9 +72,9 @@ export const appNavItems: AppNavItem[] = [
     ],
   },
   { key: 'purchasing', section: 'Workflow', label: 'Purchasing', icon: ShoppingCart, path: '/app/purchasing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
-  { key: 'inventory', section: 'Workflow', label: 'Inventory', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'], badgeCount: 3 },
+  { key: 'inventory-workflow', section: 'Workflow', label: 'Inventory Operations', icon: Warehouse, path: '/app/inventory', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'PRODUCTION_MANAGER'] },
 
-  { key: 'billing', section: 'Money', label: 'Billing / Invoices', icon: Receipt, path: '/app/billing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
+  { key: 'billing', section: 'Money', label: 'Billing / Plan', icon: Receipt, path: '/app/billing', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
   { key: 'payments', section: 'Money', label: 'Payments', icon: CreditCard, path: '/app/payments', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
   { key: 'taxes', section: 'Money', label: 'Taxes', icon: DollarSign, path: '/app/taxes', rolesAllowed: ['ADMIN', 'STORE_OWNER', 'ACCOUNTING'] },
 

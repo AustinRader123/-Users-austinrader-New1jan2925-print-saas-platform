@@ -21,6 +21,8 @@ import SolutionsPage from './pages/SolutionsPage';
 import FeaturesPage from './pages/FeaturesPage';
 import CatalogsPage from './pages/CatalogsPage';
 import ResourcesPage from './pages/ResourcesPage';
+import DocsPage from './pages/DocsPage';
+import FAQPage from './pages/FAQPage';
 import ContactPage from './pages/ContactPage';
 import PricingPage from './pages/PricingPage';
 import AdminDemoPage from './pages/AdminDemoPage';
@@ -108,6 +110,7 @@ import AppWebhooksPage from './pages/app/WebhooksPage';
 import AppPaymentsPage from './pages/app/PaymentsPage';
 import AppTaxesPage from './pages/app/TaxesPage';
 import BuildBanner from './components/BuildBanner';
+import SkuFlowAssistant from './components/SkuFlowAssistant';
 import AppAdminPage from './pages/app/AdminPage';
 import AppSettingsPage from './pages/app/SettingsPage';
 
@@ -147,6 +150,8 @@ function AppRoutes() {
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/catalogs" element={<CatalogsPage />} />
             <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/resources/docs" element={<DocsPage />} />
+            <Route path="/resources/faq" element={<FAQPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/proof/:token" element={<ProofApprovalPage />} />
@@ -582,6 +587,7 @@ function AppRoutes() {
             />
         </Routes>
       </main>
+      <SkuFlowAssistant inApp={isAppRoute} />
       <BuildBanner />
     </div>
   );
